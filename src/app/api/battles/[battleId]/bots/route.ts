@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 const addBotsSchema = z.object({
   count: z.number().int().min(1).max(8).default(1),
@@ -16,8 +17,22 @@ export async function POST(
 
     const session = await getCurrentSession();
 
-    if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    // Check if user is authenticated
+    if (!session?.user?.email) {
+      console.error('No session or email found');
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    // Get user with role from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    });
+
+    // Check if user is admin
+    if (!user || user.role !== 'ADMIN') {
+      console.error('User not admin:', user?.role);
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     if (!battleId) {
@@ -68,6 +83,27 @@ export async function POST(
       take: count,
     });
 
+    if (availableBots.length === 0) {
+      // Check if any bots exist at all
+      const totalBots = await prisma.user.count({
+        where: { isBot: true },
+      });
+      
+      if (totalBots === 0) {
+        console.error('No bot users exist in database. Run: npm run create-bots');
+        return NextResponse.json(
+          { error: 'No bot users exist. Please run the create-bots script.' },
+          { status: 400 }
+        );
+      }
+      
+      console.error('All bots are already in this battle');
+      return NextResponse.json(
+        { error: 'All available bots are already in this battle' },
+        { status: 400 }
+      );
+    }
+
     if (availableBots.length < count) {
       return NextResponse.json(
         { error: `Only ${availableBots.length} bot${availableBots.length === 1 ? '' : 's'} available` },
@@ -86,6 +122,11 @@ export async function POST(
       )
     );
 
+    // Revalidate the battle page to show the new bots
+    revalidatePath(`/battles/${battleId}`);
+    revalidatePath('/battles');
+
+    console.log(`Successfully added ${availableBots.length} bots to battle ${battleId}`);
     return NextResponse.json({ success: true, added: availableBots.length });
   } catch (error) {
     if (error instanceof z.ZodError) {
