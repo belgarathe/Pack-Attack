@@ -31,4 +31,18 @@ body {
 .animate-spin-slow {
   animation: spin-slow 0.6s ease-in-out infinite;
   transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Add smooth transitions for card animations */
+.card-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Ensure animations work on all browsers */
+@supports (animation: spin-slow 0.6s) {
+  .animate-spin-slow {
+    animation: spin-slow 0.6s ease-in-out infinite;
+  }
 }

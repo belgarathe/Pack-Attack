@@ -68,7 +68,20 @@ export default function OpenBoxPage() {
       return;
     }
     const randomCardIds = new Set<string>();
-    const numToSpin = Math.min(5, box.cards.length);
+    // Dynamically calculate number of cards to spin based on total cards
+    // For fewer cards, spin all; for many cards, spin a reasonable subset
+    let numToSpin;
+    if (box.cards.length <= 3) {
+      // For 1-3 cards, spin all of them
+      numToSpin = box.cards.length;
+    } else if (box.cards.length <= 8) {
+      // For 4-8 cards, spin most of them
+      numToSpin = Math.ceil(box.cards.length * 0.75);
+    } else {
+      // For more than 8 cards, spin a good portion but cap at reasonable number
+      numToSpin = Math.min(Math.ceil(box.cards.length * 0.6), 12);
+    }
+    
     const shuffled = [...box.cards].sort(() => Math.random() - 0.5);
     for (let i = 0; i < numToSpin; i++) {
       randomCardIds.add(shuffled[i].id);
@@ -188,8 +201,28 @@ useEffect(() => {
         return;
       }
 
-      const REVEAL_DURATION = 1500;
-      const SPINNER_BURST_DURATION = 900;
+      // Adjust animation timing based on number of cards
+      const numCards = pullsData.length;
+      let REVEAL_DURATION = 1500;
+      let SPINNER_BURST_DURATION = 900;
+      
+      // Speed up animation for many cards, slow down for few
+      if (numCards <= 2) {
+        REVEAL_DURATION = 2000;  // Slower for just 1-2 cards
+        SPINNER_BURST_DURATION = 1200;
+      } else if (numCards <= 4) {
+        REVEAL_DURATION = 1500;  // Default speed for 3-4 cards
+        SPINNER_BURST_DURATION = 900;
+      } else if (numCards <= 8) {
+        REVEAL_DURATION = 1200;  // Slightly faster for 5-8 cards
+        SPINNER_BURST_DURATION = 700;
+      } else if (numCards <= 15) {
+        REVEAL_DURATION = 1000;  // Faster for 9-15 cards
+        SPINNER_BURST_DURATION = 600;
+      } else {
+        REVEAL_DURATION = 800;   // Much faster for many cards
+        SPINNER_BURST_DURATION = 500;
+      }
 
       scheduleTimeout(() => {
         stopSpin();
@@ -223,7 +256,7 @@ useEffect(() => {
               stopSpin();
               addToast({
                 title: 'Success',
-                description: `Opened ${quantity} box${quantity > 1 ? 'es' : ''}!`,
+                description: `Opened ${quantity} box${quantity > 1 ? 'es' : ''}! Got ${numCards} card${numCards !== 1 ? 's' : ''}!`,
               });
             } else {
               startRandomSpin();
@@ -322,21 +355,44 @@ useEffect(() => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-white">Quantity</label>
-                  <div className="flex items-center gap-4">
-                    {[1, 2, 3, 4].map((qty) => (
-                      <button
-                        key={qty}
-                        type="button"
-                        onClick={() => setQuantity(qty)}
-                        className={`px-6 py-3 rounded-lg border-2 transition-all ${
-                          quantity === qty
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
-                        }`}
-                      >
-                        {qty}x
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Dynamic quantity options based on reasonable limits */}
+                    {(() => {
+                      // Generate quantity options dynamically
+                      const maxQuantity = 10; // Can be adjusted or made configurable
+                      const options = [];
+                      
+                      // For boxes with fewer cards, allow more quantities
+                      // For boxes with many cards, might want to limit quantities
+                      const cardsPerBox = box.cardsPerPack || 1;
+                      
+                      // Common options
+                      if (cardsPerBox <= 5) {
+                        // For small packs, offer more quantity options
+                        options.push(1, 2, 3, 4, 5, 6, 8, 10);
+                      } else if (cardsPerBox <= 10) {
+                        // For medium packs
+                        options.push(1, 2, 3, 4, 5);
+                      } else {
+                        // For large packs, offer fewer quantities
+                        options.push(1, 2, 3);
+                      }
+                      
+                      return options.map((qty) => (
+                        <button
+                          key={qty}
+                          type="button"
+                          onClick={() => setQuantity(qty)}
+                          className={`px-4 py-2 md:px-6 md:py-3 rounded-lg border-2 transition-all ${
+                            quantity === qty
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
+                          }`}
+                        >
+                          {qty}x
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
 
@@ -379,7 +435,20 @@ useEffect(() => {
             </CardHeader>
             <CardContent>
               {box.cards && Array.isArray(box.cards) && box.cards.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className={`grid gap-4 ${
+                  // Dynamic grid columns based on number of cards
+                  box.cards.length === 1 
+                    ? 'grid-cols-1 max-w-xs mx-auto'
+                    : box.cards.length === 2
+                    ? 'grid-cols-2 max-w-lg mx-auto'
+                    : box.cards.length === 3
+                    ? 'grid-cols-3 max-w-2xl mx-auto'
+                    : box.cards.length <= 6
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3'
+                    : box.cards.length <= 12
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4'
+                    : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+                }`}>
                   {box.cards.map((card) => {
                     const isOpened = openedCardIds.has(card.id);
                     const isSpinning = isAnimating && spinningCardIds.has(card.id);
@@ -482,7 +551,20 @@ useEffect(() => {
                 <CardTitle className="text-white">Your Pulls</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={`grid gap-4 ${
+                  // Dynamic grid for pulls display
+                  pulls.length === 1
+                    ? 'grid-cols-1 max-w-xs mx-auto'
+                    : pulls.length === 2
+                    ? 'grid-cols-2 max-w-md mx-auto'
+                    : pulls.length === 3
+                    ? 'grid-cols-3 max-w-2xl mx-auto'
+                    : pulls.length <= 6
+                    ? 'grid-cols-2 sm:grid-cols-3'
+                    : pulls.length <= 12
+                    ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-4'
+                    : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
+                }`}>
                   {pulls.map((pull) => {
                     const isFeatured = pull.id === featuredPullId;
                     return (
