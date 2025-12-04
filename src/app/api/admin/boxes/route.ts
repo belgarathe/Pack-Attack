@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 const boxSchema = z.object({
   name: z.string().min(1),
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
         isActive: true, // Ensure box is active so it shows in marketplace
       },
     });
+
+    // Revalidate cache to update pages immediately
+    revalidatePath('/boxes');
+    revalidatePath('/admin/boxes');
 
     return NextResponse.json({ success: true, box });
   } catch (error) {

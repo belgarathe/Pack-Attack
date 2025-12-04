@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 const boxUpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -39,6 +40,11 @@ export async function PATCH(
       where: { id },
       data,
     });
+
+    // Revalidate cache to update pages immediately
+    revalidatePath('/boxes');
+    revalidatePath('/admin/boxes');
+    revalidatePath(`/admin/boxes/${id}/edit`);
 
     return NextResponse.json({ success: true, box });
   } catch (error) {
@@ -91,6 +97,10 @@ export async function DELETE(
     await prisma.box.delete({
       where: { id },
     });
+
+    // Revalidate cache to update pages immediately
+    revalidatePath('/boxes');
+    revalidatePath('/admin/boxes');
 
     return NextResponse.json({ 
       success: true, 

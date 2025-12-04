@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BoxesClient } from './BoxesClient';
 
+// Force dynamic rendering for real-time updates
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getBoxes() {
   return await prisma.box.findMany({
     orderBy: { createdAt: 'desc' },

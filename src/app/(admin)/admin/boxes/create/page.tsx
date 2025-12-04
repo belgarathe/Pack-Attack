@@ -219,7 +219,7 @@ export default function CreateBoxPage() {
       });
 
       // Redirect to box overview/edit page
-      router.push(`/admin/boxes/${boxData.box.id}/edit`);
+      router.push('/admin/boxes'); // Redirect to overview after creation
     } catch (error) {
       console.error('Error creating box:', error);
       addToast({

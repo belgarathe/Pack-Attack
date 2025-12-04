@@ -5,6 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Coins, Package } from 'lucide-react';
 
+// Force dynamic rendering for real-time updates
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getBoxes() {
   return await prisma.box.findMany({
     where: { isActive: true },
