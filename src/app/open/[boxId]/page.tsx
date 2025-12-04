@@ -67,18 +67,21 @@ export default function OpenBoxPage() {
     if (!box?.cards?.length) {
       return;
     }
-    // Make ALL cards spin during the animation
+    
+    // Force ALL cards to spin - create new Set to ensure React detects the change
     const allCardIds = new Set<string>();
-    box.cards.forEach(card => {
-      allCardIds.add(card.id);
-    });
     
-    // Debug logging
-    console.log('Starting spin animation for ALL cards:');
-    console.log('Total cards in box:', box.cards.length);
-    console.log('Card IDs being animated:', Array.from(allCardIds));
+    // Add every single card ID without any limitations
+    for (let i = 0; i < box.cards.length; i++) {
+      if (box.cards[i]?.id) {
+        allCardIds.add(box.cards[i].id);
+      }
+    }
     
-    setSpinningCardIds(allCardIds);
+    console.log(`Animating ALL ${allCardIds.size} cards out of ${box.cards.length} total cards`);
+    
+    // Force state update with new Set instance
+    setSpinningCardIds(new Set(allCardIds));
     setIsAnimating(true);
   };
 
@@ -122,6 +125,15 @@ useEffect(() => {
     clearRevealTimeouts();
   };
 }, []);
+
+// Ensure animation state is properly set when box changes
+useEffect(() => {
+  if (box?.cards?.length > 0 && isAnimating) {
+    // If animating, make sure ALL cards are in the spinning set
+    const allIds = new Set<string>(box.cards.map(card => card.id));
+    setSpinningCardIds(allIds);
+  }
+}, [box?.cards, isAnimating]);
 
   const handleOpen = async () => {
     if (!box) return;
@@ -445,16 +457,6 @@ useEffect(() => {
                     const isOpened = openedCardIds.has(card.id);
                     const isSpinning = isAnimating && spinningCardIds.has(card.id);
                     const isFeatured = isOpened && featuredCardId === card.id;
-                    
-                    // Debug: Log first few cards to check spinning state
-                    if (index < 5 && isAnimating) {
-                      console.log(`Card ${index + 1} (${card.name}):`, {
-                        id: card.id,
-                        isSpinning,
-                        isInSpinningSet: spinningCardIds.has(card.id),
-                        isAnimating
-                      });
-                    }
 
                     return (
                       <div
