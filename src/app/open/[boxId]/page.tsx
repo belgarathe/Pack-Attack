@@ -73,6 +73,11 @@ export default function OpenBoxPage() {
       allCardIds.add(card.id);
     });
     
+    // Debug logging
+    console.log('Starting spin animation for ALL cards:');
+    console.log('Total cards in box:', box.cards.length);
+    console.log('Card IDs being animated:', Array.from(allCardIds));
+    
     setSpinningCardIds(allCardIds);
     setIsAnimating(true);
   };
@@ -436,10 +441,20 @@ useEffect(() => {
                     ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4'
                     : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
                 }`}>
-                  {box.cards.map((card) => {
+                  {box.cards.map((card, index) => {
                     const isOpened = openedCardIds.has(card.id);
                     const isSpinning = isAnimating && spinningCardIds.has(card.id);
                     const isFeatured = isOpened && featuredCardId === card.id;
+                    
+                    // Debug: Log first few cards to check spinning state
+                    if (index < 5 && isAnimating) {
+                      console.log(`Card ${index + 1} (${card.name}):`, {
+                        id: card.id,
+                        isSpinning,
+                        isInSpinningSet: spinningCardIds.has(card.id),
+                        isAnimating
+                      });
+                    }
 
                     return (
                       <div
