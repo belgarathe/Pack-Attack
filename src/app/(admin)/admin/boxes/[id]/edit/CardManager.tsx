@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X } from 'lucide-react';
+import { Search, Plus, Trash2, X, Edit2, Save, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { Coins } from 'lucide-react';
 
@@ -45,6 +45,9 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [newCards, setNewCards] = useState<CardData[]>([]);
   const [removingCardId, setRemovingCardId] = useState<string | null>(null);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ pullRate: number; coinValue: number }>({ pullRate: 0, coinValue: 1 });
+  const [savingCard, setSavingCard] = useState(false);
 
   const gameOptions = [
     { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering' },
@@ -155,6 +158,73 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
       });
     } finally {
       setRemovingCardId(null);
+    }
+  };
+
+  const handleEditCard = (card: BoxCard) => {
+    setEditingCardId(card.id);
+    setEditValues({ pullRate: card.pullRate, coinValue: card.coinValue });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCardId(null);
+    setEditValues({ pullRate: 0, coinValue: 1 });
+  };
+
+  const handleSaveCardEdit = async () => {
+    if (!editingCardId || !editValues) return;
+
+    // Validate values
+    if (editValues.pullRate <= 0 || editValues.pullRate > 100) {
+      addToast({
+        title: 'Validation Error',
+        description: 'Pull rate must be between 0.001 and 100',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (editValues.coinValue <= 0) {
+      addToast({
+        title: 'Validation Error',
+        description: 'Coin value must be greater than 0',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingCard(true);
+    try {
+      const res = await fetch(`/api/admin/boxes/${boxId}/cards/${editingCardId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pullRate: editValues.pullRate,
+          coinValue: editValues.coinValue,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update card');
+      }
+
+      addToast({
+        title: 'Success',
+        description: 'Card updated successfully',
+      });
+
+      handleCancelEdit();
+      onCardsChange();
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCard(false);
     }
   };
 
@@ -411,7 +481,7 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {existingCards.map((card) => (
                 <div key={card.id} className="relative group">
-                  <div className="relative aspect-[63/88] rounded-lg overflow-hidden border-2 border-gray-700 hover:border-red-500 transition-all">
+                  <div className="relative aspect-[63/88] rounded-lg overflow-hidden border-2 border-gray-700 hover:border-primary transition-all">
                     {card.imageUrlGatherer ? (
                       <Image
                         src={card.imageUrlGatherer}
@@ -425,27 +495,92 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                         <span className="text-gray-600 text-xs">No Image</span>
                       </div>
                     )}
-                    <div className="absolute top-2 left-2 bg-black/80 rounded px-2 py-1 flex items-center gap-1">
-                      <Coins className="h-3 w-3 text-yellow-500" />
-                      <span className="text-xs font-bold text-yellow-500">
-                        {card.coinValue.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="absolute top-2 right-2 bg-black/80 rounded px-2 py-1">
-                      <span className="text-xs font-bold text-white">
-                        {card.pullRate.toFixed(3)}%
-                      </span>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveCard(card.id)}
-                      disabled={removingCardId === card.id}
-                      className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {removingCardId === card.id ? 'Removing...' : 'Remove'}
-                    </Button>
+                    
+                    {/* Show edit interface if this card is being edited */}
+                    {editingCardId === card.id ? (
+                      <div className="absolute inset-0 bg-black/90 flex flex-col justify-center p-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-300">Pull Rate %</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0.001"
+                            max="100"
+                            value={editValues.pullRate}
+                            onChange={(e) => setEditValues({ ...editValues, pullRate: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-300">Coin Value</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editValues.coinValue}
+                            onChange={(e) => setEditValues({ ...editValues, coinValue: parseInt(e.target.value) || 1 })}
+                            className="w-full px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-1 mt-2">
+                          <Button
+                            size="sm"
+                            onClick={handleSaveCardEdit}
+                            disabled={savingCard}
+                            className="flex-1 h-7"
+                          >
+                            <Save className="h-3 w-3 mr-1" />
+                            {savingCard ? '...' : 'Save'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelEdit}
+                            disabled={savingCard}
+                            className="flex-1 h-7"
+                          >
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="absolute top-2 left-2 bg-black/80 rounded px-2 py-1 flex items-center gap-1">
+                          <Coins className="h-3 w-3 text-yellow-500" />
+                          <span className="text-xs font-bold text-yellow-500">
+                            {card.coinValue.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="absolute top-2 right-2 bg-black/80 rounded px-2 py-1">
+                          <span className="text-xs font-bold text-white">
+                            {card.pullRate.toFixed(3)}%
+                          </span>
+                        </div>
+                        
+                        {/* Action buttons */}
+                        <div className="absolute bottom-2 left-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleEditCard(card)}
+                            className="flex-1 h-8"
+                          >
+                            <Edit2 className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveCard(card.id)}
+                            disabled={removingCardId === card.id}
+                            className="flex-1 h-8"
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            {removingCardId === card.id ? '...' : 'Remove'}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="mt-2 text-center">
                     <p className="text-sm font-semibold text-white truncate" title={card.name}>
