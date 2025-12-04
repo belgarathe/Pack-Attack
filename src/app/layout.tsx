@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Providers } from "./providers";
+import { Navigation } from "@/components/Navigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pack Attack",
-  description: "A new Next.js project",
+  title: "Pack Attack - Magic: The Gathering Box Battles",
+  description: "Experience the thrill of opening boxes and competing in battles",
 };
 
 export default function RootLayout({
@@ -13,8 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>
+          <Navigation />
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }
-

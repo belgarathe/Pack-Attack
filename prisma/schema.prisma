@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  passwordHash       String
+  coins              Int                 @default(0)
+  role               Role                @default(USER)
+  isBot              Boolean             @default(false)
+  pulls              Pull[]
+  transactions       Transaction[]
+  sales              SaleHistory[]
+  battlesCreated     Battle[]            @relation("BattleCreator")
+  battlesWon         Battle[]            @relation("BattleWinner")
+  battleParticipants BattleParticipant[]
+  cart               Cart?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model Box {
+  id              String          @id @default(cuid())
+  name            String
+  description     String          @db.Text
+  imageUrl        String
+  price           Int
+  cardsPerPack    Int
+  games           CardGame[]      @default([MAGIC_THE_GATHERING])
+  isActive        Boolean         @default(true)
+  featured        Boolean         @default(false)
+  popularity      Int             @default(0)
+  cards           Card[]
+  pulls           Pull[]
+  battles         Battle[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Card {
+  id               String   @id @default(cuid())
+  scryfallId       String
+  name             String
+  setName          String
+  setCode          String
+  collectorNumber  String
+  rarity           String
+  imageUrlGatherer String
+  imageUrlScryfall String?
+  colors           String[]
+  type             String
+  pullRate         Decimal  @db.Decimal(6, 3)
+  coinValue        Int      @default(1)
+  sourceGame       CardGame @default(MAGIC_THE_GATHERING)
+  boxId            String
+  box              Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  pulls            Pull[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([scryfallId, boxId])
+  @@index([boxId])
+  @@index([name])
+}
+
+model Pull {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  boxId     String
+  box       Box         @relation(fields: [boxId], references: [id])
+  cardId    String?
+  card      Card?       @relation(fields: [cardId], references: [id])
+  cardValue Decimal?    @db.Decimal(10, 2)
+  timestamp DateTime    @default(now())
+  battlePull BattlePull?
+  cartItem  CartItem?
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  pullId    String   @unique
+  pull      Pull     @relation(fields: [pullId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([cartId])
+}
+
+model Transaction {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  amount          Decimal       @db.Decimal(10, 2)
+  coins           Int
+  stripePaymentId String?       @unique
+  status          PaymentStatus
+  timestamp       DateTime      @default(now())
+
+  @@index([userId])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum CardGame {
+  MAGIC_THE_GATHERING
+  ONE_PIECE
+  POKEMON
+  LORCANA
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Battle {
+  id                String              @id @default(cuid())
+  creatorId         String
+  creator           User                @relation("BattleCreator", fields: [creatorId], references: [id])
+  boxId             String
+  box               Box                 @relation(fields: [boxId], references: [id])
+  entryFee          Int                 @default(0)
+  maxParticipants   Int                 @default(4)
+  rounds            Int                 @default(1)
+  battleMode        BattleMode          @default(NORMAL)
+  shareMode         Boolean             @default(false)
+  status            BattleStatus        @default(WAITING)
+  winnerId          String?
+  winner            User?               @relation("BattleWinner", fields: [winnerId], references: [id])
+  totalPrize        Int                 @default(0)
+  participants      BattleParticipant[]
+  pulls             BattlePull[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  startedAt         DateTime?
+  finishedAt        DateTime?
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([battleMode])
+}
+
+model BattleParticipant {
+  id           String       @id @default(cuid())
+  battleId     String
+  battle       Battle       @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  totalValue   Int          @default(0)
+  roundsPulled Int          @default(0)
+  joinedAt     DateTime     @default(now())
+  pulls        BattlePull[]
+
+  @@unique([battleId, userId])
+  @@index([battleId])
+  @@index([userId])
+}
+
+model BattlePull {
+  id            String            @id @default(cuid())
+  battleId      String
+  battle        Battle            @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   BattleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  pullId        String?           @unique
+  pull          Pull?             @relation(fields: [pullId], references: [id])
+  roundNumber   Int
+  coinValue     Int
+  pulledAt      DateTime          @default(now())
+  itemName      String?
+  itemImage     String?
+  itemRarity    String?
+
+  @@index([battleId])
+  @@index([participantId])
+  @@index([battleId, roundNumber])
+}
+
+enum BattleStatus {
+  WAITING
+  IN_PROGRESS
+  FINISHED
+  CANCELLED
+}
+
+enum BattleMode {
+  NORMAL
+  UPSIDE_DOWN
+  JACKPOT
+}
+
+model SaleHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  cardId        String?
+  cardName      String
+  cardImage     String?
+  coinsReceived Int
+  timestamp     DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
