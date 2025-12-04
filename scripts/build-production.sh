@@ -55,3 +55,5 @@ echo "  npm start"
 echo ""
 echo "For process management, consider using PM2:"
 echo "  pm2 start npm --name 'packattack' -- start"
+
+

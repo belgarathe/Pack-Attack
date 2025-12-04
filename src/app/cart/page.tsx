@@ -40,11 +40,24 @@ async function getCart() {
     return { items: [], total: 0 };
   }
 
+  // Convert Decimal values to plain numbers for serialization
+  const serializedItems = cart.items.map(item => ({
+    ...item,
+    pull: {
+      ...item.pull,
+      cardValue: item.pull.cardValue ? Number(item.pull.cardValue) : null,
+      card: item.pull.card ? {
+        ...item.pull.card,
+        pullRate: Number(item.pull.card.pullRate),
+      } : null,
+    },
+  }));
+
   const total = cart.items.reduce((sum, item) => {
     return sum + (item.pull.card?.coinValue || 0);
   }, 0);
 
-  return { items: cart.items, total };
+  return { items: serializedItems, total };
 }
 
 export default async function CartPage() {

@@ -205,3 +205,5 @@ npm start
 ---
 
 **Note**: This checklist covers the essential items for deployment. Adjust based on your specific hosting platform and requirements.
+
+

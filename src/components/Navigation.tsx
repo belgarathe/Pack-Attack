@@ -12,20 +12,25 @@ export function Navigation() {
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [cartCount, setCartCount] = useState(0);
 
-  const fetchCoins = useCallback(() => {
+  const fetchCoins = useCallback(async () => {
     if (!session) {
       setUserCoins(null);
       return;
     }
 
-    fetch('/api/user/coins')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.coins !== undefined) {
-          setUserCoins(data.coins);
-        }
-      })
-      .catch(console.error);
+    try {
+      const response = await fetch('/api/user/coins');
+      if (!response.ok) {
+        console.error('Failed to fetch coins:', response.status, response.statusText);
+        return;
+      }
+      const data = await response.json();
+      if (data.coins !== undefined) {
+        setUserCoins(data.coins);
+      }
+    } catch (error) {
+      console.error('Error fetching coins:', error);
+    }
   }, [session]);
 
   useEffect(() => {
@@ -37,14 +42,21 @@ export function Navigation() {
 
     fetchCoins();
 
+    // Fetch cart count
     fetch('/api/cart')
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          console.error('Failed to fetch cart:', res.status, res.statusText);
+          return;
+        }
+        const data = await res.json();
         if (data.success) {
           setCartCount(data.items?.length || 0);
         }
       })
-      .catch(console.error);
+      .catch((error) => {
+        console.error('Error fetching cart:', error);
+      });
   }, [session, fetchCoins]);
 
   useEffect(() => {
