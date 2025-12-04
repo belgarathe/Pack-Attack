@@ -557,13 +557,13 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                           </span>
                         </div>
                         
-                        {/* Action buttons */}
-                        <div className="absolute bottom-2 left-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Action buttons - ALWAYS VISIBLE */}
+                        <div className="absolute bottom-2 left-2 right-2 flex gap-1">
                           <Button
                             variant="secondary"
                             size="sm"
                             onClick={() => handleEditCard(card)}
-                            className="flex-1 h-8"
+                            className="flex-1 h-8 bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <Edit2 className="h-3 w-3 mr-1" />
                             Edit
@@ -582,10 +582,21 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                       </>
                     )}
                   </div>
-                  <div className="mt-2 text-center">
-                    <p className="text-sm font-semibold text-white truncate" title={card.name}>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-semibold text-white truncate text-center" title={card.name}>
                       {card.name}
                     </p>
+                    {/* Always show current values with quick edit */}
+                    <div className="bg-gray-800 rounded p-2 space-y-1 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Coin Value:</span>
+                        <span className="text-yellow-500 font-bold">{card.coinValue}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Pull Rate:</span>
+                        <span className="text-white font-bold">{card.pullRate.toFixed(3)}%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

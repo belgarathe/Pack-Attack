@@ -67,26 +67,13 @@ export default function OpenBoxPage() {
     if (!box?.cards?.length) {
       return;
     }
-    const randomCardIds = new Set<string>();
-    // Dynamically calculate number of cards to spin based on total cards
-    // For fewer cards, spin all; for many cards, spin a reasonable subset
-    let numToSpin;
-    if (box.cards.length <= 3) {
-      // For 1-3 cards, spin all of them
-      numToSpin = box.cards.length;
-    } else if (box.cards.length <= 8) {
-      // For 4-8 cards, spin most of them
-      numToSpin = Math.ceil(box.cards.length * 0.75);
-    } else {
-      // For more than 8 cards, spin a good portion but cap at reasonable number
-      numToSpin = Math.min(Math.ceil(box.cards.length * 0.6), 12);
-    }
+    // Make ALL cards spin during the animation
+    const allCardIds = new Set<string>();
+    box.cards.forEach(card => {
+      allCardIds.add(card.id);
+    });
     
-    const shuffled = [...box.cards].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < numToSpin; i++) {
-      randomCardIds.add(shuffled[i].id);
-    }
-    setSpinningCardIds(randomCardIds);
+    setSpinningCardIds(allCardIds);
     setIsAnimating(true);
   };
 
@@ -474,8 +461,14 @@ useEffect(() => {
                               : isSpinning
                               ? 'border-primary shadow-lg shadow-primary/50'
                               : 'border-gray-700 hover:border-gray-600'
-                          } ${isSpinning ? 'animate-spin-slow' : ''}`}
-                          style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
+                          } ${
+                            isSpinning 
+                              ? box.cards.length <= 8 
+                                ? 'animate-spin-slow' // Use spin for 8 or fewer cards
+                                : 'animate-pulse-glow' // Use pulse for many cards (better performance)
+                              : ''
+                          }`}
+                          style={isSpinning && box.cards.length <= 8 ? { transformStyle: 'preserve-3d' } : {}}
                         >
                           {card.imageUrlGatherer ? (
                             <Image
