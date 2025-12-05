@@ -118,14 +118,17 @@ function processCards(allCards: any, query: string) {
                       card.image_urls?.large ||
                       '';
       
+      // Create a TRULY unique ID using set code + collector number
+      const setCode = card.set_code || card.set_id || card.set || 'OP';
+      const collectorNum = String(card.card_number || card.number || card.collector_number || card.id || '');
+      const uniqueId = `optcg-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-');
+      
       return {
-        id: card.id || 
-            card.card_id || 
-            `${card.set_id || ''}_${card.card_number || card.number || card.id || ''}`.replace(/^_/, ''),
+        id: uniqueId, // Use our unique ID as the primary identifier
         name: card.name || card.card_name || card.title || 'Unknown Card',
         setName: card.set_name || card.set || card.set_id || '',
-        setCode: card.set_code || card.set_id || card.set || '',
-        collectorNumber: String(card.card_number || card.number || card.collector_number || ''),
+        setCode: setCode,
+        collectorNumber: collectorNum,
         rarity: card.rarity || card.card_rarity || card.rarity_name || 'common',
         imageUrl: imageUrl,
         colors: card.color 

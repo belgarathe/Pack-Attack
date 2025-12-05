@@ -128,7 +128,7 @@ useEffect(() => {
 
 // Ensure animation state is properly set when box changes
 useEffect(() => {
-  if (box?.cards?.length > 0 && isAnimating) {
+  if (box?.cards && box.cards.length > 0 && isAnimating) {
     // If animating, make sure ALL cards are in the spinning set
     const allIds = new Set<string>(box.cards.map(card => card.id));
     setSpinningCardIds(allIds);
@@ -205,39 +205,23 @@ useEffect(() => {
         return;
       }
 
-      // Adjust animation timing based on number of cards
+      // Consistent animation timing for all card counts
       const numCards = pullsData.length;
-      let REVEAL_DURATION = 1500;
-      let SPINNER_BURST_DURATION = 900;
-      
-      // Speed up animation for many cards, slow down for few
-      if (numCards <= 2) {
-        REVEAL_DURATION = 2000;  // Slower for just 1-2 cards
-        SPINNER_BURST_DURATION = 1200;
-      } else if (numCards <= 4) {
-        REVEAL_DURATION = 1500;  // Default speed for 3-4 cards
-        SPINNER_BURST_DURATION = 900;
-      } else if (numCards <= 8) {
-        REVEAL_DURATION = 1200;  // Slightly faster for 5-8 cards
-        SPINNER_BURST_DURATION = 700;
-      } else if (numCards <= 15) {
-        REVEAL_DURATION = 1000;  // Faster for 9-15 cards
-        SPINNER_BURST_DURATION = 600;
-      } else {
-        REVEAL_DURATION = 800;   // Much faster for many cards
-        SPINNER_BURST_DURATION = 500;
-      }
+      const REVEAL_DURATION = 1500;  // Same duration for all
+      const SPINNER_BURST_DURATION = 900;  // Same burst duration for all
 
       scheduleTimeout(() => {
-        stopSpin();
-
+        // Keep initial spin going for first reveal
         let timeline = 0;
 
         pullsData.forEach((pull: any, index: number) => {
           const isLast = index === pullsData.length - 1;
 
           scheduleTimeout(() => {
-            stopSpin();
+            // Keep ALL cards spinning during reveals
+            if (!isAnimating) {
+              startRandomSpin();
+            }
             setCurrentReveal(pull);
             setIsShowingReveal(true);
             setCurrentRevealIndex(index + 1);
@@ -262,16 +246,12 @@ useEffect(() => {
                 title: 'Success',
                 description: `Opened ${quantity} box${quantity > 1 ? 'es' : ''}! Got ${numCards} card${numCards !== 1 ? 's' : ''}!`,
               });
-            } else {
-              startRandomSpin();
             }
+            // Keep spinning between reveals for multi-box openings
           }, timeline);
 
           if (!isLast) {
             timeline += SPINNER_BURST_DURATION;
-            scheduleTimeout(() => {
-              stopSpin();
-            }, timeline);
           }
         });
       }, 1500);
@@ -360,43 +340,21 @@ useEffect(() => {
                 <div>
                   <label className="block text-sm font-medium mb-2 text-white">Quantity</label>
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Dynamic quantity options based on reasonable limits */}
-                    {(() => {
-                      // Generate quantity options dynamically
-                      const maxQuantity = 10; // Can be adjusted or made configurable
-                      const options = [];
-                      
-                      // For boxes with fewer cards, allow more quantities
-                      // For boxes with many cards, might want to limit quantities
-                      const cardsPerBox = box.cardsPerPack || 1;
-                      
-                      // Common options
-                      if (cardsPerBox <= 5) {
-                        // For small packs, offer more quantity options
-                        options.push(1, 2, 3, 4, 5, 6, 8, 10);
-                      } else if (cardsPerBox <= 10) {
-                        // For medium packs
-                        options.push(1, 2, 3, 4, 5);
-                      } else {
-                        // For large packs, offer fewer quantities
-                        options.push(1, 2, 3);
-                      }
-                      
-                      return options.map((qty) => (
-                        <button
-                          key={qty}
-                          type="button"
-                          onClick={() => setQuantity(qty)}
-                          className={`px-4 py-2 md:px-6 md:py-3 rounded-lg border-2 transition-all ${
-                            quantity === qty
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
-                          }`}
-                        >
-                          {qty}x
-                        </button>
-                      ));
-                    })()}
+                    {/* Fixed quantity options - always 1x to 4x */}
+                    {[1, 2, 3, 4].map((qty) => (
+                      <button
+                        key={qty}
+                        type="button"
+                        onClick={() => setQuantity(qty)}
+                        className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                          quantity === qty
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
+                        }`}
+                      >
+                        {qty}x
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -478,14 +436,8 @@ useEffect(() => {
                               : isSpinning
                               ? 'border-primary shadow-lg shadow-primary/50'
                               : 'border-gray-700 hover:border-gray-600'
-                          } ${
-                            isSpinning 
-                              ? box.cards.length <= 8 
-                                ? 'animate-spin-slow' // Use spin for 8 or fewer cards
-                                : 'animate-pulse-glow' // Use pulse for many cards (better performance)
-                              : ''
-                          }`}
-                          style={isSpinning && box.cards.length <= 8 ? { transformStyle: 'preserve-3d' } : {}}
+                          } ${isSpinning ? 'animate-spin-slow' : ''}`}
+                          style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
                         >
                           {card.imageUrlGatherer ? (
                             <Image
@@ -667,3 +619,4 @@ useEffect(() => {
     </div>
   );
 }
+

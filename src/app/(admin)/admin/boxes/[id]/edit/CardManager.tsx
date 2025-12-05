@@ -93,18 +93,24 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   };
 
   const addCardToBox = (card: any) => {
+    const collectorNum = card.collectorNumber || card.collector_number || card.number || '';
+    const setCode = card.setCode || card.set || card.set_code || '';
+    
+    // Create a unique ID that includes set and collector number to distinguish variants
+    const uniqueId = `${card.id}-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-');
+    
     const newCard: CardData = {
       id: card.id,
       name: card.name,
       setName: card.setName || card.set_name || '',
-      setCode: card.setCode || card.set || card.set_code || '',
-      collectorNumber: card.collectorNumber || card.collector_number || card.number || '',
+      setCode: setCode,
+      collectorNumber: collectorNum,
       rarity: card.rarity || 'common',
       imageUrl: card.imageUrl || card.image_url || card.image || '',
       pullRate: 0,
       coinValue: 1,
       sourceGame: selectedGame,
-      scryfallId: card.id,
+      scryfallId: uniqueId, // Use unique ID that includes set + collector number
     };
     setNewCards([...newCards, newCard]);
     setSearchResults([]);
@@ -169,6 +175,47 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const handleCancelEdit = () => {
     setEditingCardId(null);
     setEditValues({ pullRate: 0, coinValue: 1 });
+  };
+
+  const redistributeExistingRates = async () => {
+    if (existingCards.length === 0) return;
+    
+    const equalRate = 100 / existingCards.length;
+    // Round to 3 decimal places
+    const roundedRate = parseFloat(equalRate.toFixed(3));
+    
+    if (!confirm(`This will set all ${existingCards.length} cards to ${roundedRate}% pull rate each. Continue?`)) {
+      return;
+    }
+
+    try {
+      // Update all existing cards with equal rates
+      const updatePromises = existingCards.map(card => 
+        fetch(`/api/admin/boxes/${boxId}/cards/${card.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pullRate: roundedRate,
+            coinValue: card.coinValue,
+          }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+      
+      addToast({
+        title: 'Success',
+        description: `Redistributed pull rates evenly across ${existingCards.length} cards`,
+      });
+
+      onCardsChange();
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to redistribute rates',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleSaveCardEdit = async () => {
@@ -238,16 +285,8 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
       return;
     }
 
-    // Validate all cards have pull rates and coin values
+    // Validate all cards have coin values
     for (const card of newCards) {
-      if (card.pullRate <= 0) {
-        addToast({
-          title: 'Validation Error',
-          description: `Please set a pull rate for ${card.name}`,
-          variant: 'destructive',
-        });
-        return;
-      }
       if (card.coinValue <= 0) {
         addToast({
           title: 'Validation Error',
@@ -258,53 +297,194 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
       }
     }
 
-    // When adding new cards, we need to adjust existing cards' pull rates proportionally
-    // OR the admin needs to manually adjust to ensure total = 100%
-    // For now, we'll require the admin to ensure the total is 100% before adding
+    // Calculate pull rates
     const existingTotal = existingCards.reduce((sum, card) => sum + card.pullRate, 0);
-    const newTotal = newCards.reduce((sum, card) => sum + card.pullRate, 0);
-    const totalRate = existingTotal + newTotal;
+    let newCardsToAdd = [...newCards];
     
-    if (Math.abs(totalRate - 100) > 0.001) {
-      addToast({
-        title: 'Validation Error',
-        description: `Total pull rate must be exactly 100%. Current: ${totalRate.toFixed(3)}% (Existing: ${existingTotal.toFixed(3)}% + New: ${newTotal.toFixed(3)}%). Please adjust pull rates to make the total exactly 100%.`,
-        variant: 'destructive',
-      });
-      return;
+    // If new cards don't have pull rates set, or if we need to redistribute
+    if (existingCards.length > 0) {
+      // We have existing cards, need to handle rate distribution
+      const newCardsNeedRate = newCardsToAdd.some(card => card.pullRate <= 0);
+      
+      // Calculate what space is available
+      const availableSpace = Math.max(0, 100 - existingTotal);
+      
+      if (newCardsNeedRate || availableSpace < 0.001) {
+        // If no space available or cards need rates, assign minimal rates
+        // These will need to be adjusted by the admin later
+        const minimalRate = availableSpace > 0 ? availableSpace / newCardsToAdd.length : 0.001;
+        newCardsToAdd = newCardsToAdd.map(card => ({
+          ...card,
+          pullRate: card.pullRate > 0 ? Math.min(card.pullRate, minimalRate) : minimalRate
+        }));
+      }
+      
+      const newTotal = newCardsToAdd.reduce((sum, card) => sum + card.pullRate, 0);
+      const projectedTotal = existingTotal + newTotal;
+      
+      // Show warning and ask for confirmation
+      let confirmMessage = `Adding ${newCards.length} new card(s):\n\n` +
+        `Current cards total: ${existingTotal.toFixed(3)}%\n` +
+        `New cards will add: ${newTotal.toFixed(3)}%\n` +
+        `Final total: ${projectedTotal.toFixed(3)}%\n\n`;
+        
+      if (projectedTotal > 100.001) {
+        // Will exceed 100%, need to use minimal rates
+        const minimalTotal = newCardsToAdd.length * 0.001;
+        confirmMessage += `⚠️ Total would exceed 100%. New cards will be added with minimal rates (0.001% each = ${minimalTotal.toFixed(3)}% total).\n\n`;
+        confirmMessage += `You MUST adjust all card rates after adding to ensure they total exactly 100%.\n\n`;
+        
+        // Set all new cards to minimal rate
+        newCardsToAdd = newCardsToAdd.map(card => ({
+          ...card,
+          pullRate: 0.001
+        }));
+      } else if (Math.abs(projectedTotal - 100) > 0.001) {
+        confirmMessage += `⚠️ After adding, total will be ${projectedTotal.toFixed(3)}%.\n`;
+        confirmMessage += `You'll need to adjust card rates to total exactly 100%.\n\n`;
+      }
+      
+      confirmMessage += `Do you want to proceed?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    } else {
+      // No existing cards, ensure new cards total 100%
+      const newTotal = newCardsToAdd.reduce((sum, card) => sum + card.pullRate, 0);
+      
+      if (newTotal <= 0) {
+        // Auto-distribute evenly
+        const ratePerCard = 100 / newCardsToAdd.length;
+        newCardsToAdd = newCardsToAdd.map(card => ({
+          ...card,
+          pullRate: ratePerCard
+        }));
+      } else if (Math.abs(newTotal - 100) > 0.001) {
+        addToast({
+          title: 'Validation Error',
+          description: `When adding cards to an empty box, total pull rate must be exactly 100%. Current: ${newTotal.toFixed(3)}%`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     try {
+      // Ensure all cards have valid pull rates before sending
+      const cardsToSend = newCardsToAdd.map(card => ({
+        scryfallId: card.scryfallId || card.id || card.name,
+        name: card.name,
+        setName: card.setName,
+        setCode: card.setCode,
+        collectorNumber: card.collectorNumber,
+        rarity: card.rarity,
+        imageUrlGatherer: card.imageUrl || '',
+        imageUrlScryfall: card.imageUrl || '',
+        pullRate: Math.max(0.001, card.pullRate || 0.001), // Ensure minimum valid rate
+        coinValue: Math.max(1, card.coinValue || 1), // Ensure minimum valid coin value
+        sourceGame: card.sourceGame,
+      }));
+
       const res = await fetch(`/api/admin/boxes/${boxId}/cards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          cards: newCards.map(card => ({
-            scryfallId: card.scryfallId || card.id,
-            name: card.name,
-            setName: card.setName,
-            setCode: card.setCode,
-            collectorNumber: card.collectorNumber,
-            rarity: card.rarity,
-            imageUrlGatherer: card.imageUrl,
-            imageUrlScryfall: card.imageUrl,
-            pullRate: card.pullRate,
-            coinValue: card.coinValue,
-            sourceGame: card.sourceGame,
-          })),
+          cards: cardsToSend,
         }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to add cards');
+      let data: any = {};
+      
+      try {
+        const text = await res.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch (e) {
+        console.error('Failed to parse response:', e);
       }
 
-      addToast({
-        title: 'Success',
-        description: `Added ${newCards.length} card(s) to box`,
-      });
+      // Handle error responses - use status code as primary indicator
+      if (!res.ok) {
+        
+        // Check for specific status codes first (Turbopack bug workaround)
+        if (res.status === 400) {
+          // Could be duplicate cards or validation error
+          const errorMsg = data?.error || 'The card(s) you are trying to add already exist in this box. Please search for a different card.';
+          addToast({
+            title: 'Cards Already Exist',
+            description: errorMsg,
+            variant: 'destructive',
+          });
+          setNewCards([]);
+          onCardsChange();
+          return;
+        }
+
+        if (res.status === 401) {
+          addToast({
+            title: 'Unauthorized',
+            description: 'Please sign in again as admin to add cards.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        if (res.status === 403) {
+          addToast({
+            title: 'Forbidden',
+            description: 'You do not have permission to add cards.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        if (res.status === 404) {
+          addToast({
+            title: 'Not Found',
+            description: 'The box was not found.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Show the error message (include status for clarity)
+        addToast({
+          title: 'Failed to Add Cards',
+          description: data?.error || data?.message || `Request failed with status ${res.status}`,
+          variant: 'destructive',
+        });
+        
+        return;
+      }
+
+      // Handle response with more detail
+      if (data.message) {
+        addToast({
+          title: 'Cards Processed',
+          description: data.message,
+        });
+      } else if (data.warning) {
+        addToast({
+          title: 'Cards Added - Adjustment Needed',
+          description: data.warning,
+        });
+      } else {
+        addToast({
+          title: 'Success',
+          description: `Added ${data.addedCount || newCards.length} card(s) to box`,
+        });
+      }
+
+      if (data.skippedExisting && data.skippedExisting.length > 0) {
+        addToast({
+          title: 'Note',
+          description: `${data.skippedExisting.length} card(s) were already in the box and skipped`,
+          variant: 'default',
+        });
+      }
 
       setNewCards([]);
       onCardsChange();
@@ -444,13 +624,23 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                 ))}
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-gray-400">
-                  Total Pull Rate: <span className={Math.abs(totalRate - 100) < 0.001 ? 'text-green-500' : 'text-red-500'}>{totalRate.toFixed(3)}%</span>
-                  {Math.abs(totalRate - 100) >= 0.001 && (
-                    <span className="text-red-500 ml-2">(Must be exactly 100%)</span>
+                <div className="text-sm text-gray-400">
+                  <p>
+                    New Cards Pull Rate: <span className={totalRate === 0 ? 'text-gray-500' : 'text-white'}>{totalRate.toFixed(3)}%</span>
+                  </p>
+                  {existingCards.length > 0 && (
+                    <p className="text-xs mt-1">
+                      {existingCards.reduce((sum, c) => sum + c.pullRate, 0) >= 99.999 ? (
+                        <span className="text-yellow-500">⚠️ Box is at 100%. Cards will be added with minimal rates.</span>
+                      ) : totalRate > 0 && totalRate + existingCards.reduce((sum, c) => sum + c.pullRate, 0) > 100 ? (
+                        <span className="text-yellow-500">⚠️ Total would exceed 100%. Rates will be adjusted.</span>
+                      ) : (
+                        <span className="text-gray-500">Cards will be added as configured.</span>
+                      )}
+                    </p>
                   )}
-                </p>
-                <Button onClick={handleAddNewCards} disabled={Math.abs(totalRate - 100) >= 0.001}>
+                </div>
+                <Button onClick={handleAddNewCards} disabled={newCards.length === 0}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add {newCards.length} Card(s)
                 </Button>
@@ -466,11 +656,21 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           <div className="flex items-center justify-between">
             <CardTitle className="text-white">Existing Cards ({existingCards.length})</CardTitle>
             {existingCards.length > 0 && (
-              <p className="text-sm text-gray-400">
-                Total Pull Rate: <span className={Math.abs(existingCards.reduce((sum, c) => sum + c.pullRate, 0) - 100) < 0.001 ? 'text-green-500' : 'text-yellow-500'}>
-                  {existingCards.reduce((sum, c) => sum + c.pullRate, 0).toFixed(3)}%
-                </span>
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-gray-400">
+                  Total Pull Rate: <span className={Math.abs(existingCards.reduce((sum, c) => sum + c.pullRate, 0) - 100) < 0.001 ? 'text-green-500' : 'text-yellow-500'}>
+                    {existingCards.reduce((sum, c) => sum + c.pullRate, 0).toFixed(3)}%
+                  </span>
+                </p>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={redistributeExistingRates}
+                  title="Distribute pull rates evenly across all cards"
+                >
+                  Redistribute Evenly
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>

@@ -82,6 +82,19 @@ export default function CreateBoxPage() {
   };
 
   const addCardToBox = (card: any) => {
+    // Check if card is already in the box
+    const cardId = card.id || card.scryfallId;
+    const existingCard = boxCards.find(c => c.id === cardId || c.scryfallId === cardId);
+    
+    if (existingCard) {
+      addToast({
+        title: 'Card already in box',
+        description: `${card.name} is already added to this box`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const newCard: CardData = {
       id: card.id,
       name: card.name,
@@ -117,7 +130,9 @@ export default function CreateBoxPage() {
   const distributeRates = () => {
     if (boxCards.length === 0) return;
     const equalRate = 100 / boxCards.length;
-    setBoxCards(boxCards.map(card => ({ ...card, pullRate: equalRate })));
+    // Round to 3 decimal places
+    const roundedRate = parseFloat(equalRate.toFixed(3));
+    setBoxCards(boxCards.map(card => ({ ...card, pullRate: roundedRate })));
   };
 
   const getHighestValueCard = () => {
@@ -205,11 +220,33 @@ export default function CreateBoxPage() {
       const cardsData = await cardsRes.json();
 
       if (!cardsRes.ok) {
+        // Show detailed error information
+        let errorMessage = cardsData.error || 'Failed to add cards to box';
+        
+        if (cardsData.failedCards && cardsData.failedCards.length > 0) {
+          errorMessage += '\n\nFailed cards:\n' + 
+            cardsData.failedCards.map((fc: any) => `- ${fc.name}: ${fc.error}`).join('\n');
+        }
+        
+        if (cardsData.details) {
+          errorMessage += '\n\n' + cardsData.details;
+        }
+
         addToast({
           title: 'Error',
-          description: cardsData.error || 'Failed to add cards to box',
+          description: errorMessage,
           variant: 'destructive',
         });
+        
+        // Delete the box if cards failed to add
+        try {
+          await fetch(`/api/admin/boxes/${boxData.box.id}`, {
+            method: 'DELETE',
+          });
+        } catch (deleteError) {
+          console.error('Failed to delete box after card creation failure:', deleteError);
+        }
+        
         return;
       }
 
