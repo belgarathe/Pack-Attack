@@ -1,9 +1,36 @@
 #!/bin/bash
 # Pack-Attack SECURE Server Setup
 # Run after fresh Ubuntu install
+#
+# BEFORE RUNNING: Create a .env.production file with your credentials:
+#   DATABASE_URL="your-database-connection-string"
+#   NEXTAUTH_SECRET="your-secret-key" (generate with: openssl rand -base64 32)
+#   SERVER_IP="your-server-ip"
 
 set -e
 echo "🔒 Starting Pack-Attack SECURE server setup..."
+
+# Check if .env.production file exists
+if [ ! -f ".env.production" ]; then
+    echo "❌ ERROR: .env.production file not found!"
+    echo ""
+    echo "Please create a .env.production file with the following variables:"
+    echo "  DATABASE_URL=\"postgresql://user:password@host/db?sslmode=require\""
+    echo "  NEXTAUTH_SECRET=\"$(openssl rand -base64 32)\""
+    echo "  SERVER_IP=\"your-server-ip\""
+    echo ""
+    exit 1
+fi
+
+# Load environment variables
+source .env.production
+
+# Validate required variables
+if [ -z "$DATABASE_URL" ] || [ -z "$NEXTAUTH_SECRET" ] || [ -z "$SERVER_IP" ]; then
+    echo "❌ ERROR: Missing required environment variables!"
+    echo "Required: DATABASE_URL, NEXTAUTH_SECRET, SERVER_IP"
+    exit 1
+fi
 
 # 1. UPDATE SYSTEM
 echo "📦 Updating system..."
@@ -58,12 +85,11 @@ cd /var/www/packattack
 git clone https://github.com/belgarathe/Pack-Attack.git app
 cd app
 
-# 9. CREATE .env FILE
+# 9. CREATE .env FILE (using environment variables, not hardcoded!)
 echo "⚙️ Creating environment configuration..."
-NEXTAUTH_SECRET=$(openssl rand -base64 32)
 cat > .env << EOF
-DATABASE_URL="postgresql://neondb_owner:npg_8nRWsIZdUN9P@ep-patient-resonance-ahmtm2jq-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
-NEXTAUTH_URL="http://82.165.66.236"
+DATABASE_URL="${DATABASE_URL}"
+NEXTAUTH_URL="http://${SERVER_IP}"
 NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 NODE_ENV="production"
 EOF
@@ -75,12 +101,12 @@ npx prisma generate
 npx prisma db push --accept-data-loss
 npm run build
 
-# 11. CREATE ADMIN USER
+# 11. CREATE ADMIN USER (uses environment variables)
 echo "👤 Creating admin user..."
 npm run create-admin || true
 
 # 12. PM2 ECOSYSTEM CONFIG
-cat > ecosystem.config.js << 'EOF'
+cat > ecosystem.config.js << EOF
 module.exports = {
   apps: [{
     name: 'packattack',
@@ -109,10 +135,10 @@ pm2 startup
 echo "🌐 Installing Nginx..."
 apt install -y nginx
 
-cat > /etc/nginx/sites-available/packattack << 'EOF'
+cat > /etc/nginx/sites-available/packattack << EOF
 server {
     listen 80;
-    server_name 82.165.66.236;
+    server_name ${SERVER_IP};
     
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -120,12 +146,12 @@ server {
     location / {
         proxy_pass http://localhost:4000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOF
@@ -148,9 +174,8 @@ chmod +x /root/security-check.sh
 echo ""
 echo "✅ PACK-ATTACK SETUP COMPLETE!"
 echo ""
-echo "🌐 URL: http://82.165.66.236"
-echo "👤 Admin: admin@packattack.com / admin123"
+echo "🌐 URL: http://${SERVER_IP}"
+echo "👤 Admin: Check your ADMIN_EMAIL and ADMIN_PASSWORD environment variables"
 echo ""
 echo "🔒 Security: UFW + Fail2ban + Auto-updates enabled"
 echo "📊 Check: /root/security-check.sh"
-

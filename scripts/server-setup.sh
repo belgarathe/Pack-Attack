@@ -2,10 +2,40 @@
 
 # Pack Attack Server Setup Script
 # Run this after fresh Ubuntu install
+#
+# BEFORE RUNNING: Create a .env file with your credentials:
+#   DATABASE_URL="your-database-connection-string"
+#   NEXTAUTH_SECRET="your-secret-key"
+#   SERVER_IP="your-server-ip"
+#   ADMIN_EMAIL="your-admin-email"
+#   ADMIN_PASSWORD="your-secure-password"
 
 set -e
 
 echo "🚀 Starting Pack Attack Server Setup..."
+
+# Check if .env file exists
+if [ ! -f ".env.production" ]; then
+    echo "❌ ERROR: .env.production file not found!"
+    echo ""
+    echo "Please create a .env.production file with the following variables:"
+    echo "  DATABASE_URL=\"postgresql://user:password@host/db?sslmode=require\""
+    echo "  NEXTAUTH_SECRET=\"$(openssl rand -base64 32)\""
+    echo "  NEXTAUTH_URL=\"http://your-server-ip:3000\""
+    echo "  SERVER_IP=\"your-server-ip\""
+    echo ""
+    exit 1
+fi
+
+# Load environment variables
+source .env.production
+
+# Validate required variables
+if [ -z "$DATABASE_URL" ] || [ -z "$NEXTAUTH_SECRET" ] || [ -z "$SERVER_IP" ]; then
+    echo "❌ ERROR: Missing required environment variables!"
+    echo "Required: DATABASE_URL, NEXTAUTH_SECRET, SERVER_IP"
+    exit 1
+fi
 
 # Update system
 echo "📦 Updating system..."
@@ -27,23 +57,23 @@ apt install -y git
 
 # Create app directory
 echo "📁 Creating application directory..."
-mkdir -p /var/www/pactattack
-cd /var/www/pactattack
+mkdir -p /var/www/packattack
+cd /var/www/packattack
 
 # Clone repository
 echo "📥 Cloning repository..."
-git clone https://github.com/belgarathe/Pack-Attack.git pactattack
-cd pactattack
+git clone https://github.com/belgarathe/Pack-Attack.git packattack
+cd packattack
 
-# Create .env file
+# Create .env file from production config
 echo "⚙️ Creating environment configuration..."
-cat > .env << 'EOF'
-# Database (Neon PostgreSQL)
-DATABASE_URL="postgresql://neondb_owner:npg_8nRWsIZdUN9P@ep-patient-resonance-ahmtm2jq-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+cat > .env << EOF
+# Database
+DATABASE_URL="${DATABASE_URL}"
 
 # NextAuth Configuration
-NEXTAUTH_URL="http://82.165.66.236:3000"
-NEXTAUTH_SECRET="pack-attack-super-secret-key-change-in-production-2024"
+NEXTAUTH_URL="http://${SERVER_IP}:3000"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 
 # Environment
 NODE_ENV="production"
@@ -65,13 +95,13 @@ npx prisma migrate deploy
 echo "🏗️ Building application..."
 npm run build
 
-# Create admin user
+# Create admin user (uses environment variables)
 echo "👤 Creating admin user..."
 npm run create-admin
 
 # Start with PM2
 echo "🚀 Starting application with PM2..."
-pm2 start npm --name "pactattack" -- start
+pm2 start npm --name "packattack" -- start
 pm2 save
 pm2 startup
 
@@ -80,27 +110,27 @@ echo "🌐 Installing Nginx..."
 apt install -y nginx
 
 # Create Nginx config
-cat > /etc/nginx/sites-available/pactattack << 'EOF'
+cat > /etc/nginx/sites-available/packattack << EOF
 server {
     listen 80;
-    server_name 82.165.66.236;
+    server_name ${SERVER_IP};
 
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOF
 
 # Enable site
-ln -sf /etc/nginx/sites-available/pactattack /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/packattack /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
 
@@ -118,14 +148,11 @@ echo ""
 echo "📊 PM2 Status:"
 pm2 status
 echo ""
-echo "🌐 Your app is running at: http://82.165.66.236"
+echo "🌐 Your app is running at: http://${SERVER_IP}"
 echo ""
-echo "👤 Admin Login:"
-echo "   Email: admin@packattack.com"
-echo "   Password: admin123"
+echo "👤 Admin Login: Check your ADMIN_EMAIL and ADMIN_PASSWORD environment variables"
 echo ""
 echo "🔧 Useful commands:"
-echo "   pm2 logs pactattack    - View logs"
-echo "   pm2 restart pactattack - Restart app"
-echo "   cd /var/www/pactattack/pactattack - Go to app directory"
-
+echo "   pm2 logs packattack    - View logs"
+echo "   pm2 restart packattack - Restart app"
+echo "   cd /var/www/packattack/packattack - Go to app directory"
