@@ -1,23 +1,25 @@
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, Users, Trophy, Coins } from 'lucide-react';
+import { Plus, Users, Trophy, Coins, Swords, Clock, ChevronRight } from 'lucide-react';
 
 async function getBattles() {
-  return await prisma.battle.findMany({
-    include: {
-      creator: { select: { id: true, name: true, email: true } },
-      box: true,
-      participants: {
-        include: { user: { select: { id: true, name: true, email: true } } },
+  try {
+    return await prisma.battle.findMany({
+      include: {
+        creator: { select: { id: true, name: true, email: true } },
+        box: true,
+        participants: {
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+        winner: { select: { id: true, name: true, email: true } },
       },
-      winner: { select: { id: true, name: true, email: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  } catch {
+    return [];
+  }
 }
 
 function getBattleModeLabel(mode: string, shareMode: boolean): string {
@@ -28,16 +30,12 @@ function getBattleModeLabel(mode: string, shareMode: boolean): string {
   return mode;
 }
 
-function getStatusLabel(status: string): string {
-  if (status === 'WAITING') return 'Waiting...';
-  if (status === 'IN_PROGRESS') return 'Live';
-  if (status === 'FINISHED') return 'Done';
-  return status;
-}
-
 export default async function BattlesPage() {
   const session = await getCurrentSession();
   const battles = await getBattles();
+
+  const activeBattles = battles.filter(b => b.status === 'WAITING' || b.status === 'IN_PROGRESS');
+  const completedBattles = battles.filter(b => b.status === 'FINISHED');
 
   const totalCost = (battle: any) => {
     const packCost = battle.box.price * battle.rounds;
@@ -45,86 +43,213 @@ export default async function BattlesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      <div className="container py-12">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid opacity-30" />
+      <div className="fixed inset-0 radial-gradient" />
+      
+      {/* Purple accent for battles */}
+      <div className="fixed top-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl hidden lg:block" />
+
+      <div className="relative container py-12">
+        {/* Header */}
+        <div className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <h1 className="mb-2 text-4xl font-bold text-white">Box Battles</h1>
-            <p className="text-gray-400">
-              Compete against other players. Each participant buys the same box. Highest coin value wins!
+            <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full glass text-sm border border-purple-500/20">
+              <Swords className="w-4 h-4 text-purple-400" />
+              <span className="text-gray-300">PvP Arena</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3">
+              <span className="text-white">Box </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Battles</span>
+            </h1>
+            <p className="text-gray-400 text-lg">
+              Compete against other players. Highest coin value wins!
             </p>
           </div>
-          {session && (
-            <Button asChild className="bg-primary hover:bg-primary/90">
-              <Link href="/battles/create">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Battle
-              </Link>
-            </Button>
+          {session ? (
+            <Link 
+              href="/battles/create"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all hover:scale-105 shimmer"
+            >
+              <Plus className="w-5 h-5" />
+              Create Battle
+            </Link>
+          ) : (
+            <Link 
+              href="/login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white gradient-border bg-gray-900/50 hover:bg-gray-800/50 transition-all"
+            >
+              Sign In to Create
+            </Link>
           )}
         </div>
 
         {battles.length === 0 ? (
-          <Card className="border-gray-800 bg-gray-900/50">
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-400">No battles found. Create one to get started!</p>
-            </CardContent>
-          </Card>
+          <div className="glass-strong rounded-2xl p-12 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+              <Swords className="w-10 h-10 text-purple-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">No Battles Found</h2>
+            <p className="text-gray-400 mb-6">Be the first to create a battle!</p>
+            {session ? (
+              <Link 
+                href="/battles/create"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl transition-all hover:scale-105"
+              >
+                <Plus className="w-5 h-5" />
+                Create Battle
+              </Link>
+            ) : (
+              <Link 
+                href="/login"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl transition-all hover:scale-105"
+              >
+                Sign In to Create
+              </Link>
+            )}
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {battles.map((battle) => {
-              const cost = totalCost(battle);
-              const modeLabel = getBattleModeLabel(battle.battleMode, battle.shareMode);
-              const statusLabel = getStatusLabel(battle.status);
-              
-              return (
-                <Card key={battle.id} className="overflow-hidden border-gray-800 bg-gray-900/50 hover:border-primary/50 transition-all">
-                  <CardContent className="p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-300">
-                        {battle.rounds} Round{battle.rounds !== 1 ? 's' : ''}
-                      </span>
-                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                        battle.status === 'WAITING' ? 'bg-yellow-500/20 text-yellow-500' :
-                        battle.status === 'IN_PROGRESS' ? 'bg-green-500/20 text-green-500' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {statusLabel}
-                      </span>
-                    </div>
+          <div className="space-y-10">
+            {/* Active Battles */}
+            {activeBattles.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-2 h-2 rounded-full bg-green-500 pulse-live" />
+                  <h2 className="text-2xl font-bold text-white">Active Battles</h2>
+                  <span className="text-sm text-gray-500">({activeBattles.length})</span>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {activeBattles.map((battle) => {
+                    const cost = totalCost(battle);
+                    const modeLabel = getBattleModeLabel(battle.battleMode, battle.shareMode);
                     
-                    <div className="mb-3">
-                      <h3 className="mb-1 text-lg font-semibold text-white line-clamp-1">{battle.box.name}</h3>
-                      <p className="text-sm text-gray-400">{modeLabel}</p>
-                    </div>
-
-                    <div className="mb-4 space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Players:</span>
-                        <span className="text-white">
-                          {battle.participants.length}/{battle.maxParticipants}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Battle Price:</span>
-                        <div className="flex items-center gap-1">
-                          <Coins className="h-3 w-3 text-yellow-500" />
-                          <span className="font-semibold text-white">{cost.toFixed(2)}</span>
+                    return (
+                      <Link 
+                        key={battle.id} 
+                        href={`/battles/${battle.id}`}
+                        className="group glass rounded-2xl p-5 card-lift"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm font-medium text-gray-300">
+                            {battle.rounds} Round{battle.rounds !== 1 ? 's' : ''}
+                          </span>
+                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                            battle.status === 'WAITING' 
+                              ? 'bg-yellow-500/20 text-yellow-400' 
+                              : 'bg-green-500/20 text-green-400'
+                          }`}>
+                            {battle.status === 'WAITING' ? (
+                              <>
+                                <Clock className="w-3 h-3" />
+                                Waiting
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-green-500 pulse-live" />
+                                Live
+                              </>
+                            )}
+                          </span>
                         </div>
-                      </div>
-                    </div>
+                        
+                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-purple-400 transition-colors line-clamp-1">
+                          {battle.box.name}
+                        </h3>
+                        <p className="text-sm text-gray-400 mb-4">{modeLabel}</p>
 
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href={`/battles/${battle.id}`}>View Battle</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                        {/* Participants */}
+                        <div className="flex items-center gap-2 mb-4">
+                          {battle.participants.slice(0, 4).map((p, i) => (
+                            <div 
+                              key={p.id}
+                              className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold text-white"
+                              style={{ marginLeft: i > 0 ? '-8px' : '0' }}
+                            >
+                              {p.user.name?.[0] || '?'}
+                            </div>
+                          ))}
+                          <span className="text-sm text-gray-400 ml-2">
+                            {battle.participants.length}/{battle.maxParticipants}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
+                          <div className="flex items-center gap-1 text-amber-400">
+                            <Coins className="w-4 h-4" />
+                            <span className="font-semibold">{cost.toFixed(0)}</span>
+                          </div>
+                          <span className="text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                            View <ChevronRight className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Completed Battles */}
+            {completedBattles.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-6">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-2xl font-bold text-white">Completed</h2>
+                  <span className="text-sm text-gray-500">({completedBattles.length})</span>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {completedBattles.map((battle) => {
+                    const cost = totalCost(battle);
+                    const modeLabel = getBattleModeLabel(battle.battleMode, battle.shareMode);
+                    
+                    return (
+                      <Link 
+                        key={battle.id} 
+                        href={`/battles/${battle.id}`}
+                        className="group glass rounded-2xl p-5 opacity-80 hover:opacity-100 transition-opacity card-lift"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm font-medium text-gray-400">
+                            {battle.rounds} Round{battle.rounds !== 1 ? 's' : ''}
+                          </span>
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-700/50 text-gray-400">
+                            Finished
+                          </span>
+                        </div>
+                        
+                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-purple-400 transition-colors line-clamp-1">
+                          {battle.box.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4">{modeLabel}</p>
+
+                        {battle.winner && (
+                          <div className="flex items-center gap-2 mb-4 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                            <Trophy className="w-4 h-4 text-amber-400" />
+                            <span className="text-sm text-amber-400 font-medium">
+                              {battle.winner.name || 'Winner'}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
+                          <div className="flex items-center gap-1 text-gray-400">
+                            <Users className="w-4 h-4" />
+                            <span>{battle.participants.length} players</span>
+                          </div>
+                          <span className="text-gray-400 text-sm font-medium group-hover:text-purple-400 group-hover:translate-x-1 transition-all inline-flex items-center gap-1">
+                            Results <ChevronRight className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
-
