@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { Coins, ShoppingCart, Trash2, X } from 'lucide-react';
+import { Coins, ShoppingCart, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
@@ -30,7 +28,6 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [zoomedCard, setZoomedCard] = useState<Pull | null>(null);
 
-  // Close zoom when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (zoomedCard && (e.target as HTMLElement).classList.contains('zoom-overlay')) {
@@ -40,7 +37,6 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
 
     if (zoomedCard) {
       document.addEventListener('click', handleClickOutside);
-      // Prevent body scroll when zoomed
       document.body.style.overflow = 'hidden';
     }
 
@@ -50,7 +46,6 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
     };
   }, [zoomedCard]);
 
-  // Close zoom on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && zoomedCard) {
@@ -84,7 +79,7 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
 
       addToast({
         title: 'Success',
-        description: `Card sold for ${coinValue} coins! Coins have been added to your account.`,
+        description: `Card sold for ${coinValue} coins!`,
       });
 
       if (data.newBalance !== undefined) {
@@ -127,7 +122,7 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
 
       addToast({
         title: 'Success',
-        description: 'Card added to cart for checkout!',
+        description: 'Card added to cart!',
       });
 
       router.refresh();
@@ -143,173 +138,135 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
     }
   };
 
+  const getRarityColor = (rarity: string) => {
+    switch (rarity?.toLowerCase()) {
+      case 'mythic':
+      case 'legendary':
+        return 'text-amber-400 bg-amber-500/20';
+      case 'rare':
+        return 'text-purple-400 bg-purple-500/20';
+      case 'uncommon':
+        return 'text-blue-400 bg-blue-500/20';
+      default:
+        return 'text-gray-400 bg-gray-500/20';
+    }
+  };
+
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {pulls.map((pull) => {
           if (!pull.card) return null;
 
           return (
-            <Card key={pull.id} className="overflow-hidden border-gray-800 bg-gray-900/50 hover:border-primary/50 transition-all">
-              <div 
-                className="relative aspect-[63/88] w-full cursor-pointer"
-                onClick={() => setZoomedCard(pull)}
-              >
+            <div
+              key={pull.id}
+              className="group glass rounded-xl overflow-hidden hover:ring-2 hover:ring-emerald-500/50 transition-all cursor-pointer"
+              onClick={() => setZoomedCard(pull)}
+            >
+              <div className="relative aspect-[63/88] w-full">
                 <Image
                   src={pull.card.imageUrlGatherer}
                   alt={pull.card.name}
                   fill
-                  className="object-cover transition-transform hover:scale-105"
+                  className="object-cover transition-transform group-hover:scale-105"
                   unoptimized
                 />
                 {pull.cartItem && (
-                  <div className="absolute top-2 right-2 rounded-full bg-primary px-2 py-1 text-xs font-bold text-white z-10">
+                  <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
                     In Cart
                   </div>
                 )}
+                <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold ${getRarityColor(pull.card.rarity)}`}>
+                  {pull.card.rarity}
+                </div>
               </div>
-            <CardContent className="p-4">
-              <h3 className="mb-2 font-semibold text-white line-clamp-2">{pull.card.name}</h3>
-              <p className="mb-2 text-xs text-gray-400">{pull.box.name}</p>
-              <div className="mb-4 flex items-center gap-2">
-                <Coins className="h-4 w-4 text-yellow-500" />
-                <span className="font-semibold text-white">{pull.card.coinValue} coins</span>
+              <div className="p-3">
+                <h3 className="font-semibold text-white text-sm truncate mb-1">{pull.card.name}</h3>
+                <p className="text-xs text-gray-500 truncate mb-2">{pull.box.name}</p>
+                <div className="flex items-center gap-1">
+                  <Coins className="h-3 w-3 text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-400">{pull.card.coinValue}</span>
+                </div>
               </div>
-              <div className="flex gap-2">
-                {pull.cartItem ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-primary/20 border-primary/50"
-                    disabled
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-1" />
-                    In Cart
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleAddToCart(pull.id)}
-                    disabled={loading === pull.id}
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-1" />
-                    Checkout
-                  </Button>
-                )}
-                {!pull.cartItem && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleSell(pull.id, pull.card!.coinValue)}
-                    disabled={loading === pull.id}
-                  >
-                    <Coins className="h-4 w-4 mr-1" />
-                    Sell
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-
-    {/* Zoom Modal */}
-    {zoomedCard && zoomedCard.card && (
-      <div 
-        className="zoom-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setZoomedCard(null);
-          }
-        }}
-      >
-        <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
-          {/* Close Button */}
-          <button
-            onClick={() => setZoomedCard(null)}
-            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
-            aria-label="Close zoom"
-          >
-            <X className="h-8 w-8" />
-          </button>
-
-          {/* Zoomed Card Image */}
-          <div className="relative w-full max-w-md aspect-[63/88] mb-4">
-            <Image
-              src={zoomedCard.card.imageUrlGatherer}
-              alt={zoomedCard.card.name}
-              fill
-              className="object-contain"
-              unoptimized
-            />
-          </div>
-
-          {/* Card Info */}
-          <div className="bg-gray-900/95 rounded-lg p-6 w-full max-w-md text-center">
-            <h2 className="text-2xl font-bold text-white mb-2">{zoomedCard.card.name}</h2>
-            <p className="text-gray-400 mb-4">{zoomedCard.box.name}</p>
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Coins className="h-5 w-5 text-yellow-500" />
-              <span className="text-xl font-semibold text-white">{zoomedCard.card.coinValue} coins</span>
             </div>
-            {zoomedCard.cartItem && (
-              <div className="mb-4">
-                <span className="inline-block rounded-full bg-primary px-3 py-1 text-sm font-bold text-white">
-                  In Cart
-                </span>
+          );
+        })}
+      </div>
+
+      {/* Zoom Modal */}
+      {zoomedCard && zoomedCard.card && (
+        <div
+          className="zoom-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setZoomedCard(null);
+          }}
+        >
+          <div className="relative max-w-4xl w-full flex flex-col items-center">
+            <button
+              onClick={() => setZoomedCard(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+              aria-label="Close zoom"
+            >
+              <X className="h-8 w-8" />
+            </button>
+
+            <div className="relative w-full max-w-md aspect-[63/88] mb-4">
+              <Image
+                src={zoomedCard.card.imageUrlGatherer}
+                alt={zoomedCard.card.name}
+                fill
+                className="object-contain rounded-xl"
+                unoptimized
+              />
+            </div>
+
+            <div className="glass-strong rounded-2xl p-6 w-full max-w-md text-center">
+              <div className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mb-3 ${getRarityColor(zoomedCard.card.rarity)}`}>
+                {zoomedCard.card.rarity}
               </div>
-            )}
-            <div className="flex gap-2">
+              <h2 className="text-2xl font-bold text-white mb-2">{zoomedCard.card.name}</h2>
+              <p className="text-gray-400 mb-4">{zoomedCard.box.name}</p>
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <Coins className="h-5 w-5 text-amber-400" />
+                <span className="text-xl font-semibold text-white">{zoomedCard.card.coinValue} coins</span>
+              </div>
+
               {zoomedCard.cartItem ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 bg-primary/20 border-primary/50"
-                  disabled
-                >
-                  <ShoppingCart className="h-4 w-4 mr-1" />
+                <div className="px-6 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl font-semibold">
+                  <ShoppingCart className="h-4 w-4 inline mr-2" />
                   In Cart
-                </Button>
+                </div>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    handleAddToCart(zoomedCard.id);
-                    setZoomedCard(null);
-                  }}
-                  disabled={loading === zoomedCard.id}
-                >
-                  <ShoppingCart className="h-4 w-4 mr-1" />
-                  Checkout
-                </Button>
-              )}
-              {!zoomedCard.cartItem && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    handleSell(zoomedCard.id, zoomedCard.card!.coinValue);
-                    setZoomedCard(null);
-                  }}
-                  disabled={loading === zoomedCard.id}
-                >
-                  <Coins className="h-4 w-4 mr-1" />
-                  Sell
-                </Button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      handleAddToCart(zoomedCard.id);
+                      setZoomedCard(null);
+                    }}
+                    disabled={loading === zoomedCard.id}
+                    className="flex-1 px-4 py-3 rounded-xl font-semibold text-white gradient-border bg-gray-900/50 hover:bg-gray-800/50 transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Checkout
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSell(zoomedCard.id, zoomedCard.card!.coinValue);
+                      setZoomedCard(null);
+                    }}
+                    disabled={loading === zoomedCard.id}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-semibold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    <Coins className="h-4 w-4" />
+                    Sell
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </>
   );
 }
-

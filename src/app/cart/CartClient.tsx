@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { Coins, Trash2 } from 'lucide-react';
+import { Coins, Trash2, CreditCard, Truck } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -66,66 +64,80 @@ export function CartClient({ items, total }: { items: CartItem[]; total: number 
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
+      {/* Items List */}
       <div className="lg:col-span-2 space-y-4">
         {items.map((item) => {
           if (!item.pull.card) return null;
 
           return (
-            <Card key={item.id} className="border-gray-800 bg-gray-900/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-24 h-36 rounded overflow-hidden flex-shrink-0">
-                    <Image
-                      src={item.pull.card.imageUrlGatherer}
-                      alt={item.pull.card.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white mb-2">{item.pull.card.name}</h3>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Coins className="h-4 w-4 text-yellow-500" />
-                      <span className="font-semibold text-white">{item.pull.card.coinValue} coins</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRemove(item.pull.id)}
-                      disabled={loading === item.pull.id}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
-                    </Button>
-                  </div>
+            <div key={item.id} className="glass rounded-xl p-4">
+              <div className="flex items-center gap-4">
+                <div className="relative w-24 h-36 rounded-xl overflow-hidden flex-shrink-0">
+                  <Image
+                    src={item.pull.card.imageUrlGatherer}
+                    alt={item.pull.card.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white mb-2">{item.pull.card.name}</h3>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Coins className="h-4 w-4 text-amber-400" />
+                    <span className="font-semibold text-amber-400">{item.pull.card.coinValue} coins</span>
+                  </div>
+                  <button
+                    onClick={() => handleRemove(item.pull.id)}
+                    disabled={loading === item.pull.id}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
 
+      {/* Checkout Sidebar */}
       <div className="lg:col-span-1">
-        <Card className="border-gray-800 bg-gray-900/50 sticky top-4">
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400">Total Value:</span>
-                <span className="text-2xl font-bold text-white">{total} coins</span>
-              </div>
-              <div className="text-sm text-gray-400">
-                Shipping costs will be calculated at checkout
-              </div>
-              <Button className="w-full" size="lg">
-                Proceed to Checkout
-              </Button>
+        <div className="glass-strong rounded-2xl p-6 sticky top-4">
+          <h3 className="text-lg font-bold text-white mb-4">Order Summary</h3>
+          
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-400">Items ({items.length})</span>
+              <span className="text-white">{total} coins</span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-400">Shipping</span>
+              <span className="text-gray-400">Calculated at checkout</span>
+            </div>
+            <div className="h-px bg-gray-700" />
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Total Value</span>
+              <div className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-amber-400" />
+                <span className="text-2xl font-bold text-white">{total}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Proceed to Checkout
+            </button>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <Truck className="h-4 w-4" />
+              <span>Real cards shipped to you</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
