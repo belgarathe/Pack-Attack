@@ -1,6 +1,6 @@
 # Pack Attack 🎴
 
-A pullbox.gg clone - Magic: The Gathering box opening platform with battle system, admin dashboard, and user management.
+  Magic: The Gathering box opening platform with battle system, admin dashboard, and user management.
 
 ## 🚀 Features
 
