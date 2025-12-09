@@ -206,9 +206,11 @@ export default async function HomePage() {
                         <Package className="w-16 h-16 text-gray-600" />
                       )}
                       {/* Game badge */}
-                      <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold badge-${box.game.toLowerCase()}`}>
-                        {box.game}
-                      </div>
+                      {box.games && box.games[0] && (
+                        <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold badge-${box.games[0].toLowerCase()}`}>
+                          {box.games[0]}
+                        </div>
+                      )}
                     </div>
                     <div className="p-5">
                       <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
