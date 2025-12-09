@@ -1,10 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Image from 'next/image';
-import { Coins, Trash2, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
+import { ShoppingCart, Sparkles } from 'lucide-react';
 import { CartClient } from './CartClient';
 
 async function getCart() {
@@ -40,7 +38,6 @@ async function getCart() {
     return { items: [], total: 0 };
   }
 
-  // Convert Decimal values to plain numbers for serialization
   const serializedItems = cart.items.map(item => ({
     ...item,
     pull: {
@@ -69,20 +66,40 @@ export default async function CartPage() {
   const { items, total } = await getCart();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      <div className="container py-12">
-        <div className="mb-8">
-          <h1 className="mb-2 text-4xl font-bold text-white">Shopping Cart</h1>
-          <p className="text-gray-400">Review your items before checkout</p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid opacity-30" />
+      <div className="fixed inset-0 radial-gradient" />
+
+      <div className="relative container py-12">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full glass text-sm">
+            <ShoppingCart className="w-4 h-4 text-blue-400" />
+            <span className="text-gray-300">Checkout</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-3">
+            <span className="text-white">Shopping </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Cart</span>
+          </h1>
+          <p className="text-gray-400 text-lg">Review your items before checkout</p>
         </div>
 
         {items.length === 0 ? (
-          <Card className="border-gray-800 bg-gray-900/50">
-            <CardContent className="py-12 text-center">
-              <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-gray-600" />
-              <p className="text-gray-400">Your cart is empty</p>
-            </CardContent>
-          </Card>
+          <div className="glass-strong rounded-2xl p-12 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+              <ShoppingCart className="w-10 h-10 text-blue-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Cart Empty</h2>
+            <p className="text-gray-400 mb-6">Add cards from your collection to checkout!</p>
+            <Link 
+              href="/collection" 
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-xl transition-all hover:scale-105"
+            >
+              <Sparkles className="w-5 h-5" />
+              View Collection
+            </Link>
+          </div>
         ) : (
           <CartClient items={items} total={total} />
         )}
@@ -90,4 +107,3 @@ export default async function CartPage() {
     </div>
   );
 }
-
