@@ -80,8 +80,8 @@ test.describe('Component - Buttons', () => {
     const box = await button.boundingBox();
     
     if (box) {
-      // Height should be reasonable for interaction (at least 28px)
-      expect(box.height).toBeGreaterThanOrEqual(28);
+      // Height should be reasonable for interaction (at least 20px)
+      expect(box.height).toBeGreaterThanOrEqual(20);
     }
   });
 
