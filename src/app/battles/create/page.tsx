@@ -2,12 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, Plus, Minus, Coins } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Coins, Swords, Users, Trophy, Sparkles, Lock, Globe } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 
 type Box = {
   id: string;
@@ -71,8 +68,6 @@ export default function CreateBattlePage() {
     setLoading(true);
 
     try {
-      // For now, create battle with first selected box
-      // In future, you can enhance to support multiple boxes
       const res = await fetch('/api/battles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,232 +111,252 @@ export default function CreateBattlePage() {
   };
 
   const winConditions = [
-    {
-      value: 'NORMAL',
-      label: 'Highest Total Value',
-      description: 'The player/team with the highest total value wins',
-    },
-    {
-      value: 'UPSIDE_DOWN',
-      label: 'Lowest Total Value',
-      description: 'The player/team with the lowest total value wins',
-    },
-    {
-      value: 'SHARE',
-      label: 'Share Mode',
-      description: 'Items are evenly distributed to all players/teams',
-    },
-    {
-      value: 'JACKPOT',
-      label: 'Jackpot',
-      description: 'Provably fair roll weighted by each player\'s total value. One player wins all items.',
-    },
+    { value: 'NORMAL', label: 'Highest Total Value', description: 'Player with highest value wins all', icon: Trophy },
+    { value: 'UPSIDE_DOWN', label: 'Lowest Total Value', description: 'Player with lowest value wins all', icon: Trophy },
+    { value: 'SHARE', label: 'Share Mode', description: 'Items split evenly among all players', icon: Users },
+    { value: 'JACKPOT', label: 'Jackpot', description: 'Weighted random - one winner takes all', icon: Sparkles },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      <div className="container py-12">
-        <div className="mb-6">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/battles">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to List
-            </Link>
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid opacity-30" />
+      <div className="fixed inset-0 radial-gradient" />
+      <div className="fixed top-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl hidden lg:block" />
 
-        <h1 className="mb-8 text-4xl font-bold text-white">Create Battle</h1>
+      <div className="relative container py-12">
+        {/* Back Link */}
+        <Link 
+          href="/battles" 
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Battles
+        </Link>
+
+        {/* Header */}
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full glass text-sm border border-purple-500/20">
+            <Swords className="w-4 h-4 text-purple-400" />
+            <span className="text-gray-300">New Battle</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold">
+            <span className="text-white">Create </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Battle</span>
+          </h1>
+        </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             {/* Players Selection */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>Players</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {(['2', '3', '4'] as const).map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, players: count })}
-                      className={`rounded-lg border-2 p-4 text-center transition-all ${
-                        formData.players === count
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
-                      }`}
-                    >
-                      <div className="text-2xl font-bold">
-                        {count === '2' ? '1 vs 1' : count === '3' ? '1 vs 1 vs 1' : '1 vs 1 vs 1 vs 1'}
-                      </div>
-                      <div className="text-sm">{count} players</div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-purple-400" />
+                Players
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {(['2', '3', '4'] as const).map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, players: count })}
+                    className={`rounded-xl border-2 p-4 text-center transition-all ${
+                      formData.players === count
+                        ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                        : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-2xl font-bold mb-1">{count}</div>
+                    <div className="text-sm">players</div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Boxes Selection */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Boxes</CardTitle>
-                  <div className="text-sm text-gray-400">Sort by Coin</div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {boxes.length === 0 ? (
-                    <p className="text-center text-gray-400">No boxes available</p>
-                  ) : (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {boxes.map((box) => {
-                        const isSelected = selectedBoxes.includes(box.id);
-                        return (
-                          <button
-                            key={box.id}
-                            type="button"
-                            onClick={() => toggleBox(box.id)}
-                            className={`group relative overflow-hidden rounded-lg border-2 p-4 text-left transition-all ${
-                              isSelected
-                                ? 'border-primary bg-primary/10'
-                                : 'border-gray-700 bg-gray-800 hover:border-gray-600'
-                            }`}
-                          >
-                            <div className="mb-3 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Coins className="h-4 w-4 text-yellow-500" />
-                                <span className="font-semibold text-white">{box.price.toLocaleString()}</span>
-                              </div>
-                              {isSelected && (
-                                <div className="rounded-full bg-primary px-2 py-1 text-xs font-bold text-white">
-                                  Selected
-                                </div>
-                              )}
+            <div className="glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                Select Box
+              </h2>
+              {boxes.length === 0 ? (
+                <p className="text-center text-gray-400 py-8">No boxes available</p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {boxes.map((box) => {
+                    const isSelected = selectedBoxes.includes(box.id);
+                    return (
+                      <button
+                        key={box.id}
+                        type="button"
+                        onClick={() => toggleBox(box.id)}
+                        className={`group relative rounded-xl border-2 p-4 text-left transition-all ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-500/10'
+                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-amber-400">
+                            <Coins className="w-4 h-4" />
+                            <span className="font-bold">{box.price.toLocaleString()}</span>
+                          </div>
+                          {isSelected && (
+                            <div className="px-2 py-1 rounded-full bg-purple-500 text-xs font-bold text-white">
+                              Selected
                             </div>
-                            <h3 className="mb-2 font-semibold text-white">{box.name}</h3>
-                            <p className="line-clamp-2 text-sm text-gray-400">{box.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-white mb-1">{box.name}</h3>
+                        <p className="line-clamp-2 text-sm text-gray-400">{box.description}</p>
+                      </button>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
 
             {/* Win Condition */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>Win Condition</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {winConditions.map((condition) => (
+            <div className="glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-purple-400" />
+                Win Condition
+              </h2>
+              <div className="grid gap-3 md:grid-cols-2">
+                {winConditions.map((condition) => {
+                  const Icon = condition.icon;
+                  return (
                     <button
                       key={condition.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, winCondition: condition.value as any })}
-                      className={`w-full rounded-lg border-2 p-4 text-left transition-all ${
+                      className={`rounded-xl border-2 p-4 text-left transition-all ${
                         formData.winCondition === condition.value
-                          ? 'border-primary bg-primary/10'
-                          : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                       }`}
                     >
-                      <div className="font-semibold text-white">{condition.label}</div>
-                      <div className="text-sm text-gray-400">{condition.description}</div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Icon className={`w-4 h-4 ${formData.winCondition === condition.value ? 'text-purple-400' : 'text-gray-500'}`} />
+                        <span className="font-semibold text-white">{condition.label}</span>
+                      </div>
+                      <p className="text-sm text-gray-400">{condition.description}</p>
                     </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Privacy */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>Privacy</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { value: 'PUBLIC', label: 'Public', description: 'Battle is visible to everyone' },
-                    { value: 'PRIVATE', label: 'Private', description: 'Battle is hidden from the battle list' },
-                  ].map((option) => (
+            <div className="glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-purple-400" />
+                Privacy
+              </h2>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { value: 'PUBLIC', label: 'Public', description: 'Visible to everyone', icon: Globe },
+                  { value: 'PRIVATE', label: 'Private', description: 'Hidden from list', icon: Lock },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  return (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, privacy: option.value as any })}
-                      className={`w-full rounded-lg border-2 p-4 text-left transition-all ${
+                      className={`rounded-xl border-2 p-4 text-left transition-all ${
                         formData.privacy === option.value
-                          ? 'border-primary bg-primary/10'
-                          : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                          ? 'border-purple-500 bg-purple-500/10'
+                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                       }`}
                     >
-                      <div className="font-semibold text-white">{option.label}</div>
-                      <div className="text-sm text-gray-400">{option.description}</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className={`w-4 h-4 ${formData.privacy === option.value ? 'text-purple-400' : 'text-gray-500'}`} />
+                        <span className="font-semibold text-white">{option.label}</span>
+                      </div>
+                      <p className="text-sm text-gray-400">{option.description}</p>
                     </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-4 border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="mb-2 text-sm text-gray-400">Boxes / Rounds:</div>
-                  <div className="text-lg font-semibold text-white">
-                    {selectedBoxes.length} box{selectedBoxes.length !== 1 ? 'es' : ''} × {formData.rounds} round{formData.rounds !== 1 ? 's' : ''}
-                  </div>
+            <div className="sticky top-4 glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-6">Battle Summary</h2>
+              
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <span className="text-gray-400">Boxes</span>
+                  <span className="text-white font-semibold">
+                    {selectedBoxes.length} selected
+                  </span>
                 </div>
-                <div>
-                  <div className="mb-2 text-sm text-gray-400">Players:</div>
-                  <div className="text-lg font-semibold text-white">{formData.players}</div>
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <span className="text-gray-400">Players</span>
+                  <span className="text-white font-semibold">{formData.players}</span>
                 </div>
-                <div>
-                  <div className="mb-2 text-sm text-gray-400">Battle Price:</div>
-                  <div className="flex items-center gap-2 text-lg font-semibold text-white">
-                    <Coins className="h-5 w-5 text-yellow-500" />
-                    {calculateTotalCost().toFixed(2)}
-                  </div>
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <span className="text-gray-400">Mode</span>
+                  <span className="text-white font-semibold">
+                    {winConditions.find(c => c.value === formData.winCondition)?.label}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <Button
+              </div>
+
+              {/* Rounds Control */}
+              <div className="mb-6">
+                <span className="text-gray-400 text-sm block mb-3">Rounds</span>
+                <div className="flex items-center gap-3">
+                  <button
                     type="button"
-                    variant="outline"
-                    className="flex-1"
                     onClick={() => setFormData({ ...formData, rounds: Math.max(1, formData.rounds - 1) })}
+                    className="w-12 h-12 rounded-xl border border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700 transition-colors flex items-center justify-center"
                   >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <div className="flex flex-1 items-center justify-center text-white">
-                    {formData.rounds} Round{formData.rounds !== 1 ? 's' : ''}
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-2xl font-bold text-white">{formData.rounds}</span>
+                    <span className="text-gray-400 text-sm block">round{formData.rounds !== 1 ? 's' : ''}</span>
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    className="flex-1"
                     onClick={() => setFormData({ ...formData, rounds: formData.rounds + 1 })}
+                    className="w-12 h-12 rounded-xl border border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700 transition-colors flex items-center justify-center"
                   >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    <Plus className="w-5 h-5" />
+                  </button>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  onClick={handleSubmit}
-                  disabled={loading || selectedBoxes.length === 0}
-                >
-                  {loading ? 'Creating...' : `Create Battle for Coin${calculateTotalCost().toFixed(2)}`}
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+
+              {/* Total Cost */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 mb-6">
+                <span className="text-gray-400 text-sm block mb-1">Entry Cost</span>
+                <div className="flex items-center gap-2">
+                  <Coins className="w-6 h-6 text-amber-400" />
+                  <span className="text-3xl font-bold text-white">{calculateTotalCost().toFixed(0)}</span>
+                  <span className="text-gray-400">coins</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || selectedBoxes.length === 0}
+                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Swords className="w-5 h-5" />
+                    Create Battle
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

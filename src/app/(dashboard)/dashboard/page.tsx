@@ -1,10 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Package, Trophy, Coins, TrendingUp } from 'lucide-react';
+import { Package, Trophy, Coins, TrendingUp, Swords, ShoppingCart, ChevronRight, Sparkles } from 'lucide-react';
 
 export default async function UserDashboard() {
   const session = await getCurrentSession();
@@ -27,94 +25,148 @@ export default async function UserDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      <div className="container py-12">
-      <div className="mb-8">
-        <h1 className="mb-2 text-4xl font-bold text-white">Welcome back, {user.name || user.email}!</h1>
-        <p className="text-gray-400">Manage your collection and join battles</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid opacity-30" />
+      <div className="fixed inset-0 radial-gradient" />
 
-      <div className="mb-8">
-        <Card className="bg-gradient-to-r from-primary/20 to-secondary/20 border-primary/50">
-          <CardContent className="p-6">
+      <div className="relative container py-12">
+        {/* Welcome Header */}
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full glass text-sm">
+            <Sparkles className="w-4 h-4 text-blue-400" />
+            <span className="text-gray-300">Dashboard</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{user.name || 'Player'}</span>!
+          </h1>
+          <p className="text-gray-400">Manage your collection and join battles</p>
+        </div>
+
+        {/* Balance Card */}
+        <div className="mb-8">
+          <div className="glass-strong rounded-2xl p-6 md:p-8 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400 mb-2">Your Balance</p>
-                <p className="text-4xl font-bold text-white">{user.coins.toLocaleString()} coins</p>
+                <div className="flex items-center gap-3">
+                  <Coins className="w-10 h-10 text-amber-400" />
+                  <span className="text-4xl md:text-5xl font-bold text-white">{user.coins.toLocaleString()}</span>
+                  <span className="text-gray-400 text-xl">coins</span>
+                </div>
               </div>
-              <Coins className="h-12 w-12 text-yellow-500" />
+              <Link 
+                href="/purchase-coins"
+                className="hidden md:inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold rounded-xl transition-all hover:scale-105"
+              >
+                Buy Coins
+              </Link>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <Card className="border-gray-800 bg-gray-900/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Package className="h-5 w-5" />
-              Total Pulls
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.pulls}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-800 bg-gray-900/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Trophy className="h-5 w-5" />
-              Battles Joined
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.battles}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-800 bg-gray-900/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <TrendingUp className="h-5 w-5" />
-              Battles Won
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.wins}</div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <Package className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Total Pulls</p>
+                <p className="text-3xl font-bold text-white">{stats.pulls}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Swords className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Battles Joined</p>
+                <p className="text-3xl font-bold text-white">{stats.battles}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <Trophy className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Battles Won</p>
+                <p className="text-3xl font-bold text-white">{stats.wins}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-gray-800 bg-gray-900/50">
-          <CardHeader>
-            <CardTitle className="text-white">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button asChild className="w-full">
-              <Link href="/battles">Join Battles</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/boxes">Browse Boxes</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/collection">View Collection</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-800 bg-gray-900/50">
-          <CardHeader>
-            <CardTitle className="text-white">Active Battles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-400 mb-4">View your active battles and see results.</p>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/battles">View All Battles</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Quick Actions */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="glass-strong rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Quick Actions</h2>
+            <div className="space-y-3">
+              <Link 
+                href="/battles"
+                className="group flex items-center justify-between p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Swords className="w-5 h-5 text-purple-400" />
+                  <span className="font-semibold text-white">Join Battles</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                href="/boxes"
+                className="group flex items-center justify-between p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Package className="w-5 h-5 text-blue-400" />
+                  <span className="font-semibold text-white">Browse Boxes</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                href="/collection"
+                className="group flex items-center justify-between p-4 rounded-xl bg-gray-800/50 border border-gray-700 hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="w-5 h-5 text-gray-400" />
+                  <span className="font-semibold text-white">View Collection</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                href="/cart"
+                className="group flex items-center justify-between p-4 rounded-xl bg-gray-800/50 border border-gray-700 hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="w-5 h-5 text-gray-400" />
+                  <span className="font-semibold text-white">Shopping Cart</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="glass-strong rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Recent Activity</h2>
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gray-800/50">
+                <Trophy className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-gray-400 mb-4">No recent activity</p>
+              <Link 
+                href="/battles"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Start a battle <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
