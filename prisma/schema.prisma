@@ -8,22 +8,26 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  name               String?
-  passwordHash       String
-  coins              Int                 @default(0)
-  role               Role                @default(USER)
-  isBot              Boolean             @default(false)
-  pulls              Pull[]
-  transactions       Transaction[]
-  sales              SaleHistory[]
-  battlesCreated     Battle[]            @relation("BattleCreator")
-  battlesWon         Battle[]            @relation("BattleWinner")
-  battleParticipants BattleParticipant[]
-  cart               Cart?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                  String              @id @default(cuid())
+  email               String              @unique
+  name                String?
+  passwordHash        String
+  coins               Int                 @default(0)
+  role                Role                @default(USER)
+  isBot               Boolean             @default(false)
+  emailVerified       Boolean             @default(false)
+  verificationToken   String?             @unique
+  verificationExpires DateTime?
+  pulls               Pull[]
+  transactions        Transaction[]
+  sales               SaleHistory[]
+  battlesCreated      Battle[]            @relation("BattleCreator")
+  battlesWon          Battle[]            @relation("BattleWinner")
+  battleParticipants  BattleParticipant[]
+  cart                Cart?
+  emailsSent          EmailLog[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }
 
 model Box {
@@ -227,5 +231,38 @@ model SaleHistory {
 
   @@index([userId])
   @@index([timestamp])
+}
+
+model EmailLog {
+  id        String      @id @default(cuid())
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  toEmail   String
+  subject   String
+  type      EmailType
+  status    EmailStatus @default(SENT)
+  resendId  String?
+  error     String?
+  sentAt    DateTime    @default(now())
+
+  @@index([userId])
+  @@index([toEmail])
+  @@index([type])
+  @@index([sentAt])
+}
+
+enum EmailType {
+  VERIFICATION
+  PASSWORD_RESET
+  WELCOME
+  NOTIFICATION
+  ADMIN_CUSTOM
+}
+
+enum EmailStatus {
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
 }
 

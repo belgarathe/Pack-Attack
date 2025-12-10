@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
+import { sendVerificationEmail, generateVerificationToken } from '@/lib/email';
 
 const registerSchema = z.object({
   name: z.string().optional(),
@@ -23,6 +24,9 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
+    
+    // Generate verification token
+    const { token, expires } = generateVerificationToken();
 
     const user = await prisma.user.create({
       data: {
@@ -30,10 +34,27 @@ export async function POST(request: Request) {
         name: data.name,
         passwordHash,
         role: 'USER',
+        emailVerified: false,
+        verificationToken: token,
+        verificationExpires: expires,
+        coins: 1000, // Welcome bonus
       },
     });
 
-    return NextResponse.json({ success: true, user: { id: user.id, email: user.email } });
+    // Send verification email
+    const emailResult = await sendVerificationEmail(data.email, token, user.id);
+    
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      // Don't fail registration if email fails - user can request resend
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      user: { id: user.id, email: user.email },
+      message: 'Please check your email to verify your account',
+      emailSent: emailResult.success,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
@@ -42,4 +63,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
   }
 }
-

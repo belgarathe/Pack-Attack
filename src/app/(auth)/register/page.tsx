@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, Mail, Lock, User, ChevronRight, Sparkles, Gift } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, ChevronRight, Sparkles, Gift, CheckCircle2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,7 +34,8 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/login?registered=true');
+      setRegisteredEmail(formData.email);
+      setSuccess(true);
     } catch (error) {
       console.error('Registration error:', error);
       setError('Something went wrong. Please try again.');
@@ -42,6 +43,60 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display p-4">
+        <div className="absolute inset-0 bg-grid opacity-30" />
+        <div className="absolute inset-0 radial-gradient" />
+        
+        <div className="relative w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block">
+              <h1 className="text-3xl font-bold">
+                <span className="text-white">PACK </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">ATTACK</span>
+              </h1>
+            </Link>
+          </div>
+
+          <div className="glass-strong rounded-2xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20">
+              <CheckCircle2 className="w-10 h-10 text-green-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Check Your Email</h2>
+            <p className="text-gray-400 mb-4">
+              We've sent a verification link to:
+            </p>
+            <p className="text-white font-medium mb-6 bg-gray-800/50 rounded-lg py-2 px-4 inline-block">
+              {registeredEmail}
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              Click the link in the email to verify your account and get your <span className="text-amber-400 font-semibold">1,000 bonus coins</span>!
+            </p>
+            <div className="space-y-3">
+              <Link
+                href="/login"
+                className="block w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02]"
+              >
+                Go to Login
+              </Link>
+              <p className="text-gray-500 text-xs">
+                Didn't receive the email? Check your spam folder or try registering again.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm">
+              <Sparkles className="w-4 h-4" />
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display p-4">
@@ -131,7 +186,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">Must be at least 8 characters with uppercase, lowercase, and numbers</p>
+              <p className="text-xs text-gray-500 mt-2">Must be at least 6 characters</p>
             </div>
 
             <button
