@@ -72,26 +72,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Deduct coins
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { coins: { decrement: totalCost } },
-    });
-
-    // Create pulls
-    const pulls = [];
+    // Prepare card draws before transaction
     const cardsForDrawing = box.cards.map(card => ({
       id: card.id,
       pullRate: Number(card.pullRate),
     }));
 
+    const cardsToPull: string[] = [];
     for (let i = 0; i < quantity; i++) {
       for (let j = 0; j < box.cardsPerPack; j++) {
-        const cardId = drawCard(cardsForDrawing);
+        cardsToPull.push(drawCard(cardsForDrawing));
+      }
+    }
+
+    // Use transaction to ensure data integrity:
+    // Either all operations succeed or none do
+    const result = await prisma.$transaction(async (tx) => {
+      // Deduct coins
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { coins: { decrement: totalCost } },
+      });
+
+      // Verify user still has enough coins (race condition protection)
+      if (updatedUser.coins < 0) {
+        throw new Error('Insufficient coins');
+      }
+
+      // Create all pulls
+      const pulls = [];
+      for (const cardId of cardsToPull) {
         const card = box.cards.find(c => c.id === cardId);
-        
         if (card) {
-          const pull = await prisma.pull.create({
+          const pull = await tx.pull.create({
             data: {
               userId: user.id,
               boxId: box.id,
@@ -105,19 +118,21 @@ export async function POST(request: Request) {
           pulls.push(pull);
         }
       }
-    }
 
-    // Update box popularity
-    await prisma.box.update({
-      where: { id: box.id },
-      data: { popularity: { increment: quantity } },
+      // Update box popularity
+      await tx.box.update({
+        where: { id: box.id },
+        data: { popularity: { increment: quantity } },
+      });
+
+      return { pulls, remainingCoins: updatedUser.coins };
     });
 
     return NextResponse.json({
       success: true,
-      pulls,
+      pulls: result.pulls,
       totalCost,
-      remainingCoins: user.coins - totalCost,
+      remainingCoins: result.remainingCoins,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

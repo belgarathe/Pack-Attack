@@ -12,7 +12,8 @@ function createPrismaClient(): PrismaClient {
 
 export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-}
+// Cache the Prisma client globally to prevent connection pool exhaustion
+// This is critical for production stability - without this, each request
+// creates a new connection which can exhaust the database connection pool
+globalForPrisma.prisma = prisma;
 
