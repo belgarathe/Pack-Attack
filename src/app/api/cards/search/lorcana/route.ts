@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      cards: filteredCards.slice(0, 50).map((card: any) => {
+      cards: filteredCards.slice(0, 200).map((card: any) => {
         // Map Lorcana API response fields to our standard format
         // API uses fields like: Name, Image, Set_Name, Rarity, etc.
         return {

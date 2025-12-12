@@ -359,8 +359,9 @@ export default function CreateBoxPage() {
 
                 {/* Search Results */}
                 {searchResults.length > 0 && (
-                  <div className="mb-6 p-4 rounded-lg bg-gray-800 border border-gray-700 max-h-64 overflow-y-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="mb-6 p-4 rounded-lg bg-gray-800 border border-gray-700 max-h-[500px] overflow-y-auto">
+                    <p className="text-sm text-gray-400 mb-3">Search Results ({searchResults.length} found) - Click to add:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {searchResults.map((card, idx) => (
                         <button
                           key={idx}
