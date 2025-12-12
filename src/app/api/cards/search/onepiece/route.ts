@@ -104,7 +104,7 @@ function processCards(allCards: any, query: string) {
 
   return NextResponse.json({
     success: true,
-    cards: filteredCards.slice(0, 50).map((card: any) => {
+    cards: filteredCards.slice(0, 200).map((card: any) => {
       // Map various possible field names to our standard format
       // Try multiple image URL fields based on API response structure
       const imageUrl = card.image || 

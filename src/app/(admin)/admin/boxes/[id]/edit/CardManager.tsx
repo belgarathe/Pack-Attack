@@ -534,8 +534,8 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           {/* Search Results */}
           {searchResults.length > 0 && (
             <div>
-              <p className="text-sm text-gray-400 mb-2">Search Results:</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+              <p className="text-sm text-gray-400 mb-2">Search Results ({searchResults.length} found):</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-[500px] overflow-y-auto p-2 bg-gray-800/50 rounded-lg">
                 {searchResults.map((card, idx) => (
                   <div key={idx} className="relative group">
                     <div className="relative aspect-[63/88] rounded-lg overflow-hidden border-2 border-gray-700 hover:border-primary transition-all cursor-pointer"

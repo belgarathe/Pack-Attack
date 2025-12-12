@@ -16,8 +16,9 @@ export async function GET(request: Request) {
     // - Response format: { data: [...], total: number, page: number, pageSize: number }
     
     // Use * wildcard for partial name matching
+    // Request up to 200 cards per page
     const searchQuery = query.includes('*') ? query : `*${query}*`;
-    const apiUrl = `https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(searchQuery)}`;
+    const apiUrl = `https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(searchQuery)}&pageSize=200`;
     
     const response = await fetch(apiUrl, {
       headers: {
