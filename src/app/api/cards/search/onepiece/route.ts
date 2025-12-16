@@ -1,5 +1,19 @@
 import { NextResponse } from 'next/server';
 
+// List of One Piece API endpoints to try (in order of preference)
+const API_ENDPOINTS = [
+  {
+    name: 'OPTCG API v1',
+    url: 'https://optcgapi.com/api/allSetCards/',
+    type: 'all'
+  },
+  {
+    name: 'OPTCG API Filtered',
+    url: 'https://optcgapi.com/api/cards/',
+    type: 'search'
+  }
+];
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q') || '';
@@ -8,78 +22,65 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
   }
 
-  try {
-    // According to optcgapi.com documentation: /api/allSetCards/ (plural, with trailing slash)
-    // Also try /api/sets/filtered/ for better search results
-    let allCardsResponse;
-    let useFiltered = false;
+  const errors: string[] = [];
 
-    // First try the filtered endpoint if it supports name search
+  // Try each API endpoint
+  for (const endpoint of API_ENDPOINTS) {
     try {
-      const filteredResponse = await fetch(
-        `https://optcgapi.com/api/sets/filtered/?name=${encodeURIComponent(query)}`,
-        {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Pack-Attack/1.0',
-          },
-          cache: 'no-store',
-        }
-      );
-
-      if (filteredResponse.ok) {
-        const contentType = filteredResponse.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const filteredData = await filteredResponse.json();
-          if (Array.isArray(filteredData) && filteredData.length > 0) {
-            return processCards(filteredData, query);
-          }
-        }
-      }
-    } catch (filteredError) {
-      // Fall back to allSetCards
-      console.log('Filtered endpoint failed, using allSetCards');
-    }
-
-    // Use /api/allSetCards/ (correct endpoint from documentation)
-    allCardsResponse = await fetch(
-      'https://optcgapi.com/api/allSetCards/',
-      {
+      const url = endpoint.type === 'search' 
+        ? `${endpoint.url}?name=${encodeURIComponent(query)}`
+        : endpoint.url;
+        
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'Pack-Attack/1.0',
         },
         cache: 'no-store',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        errors.push(`${endpoint.name}: HTTP ${response.status}`);
+        continue;
       }
-    );
 
-    // Check if response is valid JSON
-    const contentType = allCardsResponse.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const text = await allCardsResponse.text();
-      if (text.includes('<!doctype') || text.includes('<html') || text.includes('Not Found')) {
-        return NextResponse.json({ 
-          error: 'One Piece API endpoint not available',
-          suggestion: 'The API endpoint may have changed. Please check optcgapi.com documentation.'
-        }, { status: 503 });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        errors.push(`${endpoint.name}: Not JSON response`);
+        continue;
       }
-    }
 
-    if (!allCardsResponse.ok) {
-      return NextResponse.json({ 
-        error: `One Piece API returned status ${allCardsResponse.status}` 
-      }, { status: allCardsResponse.status });
-    }
+      const data = await response.json();
+      
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        errors.push(`${endpoint.name}: Empty response`);
+        continue;
+      }
 
-    const allCards = await allCardsResponse.json();
-    return processCards(allCards, query);
-  } catch (error) {
-    console.error('One Piece API error:', error);
-    return NextResponse.json({ 
-      error: 'Failed to search cards',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      // Success! Process and return the cards
+      return processCards(data, query);
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      errors.push(`${endpoint.name}: ${errorMsg}`);
+      continue;
+    }
   }
+
+  // All endpoints failed
+  console.error('All One Piece API endpoints failed:', errors);
+  return NextResponse.json({ 
+    success: false,
+    error: 'One Piece card API is currently unavailable',
+    message: 'The One Piece TCG API (optcgapi.com) appears to be down. Please try again later or use Magic: The Gathering or Pokémon cards instead.',
+    details: errors.join('; ')
+  }, { status: 503 });
 }
 
 function processCards(allCards: any, query: string) {
