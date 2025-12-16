@@ -88,7 +88,7 @@ export default function CreateBoxPage() {
     
     if (existingCard) {
       addToast({
-        title: 'Card already in box',
+        title: 'Card already selected',
         description: `${card.name} is already added to this box`,
         variant: 'destructive',
       });
@@ -109,6 +109,10 @@ export default function CreateBoxPage() {
       scryfallId: card.id,
     };
     setBoxCards([...boxCards, newCard]);
+    // DON'T clear search results - allow adding multiple cards!
+  };
+  
+  const clearSearch = () => {
     setSearchResults([]);
     setSearchQuery('');
   };
@@ -360,32 +364,51 @@ export default function CreateBoxPage() {
                 {/* Search Results */}
                 {searchResults.length > 0 && (
                   <div className="mb-6 p-4 rounded-lg bg-gray-800 border border-gray-700 max-h-[500px] overflow-y-auto">
-                    <p className="text-sm text-gray-400 mb-3">Search Results ({searchResults.length} found) - Click to add:</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {searchResults.map((card, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => addCardToBox(card)}
-                          className="relative aspect-[63/88] rounded-lg overflow-hidden border-2 border-gray-600 hover:border-primary transition-all group"
-                        >
-                          {card.imageUrl && (
-                            <Image
-                              src={card.imageUrl}
-                              alt={card.name}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                            <Plus className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
-                            <p className="text-xs text-white truncate">{card.name}</p>
-                          </div>
-                        </button>
-                      ))}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-gray-400">Search Results ({searchResults.length} found) - Click to add:</p>
+                      <Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                      {searchResults.map((card, idx) => {
+                        const isSelected = boxCards.some(c => c.id === card.id || c.scryfallId === card.id);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => addCardToBox(card)}
+                            className={`relative aspect-[63/88] rounded-lg overflow-hidden border-2 transition-all group ${
+                              isSelected ? 'border-green-500 ring-2 ring-green-500/50' : 'border-gray-600 hover:border-primary'
+                            }`}
+                          >
+                            {card.imageUrl && (
+                              <Image
+                                src={card.imageUrl}
+                                alt={card.name}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            )}
+                            {isSelected ? (
+                              <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                                <div className="bg-green-500 rounded-full p-1">
+                                  <Check className="h-4 w-4 text-white" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                <Plus className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
+                              <p className="text-xs text-white truncate">{card.name}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X, Edit2, Save, XCircle } from 'lucide-react';
+import { Search, Plus, Trash2, X, Edit2, Save, XCircle, Check } from 'lucide-react';
 import Image from 'next/image';
 import { Coins } from 'lucide-react';
 
@@ -99,6 +99,26 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
     // Create a unique ID that includes set and collector number to distinguish variants
     const uniqueId = `${card.id}-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-');
     
+    // Check if card is already in the pending list
+    if (newCards.some(c => c.scryfallId === uniqueId)) {
+      addToast({
+        title: 'Already selected',
+        description: `${card.name} is already in the list to add`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check if card already exists in the box
+    if (existingCards.some(c => c.id === card.id)) {
+      addToast({
+        title: 'Already in box',
+        description: `${card.name} is already in this box`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const newCard: CardData = {
       id: card.id,
       name: card.name,
@@ -113,6 +133,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
       scryfallId: uniqueId, // Use unique ID that includes set + collector number
     };
     setNewCards([...newCards, newCard]);
+    // DON'T clear search results - allow adding multiple cards from same search!
+  };
+  
+  const clearSearch = () => {
     setSearchResults([]);
     setSearchQuery('');
   };
@@ -534,33 +558,66 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           {/* Search Results */}
           {searchResults.length > 0 && (
             <div>
-              <p className="text-sm text-gray-400 mb-2">Search Results ({searchResults.length} found):</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-[500px] overflow-y-auto p-2 bg-gray-800/50 rounded-lg">
-                {searchResults.map((card, idx) => (
-                  <div key={idx} className="relative group">
-                    <div className="relative aspect-[63/88] rounded-lg overflow-hidden border-2 border-gray-700 hover:border-primary transition-all cursor-pointer"
-                      onClick={() => addCardToBox(card)}
-                    >
-                      {card.imageUrl || card.image_url || card.image ? (
-                        <Image
-                          src={card.imageUrl || card.image_url || card.image}
-                          alt={card.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                          <span className="text-gray-600 text-xs">No Image</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all flex items-center justify-center">
-                        <Plus className="h-6 w-6 text-white opacity-0 group-hover:opacity-100" />
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-400">Search Results ({searchResults.length} found) - Click to add:</p>
+                <Button variant="ghost" size="sm" onClick={clearSearch}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Results
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 max-h-[500px] overflow-y-auto p-2 bg-gray-800/50 rounded-lg">
+                {searchResults.map((card, idx) => {
+                  const collectorNum = card.collectorNumber || card.collector_number || card.number || '';
+                  const setCode = card.setCode || card.set || card.set_code || '';
+                  const uniqueId = `${card.id}-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-');
+                  const isSelected = newCards.some(c => c.scryfallId === uniqueId);
+                  const isInBox = existingCards.some(c => c.id === card.id);
+                  
+                  return (
+                    <div key={idx} className="relative group">
+                      <div 
+                        className={`relative aspect-[63/88] rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                          isSelected ? 'border-green-500 ring-2 ring-green-500/50' : 
+                          isInBox ? 'border-yellow-500 opacity-50' : 
+                          'border-gray-700 hover:border-primary'
+                        }`}
+                        onClick={() => !isInBox && addCardToBox(card)}
+                      >
+                        {card.imageUrl || card.image_url || card.image ? (
+                          <Image
+                            src={card.imageUrl || card.image_url || card.image}
+                            alt={card.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-600 text-xs">No Image</span>
+                          </div>
+                        )}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                            <div className="bg-green-500 rounded-full p-1">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        {isInBox && (
+                          <div className="absolute inset-0 bg-yellow-500/30 flex items-center justify-center">
+                            <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded font-bold">In Box</span>
+                          </div>
+                        )}
+                        {!isSelected && !isInBox && (
+                          <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all flex items-center justify-center">
+                            <Plus className="h-6 w-6 text-white opacity-0 group-hover:opacity-100" />
+                          </div>
+                        )}
                       </div>
+                      <p className="text-xs text-white mt-1 truncate" title={card.name}>{card.name}</p>
                     </div>
-                    <p className="text-xs text-white mt-1 truncate" title={card.name}>{card.name}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
