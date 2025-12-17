@@ -16,9 +16,9 @@ export async function GET(request: Request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-    // Use JustTCG API for One Piece cards
+    // Use JustTCG API for One Piece cards (free plan limit is 20 per request)
     const response = await fetch(
-      `${JUSTTCG_API_URL}?game=one-piece-card-game&q=${encodeURIComponent(query)}&limit=200`,
+      `${JUSTTCG_API_URL}?game=one-piece-card-game&q=${encodeURIComponent(query)}&limit=20`,
       {
         headers: {
           'X-API-Key': JUSTTCG_API_KEY,
