@@ -134,6 +134,8 @@ enum CardGame {
   ONE_PIECE
   POKEMON
   LORCANA
+  YUGIOH
+  FLESH_AND_BLOOD
 }
 
 enum PaymentStatus {

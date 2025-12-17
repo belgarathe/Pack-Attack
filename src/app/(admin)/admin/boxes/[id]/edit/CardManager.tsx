@@ -18,7 +18,7 @@ type CardData = {
   imageUrl: string;
   pullRate: number;
   coinValue: number;
-  sourceGame: 'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA';
+  sourceGame: 'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD';
   scryfallId?: string;
 };
 
@@ -40,7 +40,8 @@ type CardManagerProps = {
 export function CardManager({ boxId, existingCards, onCardsChange }: CardManagerProps) {
   const { addToast } = useToast();
   const [searching, setSearching] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA'>('MAGIC_THE_GATHERING');
+  const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD'>('MAGIC_THE_GATHERING');
+  const [apiSource, setApiSource] = useState<'default' | 'justtcg'>('default');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [newCards, setNewCards] = useState<CardData[]>([]);
@@ -50,11 +51,19 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const [savingCard, setSavingCard] = useState(false);
 
   const gameOptions = [
-    { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering' },
-    { value: 'ONE_PIECE', label: 'One Piece' },
-    { value: 'POKEMON', label: 'Pokémon' },
-    { value: 'LORCANA', label: 'Lorcana' },
+    { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering', defaultApi: 'Scryfall' },
+    { value: 'POKEMON', label: 'Pokémon', defaultApi: 'PokemonTCG.io' },
+    { value: 'ONE_PIECE', label: 'One Piece', defaultApi: 'JustTCG' },
+    { value: 'LORCANA', label: 'Lorcana', defaultApi: 'Lorcana-API' },
+    { value: 'YUGIOH', label: 'Yu-Gi-Oh!', defaultApi: 'JustTCG' },
+    { value: 'FLESH_AND_BLOOD', label: 'Flesh and Blood', defaultApi: 'JustTCG' },
   ];
+  
+  // Games that only support JustTCG
+  const justTCGOnlyGames = ['YUGIOH', 'FLESH_AND_BLOOD'];
+  
+  // Games that support both APIs
+  const dualApiGames = ['MAGIC_THE_GATHERING', 'POKEMON', 'LORCANA', 'ONE_PIECE'];
 
   const searchCards = async () => {
     if (!searchQuery.trim()) return;
@@ -66,17 +75,30 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
         ONE_PIECE: 'onepiece',
         POKEMON: 'pokemon',
         LORCANA: 'lorcana',
+        YUGIOH: 'yugioh',
+        FLESH_AND_BLOOD: 'fleshblood',
       };
 
-      const res = await fetch(`/api/cards/search/${gameMap[selectedGame]}?q=${encodeURIComponent(searchQuery)}`);
+      // Determine API source - JustTCG-only games always use JustTCG
+      const effectiveSource = justTCGOnlyGames.includes(selectedGame) ? 'justtcg' : 
+                             apiSource === 'justtcg' ? 'justtcg' : '';
+      
+      const sourceParam = effectiveSource ? `&source=${effectiveSource}` : '';
+      const res = await fetch(`/api/cards/search/${gameMap[selectedGame]}?q=${encodeURIComponent(searchQuery)}${sourceParam}`);
       const data = await res.json();
 
       if (data.success) {
         setSearchResults(data.cards || []);
+        if (data.cards?.length === 0) {
+          addToast({
+            title: 'No Results',
+            description: data.message || 'No cards found matching your search',
+          });
+        }
       } else {
         addToast({
           title: 'Error',
-          description: data.error || 'Failed to search cards',
+          description: data.message || data.error || 'Failed to search cards',
           variant: 'destructive',
         });
       }
@@ -531,23 +553,55 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           <CardTitle className="text-white">Add New Cards</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <select
               value={selectedGame}
-              onChange={(e) => setSelectedGame(e.target.value as any)}
+              onChange={(e) => {
+                const game = e.target.value as any;
+                setSelectedGame(game);
+                // Reset to default API when changing games
+                setApiSource('default');
+                setSearchResults([]);
+              }}
               className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"
             >
               {gameOptions.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            
+            {/* API Source Dropdown - only show for games that support both APIs */}
+            {dualApiGames.includes(selectedGame) && (
+              <select
+                value={apiSource}
+                onChange={(e) => {
+                  setApiSource(e.target.value as 'default' | 'justtcg');
+                  setSearchResults([]);
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"
+                title="Select card data source"
+              >
+                <option value="default">
+                  {gameOptions.find(g => g.value === selectedGame)?.defaultApi || 'Default API'}
+                </option>
+                <option value="justtcg">JustTCG (Prices)</option>
+              </select>
+            )}
+            
+            {/* Show JustTCG badge for JustTCG-only games */}
+            {justTCGOnlyGames.includes(selectedGame) && (
+              <span className="px-3 py-2 rounded-lg bg-blue-900/50 border border-blue-700 text-blue-300 text-sm">
+                📊 JustTCG
+              </span>
+            )}
+            
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && searchCards()}
               placeholder="Search for cards..."
-              className="flex-1 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"
+              className="flex-1 min-w-[200px] px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"
             />
             <Button onClick={searchCards} disabled={searching}>
               <Search className="h-4 w-4 mr-2" />

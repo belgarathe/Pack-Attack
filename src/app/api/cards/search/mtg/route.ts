@@ -1,16 +1,34 @@
 import { NextResponse } from 'next/server';
+import { searchJustTCG, isJustTCGConfigured } from '@/lib/justtcg';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q') || '';
+  const source = searchParams.get('source') || 'scryfall'; // 'scryfall' or 'justtcg'
 
   if (!query) {
     return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
   }
 
+  // Use JustTCG API if requested
+  if (source === 'justtcg') {
+    if (!isJustTCGConfigured()) {
+      return NextResponse.json({
+        success: false,
+        error: 'JustTCG API not configured',
+        message: 'Please set JUSTTCG_API_KEY environment variable',
+      }, { status: 503 });
+    }
+    
+    const result = await searchJustTCG('mtg', query, 20);
+    if (!result.success) {
+      return NextResponse.json(result, { status: 500 });
+    }
+    return NextResponse.json(result);
+  }
+
+  // Default: Use Scryfall API
   try {
-    // Scryfall returns up to 175 cards per page
-    // We can fetch multiple pages if needed
     const response = await fetch(
       `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`,
       {
@@ -38,7 +56,7 @@ export async function GET(request: Request) {
       collectorNumber: card.collector_number,
       rarity: card.rarity,
       imageUrl: card.image_uris?.normal || card.image_uris?.large || card.image_uris?.small || 
-                (card.card_faces?.[0]?.image_uris?.normal) || '', // Handle double-faced cards
+                (card.card_faces?.[0]?.image_uris?.normal) || '',
       imageUrlSmall: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small,
       imageUrlLarge: card.image_uris?.large || card.card_faces?.[0]?.image_uris?.large,
       colors: card.colors || [],
@@ -47,7 +65,7 @@ export async function GET(request: Request) {
       cmc: card.cmc,
       priceUsd: card.prices?.usd || null,
       priceEur: card.prices?.eur || null,
-    })).filter((card: any) => card.imageUrl) || []; // Filter out cards without images
+    })).filter((card: any) => card.imageUrl) || [];
 
     return NextResponse.json({ success: true, cards, total: data.total_cards || cards.length });
   } catch (error) {
@@ -55,4 +73,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to search cards' }, { status: 500 });
   }
 }
-
