@@ -507,19 +507,25 @@ export default function OpenBoxPage() {
       {/* Reveal Modal */}
       {isShowingReveal && currentReveal?.card && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-md glass-strong rounded-2xl p-6 text-center border border-amber-400/50 shadow-2xl shadow-amber-500/30">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-300">
+          <div className="relative w-full max-w-md glass-strong rounded-2xl p-6 border border-amber-400/50 shadow-2xl shadow-amber-500/30 flex flex-col items-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-300 text-center">
               Pull {currentRevealIndex} of {revealTotal || quantity}
             </p>
-            <div className="relative mx-auto mb-4 aspect-[63/88] w-64 overflow-hidden rounded-xl border-2 border-amber-400 shadow-lg shadow-amber-400/60">
+            <div className="relative aspect-[63/88] w-64 overflow-hidden rounded-xl border-2 border-amber-400 shadow-lg shadow-amber-400/60 mb-4">
               {currentReveal.card.imageUrlGatherer ? (
-                <Image src={currentReveal.card.imageUrlGatherer} alt={currentReveal.card.name} fill className="object-cover" unoptimized />
+                <Image 
+                  src={currentReveal.card.imageUrlGatherer} 
+                  alt={currentReveal.card.name} 
+                  fill 
+                  className="object-contain" 
+                  unoptimized 
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
               )}
             </div>
-            <h3 className="mb-1 text-2xl font-bold text-white">{currentReveal.card.name}</h3>
-            <p className="mb-4 text-sm text-gray-400">{box.name}</p>
+            <h3 className="mb-1 text-2xl font-bold text-white text-center">{currentReveal.card.name}</h3>
+            <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
             <div className="flex items-center justify-center gap-2 text-amber-400">
               <Coins className="h-5 w-5" />
               <span className="text-xl font-semibold">{currentReveal.card.coinValue} coins</span>
