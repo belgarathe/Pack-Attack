@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server';
 
-// List of One Piece API endpoints to try (in order of preference)
-const API_ENDPOINTS = [
-  {
-    name: 'OPTCG API v1',
-    url: 'https://optcgapi.com/api/allSetCards/',
-    type: 'all'
-  },
-  {
-    name: 'OPTCG API Filtered',
-    url: 'https://optcgapi.com/api/cards/',
-    type: 'search'
-  }
-];
+// JustTCG API configuration
+const JUSTTCG_API_KEY = 'REMOVED_USE_ENV_VAR';
+const JUSTTCG_API_URL = 'https://api.justtcg.com/v1/cards';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,122 +12,96 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
   }
 
-  const errors: string[] = [];
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-  // Try each API endpoint
-  for (const endpoint of API_ENDPOINTS) {
-    try {
-      const url = endpoint.type === 'search' 
-        ? `${endpoint.url}?name=${encodeURIComponent(query)}`
-        : endpoint.url;
-        
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, {
+    // Use JustTCG API for One Piece cards
+    const response = await fetch(
+      `${JUSTTCG_API_URL}?game=one-piece-card-game&q=${encodeURIComponent(query)}&limit=200`,
+      {
         headers: {
+          'X-API-Key': JUSTTCG_API_KEY,
           'Accept': 'application/json',
-          'User-Agent': 'Pack-Attack/1.0',
         },
         cache: 'no-store',
         signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        errors.push(`${endpoint.name}: HTTP ${response.status}`);
-        continue;
       }
+    );
 
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        errors.push(`${endpoint.name}: Not JSON response`);
-        continue;
-      }
+    clearTimeout(timeoutId);
 
-      const data = await response.json();
-      
-      if (!data || (Array.isArray(data) && data.length === 0)) {
-        errors.push(`${endpoint.name}: Empty response`);
-        continue;
-      }
-
-      // Success! Process and return the cards
-      return processCards(data, query);
-      
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`${endpoint.name}: ${errorMsg}`);
-      continue;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('JustTCG API error:', response.status, errorText);
+      return NextResponse.json({
+        success: false,
+        error: `JustTCG API error: ${response.status}`,
+        details: errorText,
+      }, { status: response.status });
     }
-  }
 
-  // All endpoints failed
-  console.error('All One Piece API endpoints failed:', errors);
-  return NextResponse.json({ 
-    success: false,
-    error: 'One Piece card API is currently unavailable',
-    message: 'The One Piece TCG API (optcgapi.com) appears to be down. Please try again later or use Magic: The Gathering or Pokémon cards instead.',
-    details: errors.join('; ')
-  }, { status: 503 });
-}
+    const data = await response.json();
 
-function processCards(allCards: any, query: string) {
-  const searchTerm = query.toLowerCase();
-  
-  // Filter cards by name (case-insensitive)
-  const filteredCards = Array.isArray(allCards) 
-    ? allCards.filter((card: any) => {
-        const cardName = (card.name || card.card_name || card.title || '').toLowerCase();
-        const setName = (card.set_name || card.set || card.set_id || '').toLowerCase();
-        return cardName.includes(searchTerm) || setName.includes(searchTerm);
-      })
-    : [];
+    if (!data.data || data.data.length === 0) {
+      return NextResponse.json({
+        success: true,
+        cards: [],
+        message: 'No cards found matching your search',
+      });
+    }
 
-  if (filteredCards.length === 0) {
+    // Map JustTCG response to our card format
+    const cards = data.data.map((card: any) => {
+      // Get the TCGPlayer ID for image URL
+      const tcgplayerId = card.tcgplayerId;
+      
+      // Construct image URL from TCGPlayer CDN
+      const imageUrl = tcgplayerId 
+        ? `https://product-images.tcgplayer.com/fit-in/400x558/${tcgplayerId}.jpg`
+        : '';
+
+      // Extract price from first variant if available
+      const price = card.variants?.[0]?.price || null;
+
+      return {
+        id: card.id,
+        name: card.name || 'Unknown Card',
+        setName: card.set_name || '',
+        setCode: card.set || '',
+        collectorNumber: card.number || '',
+        rarity: card.rarity || 'common',
+        imageUrl: imageUrl,
+        tcgplayerId: tcgplayerId,
+        price: price,
+        type: 'One Piece',
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      cards: [],
-      message: 'No cards found matching your search',
+      cards: cards,
+      total: cards.length,
     });
-  }
 
-  return NextResponse.json({
-    success: true,
-    cards: filteredCards.slice(0, 200).map((card: any) => {
-      // Map various possible field names to our standard format
-      // Try multiple image URL fields based on API response structure
-      const imageUrl = card.image || 
-                      card.image_url || 
-                      card.card_image || 
-                      card.images?.small || 
-                      card.images?.large ||
-                      card.images?.normal ||
-                      card.images?.png ||
-                      card.image_urls?.small ||
-                      card.image_urls?.large ||
-                      '';
-      
-      // Create a TRULY unique ID using set code + collector number
-      const setCode = card.set_code || card.set_id || card.set || 'OP';
-      const collectorNum = String(card.card_number || card.number || card.collector_number || card.id || '');
-      const uniqueId = `optcg-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-');
-      
-      return {
-        id: uniqueId, // Use our unique ID as the primary identifier
-        name: card.name || card.card_name || card.title || 'Unknown Card',
-        setName: card.set_name || card.set || card.set_id || '',
-        setCode: setCode,
-        collectorNumber: collectorNum,
-        rarity: card.rarity || card.card_rarity || card.rarity_name || 'common',
-        imageUrl: imageUrl,
-        colors: card.color 
-          ? (Array.isArray(card.color) ? card.color : [card.color])
-          : (card.colors ? (Array.isArray(card.colors) ? card.colors : [card.colors]) : []),
-        type: card.type || card.card_type || card.types?.[0] || '',
-        price: card.price || card.price_data?.average || null,
-      };
-    }),
-  });
+  } catch (error) {
+    console.error('One Piece API error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if it's a timeout/abort error
+    if (errorMessage.includes('abort')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Request timeout',
+        message: 'The card search took too long. Please try a more specific search term.',
+      }, { status: 504 });
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to search cards',
+      details: errorMessage,
+    }, { status: 500 });
+  }
 }
