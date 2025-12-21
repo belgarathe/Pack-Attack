@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "create-admin": "tsx scripts/create-admin.ts",
     "create-bots": "tsx scripts/create-bots.ts",
+    "create-test-users": "tsx scripts/create-test-users.ts",
     "build:prod": "npm ci && prisma generate && prisma migrate deploy && next build",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",

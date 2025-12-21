@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, User, ShoppingCart, Coins, History, Menu, X } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Menu, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 import { usePathname } from 'next/navigation';
@@ -210,6 +210,15 @@ export function Navigation() {
                   <User className="h-4 w-4" aria-hidden="true" />
                   <span className="truncate-text max-w-[120px]">{session.user.name || session.user.email}</span>
                 </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="text-gray-400 hover:text-red-400 touch-target"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                </Button>
               </>
             ) : (
               <div className="flex items-center gap-2">
@@ -314,6 +323,16 @@ export function Navigation() {
                   <p className="text-sm text-gray-400 truncate">{session.user.email}</p>
                 </div>
               </Link>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  signOut({ callbackUrl: '/login' });
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors touch-target"
+              >
+                <LogOut className="h-5 w-5" aria-hidden="true" />
+                <span className="text-base">Sign Out</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-2 px-4">

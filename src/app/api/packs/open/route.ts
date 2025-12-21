@@ -128,9 +128,20 @@ export async function POST(request: Request) {
       return { pulls, remainingCoins: updatedUser.coins };
     });
 
+    // Convert Decimal values to plain numbers for JSON serialization
+    // Prisma Decimals don't serialize properly without explicit conversion
+    const serializedPulls = result.pulls.map(pull => ({
+      ...pull,
+      cardValue: pull.cardValue ? Number(pull.cardValue) : null,
+      card: pull.card ? {
+        ...pull.card,
+        pullRate: Number(pull.card.pullRate),
+      } : null,
+    }));
+
     return NextResponse.json({
       success: true,
-      pulls: result.pulls,
+      pulls: serializedPulls,
       totalCost,
       remainingCoins: result.remainingCoins,
     });
