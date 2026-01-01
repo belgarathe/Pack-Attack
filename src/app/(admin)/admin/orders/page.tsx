@@ -18,7 +18,16 @@ async function getOrders() {
     },
   });
 
-  return orders;
+  // Serialize dates to strings
+  return orders.map(order => ({
+    ...order,
+    createdAt: order.createdAt.toISOString(),
+    updatedAt: order.updatedAt.toISOString(),
+    items: order.items.map(item => ({
+      ...item,
+      createdAt: item.createdAt.toISOString(),
+    })),
+  }));
 }
 
 export default async function AdminOrdersPage() {
