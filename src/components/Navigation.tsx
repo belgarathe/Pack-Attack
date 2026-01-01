@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, User, ShoppingCart, Coins, History } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 
@@ -163,6 +163,14 @@ export function Navigation() {
                 <User className="h-4 w-4" />
                 <span>{session.user.name || session.user.email}</span>
               </Link>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="text-gray-400 hover:text-white hover:bg-red-500/20"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </>
           ) : (
             <div className="flex items-center gap-2">
