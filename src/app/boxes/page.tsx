@@ -84,13 +84,13 @@ export default async function BoxesPage() {
                 className="group glass rounded-xl overflow-hidden card-lift"
               >
                 {/* Card Preview Section - Fanned Cards */}
-                <div className="relative h-44 bg-gradient-to-b from-gray-800/50 to-gray-900/80 flex items-end justify-center pb-2 overflow-hidden">
+                <div className="relative h-48 bg-gradient-to-b from-gray-800/50 to-gray-900/80 flex items-end justify-center pb-2 overflow-hidden">
                   {/* Background glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 via-transparent to-transparent" />
                   
                   {/* Fanned Cards Display */}
                   {box.cards && box.cards.length > 0 ? (
-                    <div className="relative h-36 w-full flex items-center justify-center">
+                    <div className="relative h-40 w-full flex items-center justify-center">
                       {box.cards.slice(0, 3).map((card, index) => {
                         const rotations = [-15, 0, 15];
                         const translations = [-20, 0, 20];
@@ -104,7 +104,7 @@ export default async function BoxesPage() {
                               zIndex: zIndexes[index],
                             }}
                           >
-                            <div className="relative w-16 h-[88px] rounded-md overflow-hidden border-2 border-gray-600 shadow-lg group-hover:border-amber-400/50 transition-colors bg-gray-800">
+                            <div className="relative w-20 h-[110px] rounded-md overflow-hidden border-2 border-gray-600 shadow-lg group-hover:border-amber-400/50 transition-colors bg-gray-800">
                               {card.imageUrlGatherer ? (
                                 <Image
                                   src={card.imageUrlGatherer}
