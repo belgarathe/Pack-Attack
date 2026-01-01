@@ -127,7 +127,10 @@ export function CartClient({ items, total }: { items: CartItem[]; total: number 
           </div>
 
           <div className="space-y-3">
-            <button className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+            <button 
+              onClick={() => router.push('/checkout')}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
               <CreditCard className="h-5 w-5" />
               Proceed to Checkout
             </button>

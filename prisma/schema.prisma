@@ -25,6 +25,7 @@ model User {
   battlesWon          Battle[]            @relation("BattleWinner")
   battleParticipants  BattleParticipant[]
   cart                Cart?
+  orders              Order[]
   emailsSent          EmailLog[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
@@ -266,5 +267,46 @@ enum EmailStatus {
   DELIVERED
   FAILED
   BOUNCED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  status          OrderStatus @default(PENDING)
+  totalCoins      Int
+  shippingName    String
+  shippingEmail   String
+  shippingAddress String
+  shippingCity    String
+  shippingZip     String
+  shippingCountry String
+  notes           String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  cardName  String
+  cardImage String?
+  coinValue Int
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
 
