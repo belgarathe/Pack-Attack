@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Package, Swords, Users, Mail, ShieldCheck, Coins, TrendingUp } from 'lucide-react';
+import { Package, Swords, Users, Mail, ShieldCheck, Coins, TrendingUp, ShoppingCart } from 'lucide-react';
 
 export default async function AdminDashboard() {
   const session = await getCurrentSession();
@@ -18,13 +18,15 @@ export default async function AdminDashboard() {
     redirect('/dashboard');
   }
 
-  const [boxCount, battleCount, userCount, emailCount, verifiedCount, totalCoins] = await Promise.all([
+  const [boxCount, battleCount, userCount, emailCount, verifiedCount, totalCoins, orderCount, pendingOrders] = await Promise.all([
     prisma.box.count(),
     prisma.battle.count(),
     prisma.user.count({ where: { isBot: false } }),
     prisma.emailLog.count(),
     prisma.user.count({ where: { emailVerified: true, isBot: false } }),
     prisma.user.aggregate({ where: { isBot: false }, _sum: { coins: true } }),
+    prisma.order.count(),
+    prisma.order.count({ where: { status: 'PENDING' } }),
   ]);
 
   return (
@@ -82,7 +84,20 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Management Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+          <Link href="/admin/orders" className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-green-500/50 transition-all group relative">
+            {pendingOrders > 0 && (
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                {pendingOrders}
+              </div>
+            )}
+            <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20">
+              <ShoppingCart className="w-6 h-6 text-green-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">Order Management</h3>
+            <p className="text-gray-400 text-sm">View and process customer orders.</p>
+          </Link>
+
           <Link href="/admin/boxes" className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-blue-500/50 transition-all group">
             <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
               <Package className="w-6 h-6 text-blue-400" />
