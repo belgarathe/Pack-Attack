@@ -72,39 +72,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Prepare card draws before transaction
+    // Deduct coins
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { coins: { decrement: totalCost } },
+    });
+
+    // Create pulls
+    const pulls = [];
     const cardsForDrawing = box.cards.map(card => ({
       id: card.id,
       pullRate: Number(card.pullRate),
     }));
 
-    const cardsToPull: string[] = [];
     for (let i = 0; i < quantity; i++) {
       for (let j = 0; j < box.cardsPerPack; j++) {
-        cardsToPull.push(drawCard(cardsForDrawing));
-      }
-    }
-
-    // Use transaction to ensure data integrity:
-    // Either all operations succeed or none do
-    const result = await prisma.$transaction(async (tx) => {
-      // Deduct coins
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: { coins: { decrement: totalCost } },
-      });
-
-      // Verify user still has enough coins (race condition protection)
-      if (updatedUser.coins < 0) {
-        throw new Error('Insufficient coins');
-      }
-
-      // Create all pulls
-      const pulls = [];
-      for (const cardId of cardsToPull) {
+        const cardId = drawCard(cardsForDrawing);
         const card = box.cards.find(c => c.id === cardId);
+        
         if (card) {
-          const pull = await tx.pull.create({
+          const pull = await prisma.pull.create({
             data: {
               userId: user.id,
               boxId: box.id,
@@ -118,32 +105,19 @@ export async function POST(request: Request) {
           pulls.push(pull);
         }
       }
+    }
 
-      // Update box popularity
-      await tx.box.update({
-        where: { id: box.id },
-        data: { popularity: { increment: quantity } },
-      });
-
-      return { pulls, remainingCoins: updatedUser.coins };
+    // Update box popularity
+    await prisma.box.update({
+      where: { id: box.id },
+      data: { popularity: { increment: quantity } },
     });
-
-    // Convert Decimal values to plain numbers for JSON serialization
-    // Prisma Decimals don't serialize properly without explicit conversion
-    const serializedPulls = result.pulls.map(pull => ({
-      ...pull,
-      cardValue: pull.cardValue ? Number(pull.cardValue) : null,
-      card: pull.card ? {
-        ...pull.card,
-        pullRate: Number(pull.card.pullRate),
-      } : null,
-    }));
 
     return NextResponse.json({
       success: true,
-      pulls: serializedPulls,
+      pulls,
       totalCost,
-      remainingCoins: result.remainingCoins,
+      remainingCoins: user.coins - totalCost,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

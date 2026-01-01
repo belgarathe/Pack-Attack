@@ -364,3 +364,7 @@ echo "🔐 Next: Point pack-attack.de DNS to 82.165.66.236"
 echo "   Then run: certbot --nginx -d pack-attack.de -d www.pack-attack.de"
 
 
+
+
+
+
