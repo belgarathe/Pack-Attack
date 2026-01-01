@@ -307,7 +307,7 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">Shipping</span>
-                  <span className="text-green-400">Free</span>
+                  <span className="text-white">5,00 €</span>
                 </div>
                 <div className="h-px bg-gray-700" />
                 <div className="flex items-center justify-between">

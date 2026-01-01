@@ -114,7 +114,7 @@ export function CartClient({ items, total }: { items: CartItem[]; total: number 
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">Shipping</span>
-              <span className="text-gray-400">Calculated at checkout</span>
+              <span className="text-white">5,00 €</span>
             </div>
             <div className="h-px bg-gray-700" />
             <div className="flex items-center justify-between">
