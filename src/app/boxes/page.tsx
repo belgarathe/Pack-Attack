@@ -66,58 +66,52 @@ export default async function BoxesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {boxes.map((box) => (
               <Link 
                 key={box.id} 
                 href={`/open/${box.id}`}
-                className="group glass rounded-2xl overflow-hidden card-lift"
+                className="group glass rounded-xl overflow-hidden card-lift"
               >
-                <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
                   {box.imageUrl ? (
                     <Image
                       src={box.imageUrl}
                       alt={box.name}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                       unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-16 h-16 text-gray-700" />
+                      <Package className="w-10 h-10 text-gray-700" />
                     </div>
                   )}
                   {box.featured && (
-                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-xs font-bold text-white">
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold text-white">
                       ⭐ Featured
                     </div>
                   )}
                   {box.games && box.games[0] && (
-                    <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold badge-${box.games[0].toLowerCase()}`}>
+                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold badge-${box.games[0].toLowerCase()}`}>
                       {box.games[0]}
                     </div>
                   )}
+                  {/* Price overlay on image */}
+                  <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm flex items-center gap-1">
+                    <Coins className="w-3 h-3 text-amber-400" />
+                    <span className="text-xs font-bold text-amber-400">{box.price.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors line-clamp-1">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors line-clamp-1">
                     {box.name}
                   </h3>
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">{box.description}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 text-amber-400">
-                        <Coins className="w-4 h-4" />
-                        <span className="font-bold">{box.price.toLocaleString()}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">coins</span>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                    <span>{box.cardsPerPack} cards/pack</span>
+                    <div className="flex items-center gap-0.5 text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform">
+                      Open <ChevronRight className="w-3 h-3" />
                     </div>
-                    <div className="flex items-center gap-1 text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                      Open <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between text-sm">
-                    <span className="text-gray-500">{box.cardsPerPack} cards/pack</span>
-                    <span className="text-gray-500">{box._count.cards} total cards</span>
                   </div>
                 </div>
               </Link>

@@ -373,144 +373,69 @@ export default function OpenBoxPage() {
             </div>
           </div>
 
-          {/* What's in the box - Preview */}
+          {/* What's in the box */}
           <div className="glass-strong rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">What's in the box?</h2>
-                {box.cards.length > 0 && (
-                  <p className="text-sm text-gray-400">{box.cards.length} card{box.cards.length !== 1 ? 's' : ''} available</p>
-                )}
-              </div>
-            </div>
+            <h2 className="text-xl font-bold text-white mb-2">What's in the box?</h2>
+            {box.cards.length > 0 && (
+              <p className="text-sm text-gray-400 mb-4">{box.cards.length} card{box.cards.length !== 1 ? 's' : ''} available</p>
+            )}
             
             {box.cards.length > 0 ? (
-              <>
-                {/* Top Value Cards - Highlighted */}
-                {(() => {
-                  const sortedByValue = [...box.cards].sort((a, b) => b.coinValue - a.coinValue);
-                  const topCards = sortedByValue.slice(0, Math.min(5, sortedByValue.length));
-                  const otherCards = sortedByValue.slice(5);
-                  
+              <div className={`grid gap-4 ${
+                box.cards.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
+                box.cards.length === 2 ? 'grid-cols-2 max-w-lg mx-auto' :
+                box.cards.length === 3 ? 'grid-cols-3 max-w-2xl mx-auto' :
+                box.cards.length <= 6 ? 'grid-cols-2 sm:grid-cols-3' :
+                box.cards.length <= 12 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' :
+                'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+              }`}>
+                {box.cards.map((card) => {
+                  const isOpened = openedCardIds.has(card.id);
+                  const isSpinning = isAnimating && spinningCardIds.has(card.id);
+                  const isFeatured = isOpened && featuredCardId === card.id;
+
                   return (
-                    <>
-                      {/* Featured Top Cards */}
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
-                          <span className="text-sm font-semibold text-amber-400 uppercase tracking-wide">Top Value Cards</span>
+                    <div
+                      key={card.id}
+                      className={`relative group transition-transform ${
+                        isOpened ? (isFeatured ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-gray-900 z-10 scale-[1.03]' : 'ring-4 ring-yellow-500 ring-offset-2 ring-offset-gray-900 z-10') : ''
+                      }`}
+                    >
+                      <div
+                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all ${
+                          isOpened ? (isFeatured ? 'border-amber-400 shadow-xl shadow-amber-400/60 scale-110' : 'border-yellow-500 shadow-lg shadow-yellow-500/50 scale-105') :
+                          isSpinning ? 'border-blue-500 shadow-lg shadow-blue-500/50' : 'border-gray-700 hover:border-gray-600'
+                        } ${isSpinning ? 'animate-spin-slow' : ''}`}
+                        style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
+                      >
+                        {card.imageUrlGatherer ? (
+                          <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
+                        ) : (
+                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-600 text-xs">No Image</span>
+                          </div>
+                        )}
+                        {isOpened && <div className={`absolute inset-0 ${isFeatured ? 'bg-amber-400/25' : 'bg-yellow-500/20'} animate-pulse`} />}
+                        {isFeatured && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-gray-900 shadow-lg">
+                            Best Pull
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
+                          <Coins className="h-3 w-3 text-amber-400" />
+                          <span className="text-xs font-bold text-amber-400">{card.coinValue.toLocaleString()}</span>
                         </div>
-                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                          {topCards.map((card, index) => {
-                            const isOpened = openedCardIds.has(card.id);
-                            const isSpinning = isAnimating && spinningCardIds.has(card.id);
-                            const isFeatured = isOpened && featuredCardId === card.id;
-                            
-                            return (
-                              <div
-                                key={card.id}
-                                className={`relative flex-shrink-0 transition-all ${
-                                  isOpened ? (isFeatured ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900 z-10' : 'ring-2 ring-yellow-500 ring-offset-1 ring-offset-gray-900 z-10') : ''
-                                }`}
-                              >
-                                <div
-                                  className={`relative w-20 aspect-[63/88] rounded-lg overflow-hidden border transition-all ${
-                                    index === 0 ? 'border-amber-400/60' :
-                                    index < 3 ? 'border-purple-400/40' : 'border-gray-600'
-                                  } ${isOpened ? (isFeatured ? 'border-amber-400 shadow-lg shadow-amber-400/40' : 'border-yellow-500 shadow-md shadow-yellow-500/30') : ''}
-                                  ${isSpinning ? 'animate-spin-slow border-blue-500 shadow-md shadow-blue-500/40' : ''}`}
-                                  style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
-                                >
-                                  {card.imageUrlGatherer ? (
-                                    <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                      <span className="text-gray-600 text-[8px]">No Img</span>
-                                    </div>
-                                  )}
-                                  {isOpened && <div className={`absolute inset-0 ${isFeatured ? 'bg-amber-400/25' : 'bg-yellow-500/20'} animate-pulse`} />}
-                                  {/* Rank badge */}
-                                  {index < 3 && (
-                                    <div className={`absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                      index === 0 ? 'bg-amber-400 text-gray-900' :
-                                      index === 1 ? 'bg-gray-300 text-gray-900' :
-                                      'bg-amber-700 text-white'
-                                    }`}>
-                                      {index + 1}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="mt-1.5 text-center w-20">
-                                  <p className="text-[10px] font-medium text-white truncate leading-tight">{card.name}</p>
-                                  <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <Coins className="h-2.5 w-2.5 text-amber-400" />
-                                    <span className={`text-[10px] font-bold ${index === 0 ? 'text-amber-400' : 'text-gray-300'}`}>
-                                      {card.coinValue.toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="absolute top-2 right-2 bg-black/80 rounded-lg px-2 py-1">
+                          <span className="text-xs font-bold text-white">{card.pullRate.toFixed(3)}%</span>
                         </div>
                       </div>
-
-                      {/* All Other Cards - Compact Grid */}
-                      {otherCards.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
-                            <span className="text-sm font-medium text-gray-400">All Cards ({otherCards.length})</span>
-                          </div>
-                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-                            {otherCards.map((card) => {
-                              const isOpened = openedCardIds.has(card.id);
-                              const isSpinning = isAnimating && spinningCardIds.has(card.id);
-                              const isFeatured = isOpened && featuredCardId === card.id;
-                              
-                              return (
-                                <div
-                                  key={card.id}
-                                  className={`relative group transition-all ${
-                                    isOpened ? (isFeatured ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900 z-10' : 'ring-2 ring-yellow-500 ring-offset-1 ring-offset-gray-900 z-10') : ''
-                                  }`}
-                                  title={`${card.name} - ${card.coinValue} coins (${card.pullRate.toFixed(3)}%)`}
-                                >
-                                  <div
-                                    className={`relative aspect-[63/88] rounded-md overflow-hidden border transition-all ${
-                                      isOpened ? (isFeatured ? 'border-amber-400 shadow-md shadow-amber-400/40' : 'border-yellow-500 shadow-sm shadow-yellow-500/30') :
-                                      isSpinning ? 'border-blue-500 shadow-sm shadow-blue-500/40' : 'border-gray-700 hover:border-gray-500'
-                                    } ${isSpinning ? 'animate-spin-slow' : ''}`}
-                                    style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
-                                  >
-                                    {card.imageUrlGatherer ? (
-                                      <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
-                                    ) : (
-                                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                                        <span className="text-gray-600 text-[6px]">?</span>
-                                      </div>
-                                    )}
-                                    {isOpened && <div className={`absolute inset-0 ${isFeatured ? 'bg-amber-400/25' : 'bg-yellow-500/20'} animate-pulse`} />}
-                                    {/* Hover tooltip overlay */}
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                      <div className="text-center p-1">
-                                        <div className="flex items-center justify-center gap-0.5">
-                                          <Coins className="h-2 w-2 text-amber-400" />
-                                          <span className="text-[8px] font-bold text-amber-400">{card.coinValue}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                      <div className="mt-2 text-center">
+                        <p className="text-sm font-semibold text-white truncate">{card.name}</p>
+                      </div>
+                    </div>
                   );
-                })()}
-              </>
+                })}
+              </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
                 <p>No cards available in this box yet.</p>
