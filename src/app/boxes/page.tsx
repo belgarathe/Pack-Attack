@@ -19,6 +19,16 @@ async function getBoxes() {
       include: {
         _count: {
           select: { cards: true }
+        },
+        cards: {
+          orderBy: { coinValue: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            name: true,
+            imageUrlGatherer: true,
+            coinValue: true,
+          }
         }
       }
     });
@@ -66,52 +76,97 @@ export default async function BoxesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {boxes.map((box) => (
               <Link 
                 key={box.id} 
                 href={`/open/${box.id}`}
                 className="group glass rounded-xl overflow-hidden card-lift"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
-                  {box.imageUrl ? (
-                    <Image
-                      src={box.imageUrl}
-                      alt={box.name}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      unoptimized
-                    />
+                {/* Card Preview Section - Fanned Cards */}
+                <div className="relative h-44 bg-gradient-to-b from-gray-800/50 to-gray-900/80 flex items-end justify-center pb-2 overflow-hidden">
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 via-transparent to-transparent" />
+                  
+                  {/* Fanned Cards Display */}
+                  {box.cards && box.cards.length > 0 ? (
+                    <div className="relative h-36 w-full flex items-center justify-center">
+                      {box.cards.slice(0, 3).map((card, index) => {
+                        const rotations = [-15, 0, 15];
+                        const translations = [-20, 0, 20];
+                        const zIndexes = [1, 3, 2];
+                        return (
+                          <div
+                            key={card.id}
+                            className="absolute transition-transform duration-300 group-hover:scale-105"
+                            style={{
+                              transform: `rotate(${rotations[index]}deg) translateX(${translations[index]}px)`,
+                              zIndex: zIndexes[index],
+                            }}
+                          >
+                            <div className="relative w-16 h-[88px] rounded-md overflow-hidden border-2 border-gray-600 shadow-lg group-hover:border-amber-400/50 transition-colors bg-gray-800">
+                              {card.imageUrlGatherer ? (
+                                <Image
+                                  src={card.imageUrlGatherer}
+                                  alt={card.name}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                                  <span className="text-[8px] text-gray-500">?</span>
+                                </div>
+                              )}
+                              {/* Value badge on top card */}
+                              {index === 1 && (
+                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-black/80 flex items-center gap-0.5">
+                                  <Coins className="w-2 h-2 text-amber-400" />
+                                  <span className="text-[8px] font-bold text-amber-400">{card.coinValue}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-10 h-10 text-gray-700" />
+                    <div className="flex items-center justify-center h-full">
+                      <Package className="w-12 h-12 text-gray-600" />
                     </div>
                   )}
+
+                  {/* Badges */}
                   {box.featured && (
-                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold text-white">
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold text-white z-10">
                       ⭐ Featured
                     </div>
                   )}
                   {box.games && box.games[0] && (
-                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold badge-${box.games[0].toLowerCase()}`}>
+                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold badge-${box.games[0].toLowerCase()} z-10`}>
                       {box.games[0]}
                     </div>
                   )}
-                  {/* Price overlay on image */}
-                  <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm flex items-center gap-1">
-                    <Coins className="w-3 h-3 text-amber-400" />
-                    <span className="text-xs font-bold text-amber-400">{box.price.toLocaleString()}</span>
-                  </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors line-clamp-1">
+
+                {/* Box Info */}
+                <div className="p-4 border-t border-gray-800">
+                  <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors line-clamp-1">
                     {box.name}
                   </h3>
-                  <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>{box.cardsPerPack} cards/pack</span>
-                    <div className="flex items-center gap-0.5 text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Coins className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-bold text-amber-400">{box.price.toLocaleString()}</span>
+                      <span className="text-xs text-gray-500">coins</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 text-blue-400 text-xs font-medium group-hover:translate-x-0.5 transition-transform">
                       Open <ChevronRight className="w-3 h-3" />
                     </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-800/50 flex items-center justify-between text-[11px] text-gray-500">
+                    <span>{box.cardsPerPack} cards/pack</span>
+                    <span>{box._count.cards} total</span>
                   </div>
                 </div>
               </Link>
