@@ -160,14 +160,14 @@ export default function CreateBattlePage() {
                     key={count}
                     type="button"
                     onClick={() => setFormData({ ...formData, players: count })}
-                    className={`rounded-xl border-2 p-4 text-center transition-all ${
+                    className={`rounded-xl border-2 p-4 text-center transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
                       formData.players === count
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-400'
-                        : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+                        ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 text-purple-300 shadow-purple-500/25'
+                        : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-gray-300 hover:border-purple-400/50 hover:bg-gray-700/70'
                     }`}
                   >
-                    <div className="text-2xl font-bold mb-1">{count}</div>
-                    <div className="text-sm">players</div>
+                    <div className="text-3xl font-bold mb-1">{count}</div>
+                    <div className="text-sm font-medium uppercase tracking-wide">players</div>
                   </button>
                 ))}
               </div>
@@ -190,10 +190,10 @@ export default function CreateBattlePage() {
                         key={box.id}
                         type="button"
                         onClick={() => toggleBox(box.id)}
-                        className={`group relative rounded-xl border-2 p-4 text-left transition-all ${
+                        className={`group relative rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
                           isSelected
-                            ? 'border-purple-500 bg-purple-500/10'
-                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                            ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
+                            : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
                         }`}
                       >
                         <div className="mb-3 flex items-center justify-between">
@@ -201,9 +201,13 @@ export default function CreateBattlePage() {
                             <Coins className="w-4 h-4" />
                             <span className="font-bold">{box.price.toLocaleString()}</span>
                           </div>
-                          {isSelected && (
-                            <div className="px-2 py-1 rounded-full bg-purple-500 text-xs font-bold text-white">
-                              Selected
+                          {isSelected ? (
+                            <div className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-xs font-bold text-white shadow-lg">
+                              ✓ Selected
+                            </div>
+                          ) : (
+                            <div className="px-3 py-1 rounded-full border border-gray-500 text-xs font-medium text-gray-400 group-hover:border-purple-400/50 group-hover:text-purple-300">
+                              Click to Select
                             </div>
                           )}
                         </div>
@@ -225,20 +229,23 @@ export default function CreateBattlePage() {
               <div className="grid gap-3 md:grid-cols-2">
                 {winConditions.map((condition) => {
                   const Icon = condition.icon;
+                  const isActive = formData.winCondition === condition.value;
                   return (
                     <button
                       key={condition.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, winCondition: condition.value as any })}
-                      className={`rounded-xl border-2 p-4 text-left transition-all ${
-                        formData.winCondition === condition.value
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                      className={`rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
+                        isActive
+                          ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
+                          : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <Icon className={`w-4 h-4 ${formData.winCondition === condition.value ? 'text-purple-400' : 'text-gray-500'}`} />
-                        <span className="font-semibold text-white">{condition.label}</span>
+                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-purple-500/30' : 'bg-gray-700/50'}`}>
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-purple-300' : 'text-gray-400'}`} />
+                        </div>
+                        <span className={`font-semibold ${isActive ? 'text-purple-300' : 'text-white'}`}>{condition.label}</span>
                       </div>
                       <p className="text-sm text-gray-400">{condition.description}</p>
                     </button>
@@ -259,20 +266,23 @@ export default function CreateBattlePage() {
                   { value: 'PRIVATE', label: 'Private', description: 'Hidden from list', icon: Lock },
                 ].map((option) => {
                   const Icon = option.icon;
+                  const isActive = formData.privacy === option.value;
                   return (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, privacy: option.value as any })}
-                      className={`rounded-xl border-2 p-4 text-left transition-all ${
-                        formData.privacy === option.value
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                      className={`rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
+                        isActive
+                          ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
+                          : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <Icon className={`w-4 h-4 ${formData.privacy === option.value ? 'text-purple-400' : 'text-gray-500'}`} />
-                        <span className="font-semibold text-white">{option.label}</span>
+                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-purple-500/30' : 'bg-gray-700/50'}`}>
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-purple-300' : 'text-gray-400'}`} />
+                        </div>
+                        <span className={`font-semibold ${isActive ? 'text-purple-300' : 'text-white'}`}>{option.label}</span>
                       </div>
                       <p className="text-sm text-gray-400">{option.description}</p>
                     </button>
@@ -308,25 +318,25 @@ export default function CreateBattlePage() {
 
               {/* Rounds Control */}
               <div className="mb-6">
-                <span className="text-gray-400 text-sm block mb-3">Rounds</span>
+                <span className="text-gray-300 text-sm font-medium block mb-3">Rounds</span>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, rounds: Math.max(1, formData.rounds - 1) })}
-                    className="w-12 h-12 rounded-xl border border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700 transition-colors flex items-center justify-center"
+                    className="w-14 h-14 rounded-xl border-2 border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white hover:border-purple-400/50 hover:bg-gray-700/70 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center"
                   >
-                    <Minus className="w-5 h-5" />
+                    <Minus className="w-6 h-6" />
                   </button>
-                  <div className="flex-1 text-center">
-                    <span className="text-2xl font-bold text-white">{formData.rounds}</span>
-                    <span className="text-gray-400 text-sm block">round{formData.rounds !== 1 ? 's' : ''}</span>
+                  <div className="flex-1 text-center py-3 px-4 rounded-xl bg-gray-800/50 border border-gray-700">
+                    <span className="text-3xl font-bold text-white">{formData.rounds}</span>
+                    <span className="text-gray-400 text-sm block mt-1">round{formData.rounds !== 1 ? 's' : ''}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, rounds: formData.rounds + 1 })}
-                    className="w-12 h-12 rounded-xl border border-gray-700 bg-gray-800/50 text-white hover:bg-gray-700 transition-colors flex items-center justify-center"
+                    className="w-14 h-14 rounded-xl border-2 border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white hover:border-purple-400/50 hover:bg-gray-700/70 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-6 h-6" />
                   </button>
                 </div>
               </div>
@@ -345,13 +355,13 @@ export default function CreateBattlePage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || selectedBoxes.length === 0}
-                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                className="w-full py-5 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white font-bold text-lg rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 border-2 border-purple-400/30"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Swords className="w-5 h-5" />
+                    <Swords className="w-6 h-6" />
                     Create Battle
                   </>
                 )}

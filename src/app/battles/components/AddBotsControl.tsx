@@ -57,12 +57,15 @@ export function AddBotsControl({ battleId, maxAddable }: AddBotsControlProps) {
   };
 
   return (
-    <div className="rounded-lg border border-amber-600/40 bg-amber-500/5 p-4">
-      <div className="mb-2 text-sm font-semibold text-amber-300">Admin Testing Tool</div>
+    <div className="rounded-xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-900/30 to-amber-800/10 p-5 shadow-lg shadow-amber-500/10">
+      <div className="mb-2 text-base font-bold text-amber-300 flex items-center gap-2">
+        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-xs uppercase tracking-wider">Admin Only</span>
+        Testing Tool
+      </div>
       <p className="mb-4 text-sm text-gray-300">
         Instantly fill open slots with testing bots to simulate a full lobby.
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex items-center gap-2 text-sm text-gray-300">
           Bots to add:
           <input
@@ -71,19 +74,22 @@ export function AddBotsControl({ battleId, maxAddable }: AddBotsControlProps) {
             max={maxAddable}
             value={count}
             onChange={(event) => handleCountChange(parseInt(event.target.value, 10))}
-            className="w-20 rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-center text-white"
+            className="w-20 rounded-lg border-2 border-gray-600 bg-gray-900 px-3 py-2 text-center text-white font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
         </label>
         <Button
           type="button"
           onClick={handleAddBots}
           disabled={submitting}
-          className="flex-1"
+          className="flex-1 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-amber-500/30 border border-amber-400/30"
         >
-          {submitting ? 'Adding...' : 'Add Bots'}
+          {submitting ? 'Adding Bots...' : `Add ${count} Bot${count > 1 ? 's' : ''}`}
         </Button>
       </div>
-      <p className="mt-2 text-xs text-gray-400">Open slots available: {maxAddable}</p>
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="text-gray-400">Open slots available: <span className="text-amber-400 font-bold">{maxAddable}</span></span>
+        <span className="text-green-400">✓ 8 bots ready</span>
+      </div>
     </div>
   );
 }
