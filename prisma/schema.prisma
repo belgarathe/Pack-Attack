@@ -80,9 +80,9 @@ model Pull {
   userId    String
   user      User        @relation(fields: [userId], references: [id])
   boxId     String
-  box       Box         @relation(fields: [boxId], references: [id])
+  box       Box         @relation(fields: [boxId], references: [id], onDelete: Cascade)
   cardId    String?
-  card      Card?       @relation(fields: [cardId], references: [id])
+  card      Card?       @relation(fields: [cardId], references: [id], onDelete: SetNull)
   cardValue Decimal?    @db.Decimal(10, 2)
   timestamp DateTime    @default(now())
   battlePull BattlePull?
@@ -151,7 +151,7 @@ model Battle {
   creatorId         String
   creator           User                @relation("BattleCreator", fields: [creatorId], references: [id])
   boxId             String
-  box               Box                 @relation(fields: [boxId], references: [id])
+  box               Box                 @relation(fields: [boxId], references: [id], onDelete: Cascade)
   entryFee          Int                 @default(0)
   maxParticipants   Int                 @default(4)
   rounds            Int                 @default(1)
