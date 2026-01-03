@@ -49,6 +49,94 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ pullRate: number; coinValue: number }>({ pullRate: 0, coinValue: 1 });
   const [savingCard, setSavingCard] = useState(false);
+  
+  // Bulk editing state - allows editing all cards at once
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkEditValues, setBulkEditValues] = useState<Record<string, { pullRate: number; coinValue: number }>>({});
+  const [savingBulk, setSavingBulk] = useState(false);
+
+  // Initialize bulk edit values when entering bulk edit mode
+  const enterBulkEditMode = () => {
+    const values: Record<string, { pullRate: number; coinValue: number }> = {};
+    existingCards.forEach(card => {
+      values[card.id] = { pullRate: card.pullRate, coinValue: card.coinValue };
+    });
+    setBulkEditValues(values);
+    setBulkEditMode(true);
+  };
+
+  const exitBulkEditMode = () => {
+    setBulkEditMode(false);
+    setBulkEditValues({});
+  };
+
+  const updateBulkValue = (cardId: string, field: 'pullRate' | 'coinValue', value: number) => {
+    setBulkEditValues(prev => ({
+      ...prev,
+      [cardId]: { ...prev[cardId], [field]: value }
+    }));
+  };
+
+  const getBulkEditTotal = () => {
+    return Object.values(bulkEditValues).reduce((sum, v) => sum + (v.pullRate || 0), 0);
+  };
+
+  const saveBulkChanges = async () => {
+    setSavingBulk(true);
+    try {
+      const updates = Object.entries(bulkEditValues).map(([cardId, values]) => 
+        fetch(`/api/admin/boxes/${boxId}/cards/${cardId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pullRate: values.pullRate,
+            coinValue: values.coinValue,
+          }),
+        })
+      );
+
+      const results = await Promise.all(updates);
+      const failed = results.filter(r => !r.ok);
+      
+      if (failed.length > 0) {
+        addToast({
+          title: 'Partial Success',
+          description: `${results.length - failed.length} cards updated, ${failed.length} failed`,
+          variant: 'destructive',
+        });
+      } else {
+        addToast({
+          title: 'Success',
+          description: `All ${results.length} cards updated successfully`,
+        });
+      }
+
+      exitBulkEditMode();
+      onCardsChange();
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to save changes',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
+  const distributeBulkEvenly = () => {
+    const cardCount = Object.keys(bulkEditValues).length;
+    if (cardCount === 0) return;
+    
+    const ratePerCard = parseFloat((100 / cardCount).toFixed(3));
+    const newValues: Record<string, { pullRate: number; coinValue: number }> = {};
+    
+    Object.entries(bulkEditValues).forEach(([cardId, values]) => {
+      newValues[cardId] = { ...values, pullRate: ratePerCard };
+    });
+    
+    setBulkEditValues(newValues);
+  };
 
   const gameOptions = [
     { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering', defaultApi: 'Scryfall' },
@@ -764,23 +852,62 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
       {/* Existing Cards */}
       <Card className="border-gray-800 bg-gray-900/50">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <CardTitle className="text-white">Existing Cards ({existingCards.length})</CardTitle>
             {existingCards.length > 0 && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  Total Pull Rate: <span className={Math.abs(existingCards.reduce((sum, c) => sum + c.pullRate, 0) - 100) < 0.001 ? 'text-green-500' : 'text-yellow-500'}>
-                    {existingCards.reduce((sum, c) => sum + c.pullRate, 0).toFixed(3)}%
+                  Total Pull Rate: <span className={Math.abs((bulkEditMode ? getBulkEditTotal() : existingCards.reduce((sum, c) => sum + c.pullRate, 0)) - 100) < 0.001 ? 'text-green-500 font-bold' : 'text-yellow-500 font-bold'}>
+                    {(bulkEditMode ? getBulkEditTotal() : existingCards.reduce((sum, c) => sum + c.pullRate, 0)).toFixed(3)}%
                   </span>
                 </p>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={redistributeExistingRates}
-                  title="Distribute pull rates evenly across all cards"
-                >
-                  Redistribute Evenly
-                </Button>
+                {bulkEditMode ? (
+                  <>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={distributeBulkEvenly}
+                    >
+                      Auto-Distribute 100%
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={saveBulkChanges}
+                      disabled={savingBulk}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {savingBulk ? 'Saving...' : 'Save All Changes'}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={exitBulkEditMode}
+                      disabled={savingBulk}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      size="sm" 
+                      onClick={enterBulkEditMode}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit All Rates
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={redistributeExistingRates}
+                      title="Distribute pull rates evenly across all cards"
+                    >
+                      Redistribute Evenly
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -788,7 +915,89 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
         <CardContent>
           {existingCards.length === 0 ? (
             <p className="text-gray-400 text-center py-8">No cards in this box yet.</p>
+          ) : bulkEditMode ? (
+            /* BULK EDIT MODE - Show all cards with editable inputs */
+            <div className="space-y-2">
+              <div className="grid grid-cols-12 gap-2 px-2 py-1 bg-gray-800 rounded text-xs text-gray-400 font-semibold">
+                <div className="col-span-1">Image</div>
+                <div className="col-span-4">Card Name</div>
+                <div className="col-span-3">Pull Rate %</div>
+                <div className="col-span-3">Coin Value</div>
+                <div className="col-span-1"></div>
+              </div>
+              {existingCards.map((card) => (
+                <div key={card.id} className="grid grid-cols-12 gap-2 items-center px-2 py-2 bg-gray-800/50 rounded hover:bg-gray-800">
+                  <div className="col-span-1">
+                    <div className="relative w-10 h-14 rounded overflow-hidden">
+                      {card.imageUrlGatherer ? (
+                        <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
+                      ) : (
+                        <div className="w-full h-full bg-gray-700" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-span-4">
+                    <p className="text-sm text-white truncate" title={card.name}>{card.name}</p>
+                    <p className="text-xs text-gray-500">{card.rarity}</p>
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      max="100"
+                      value={bulkEditValues[card.id]?.pullRate ?? card.pullRate}
+                      onChange={(e) => updateBulkValue(card.id, 'pullRate', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-600 text-white text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      min="1"
+                      value={bulkEditValues[card.id]?.coinValue ?? card.coinValue}
+                      onChange={(e) => updateBulkValue(card.id, 'coinValue', parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-600 text-white text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveCard(card.id)}
+                      disabled={removingCardId === card.id}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+                <div className="text-sm">
+                  <span className="text-gray-400">Total: </span>
+                  <span className={Math.abs(getBulkEditTotal() - 100) < 0.001 ? 'text-green-500 font-bold text-lg' : 'text-yellow-500 font-bold text-lg'}>
+                    {getBulkEditTotal().toFixed(3)}%
+                  </span>
+                  {Math.abs(getBulkEditTotal() - 100) >= 0.001 && (
+                    <span className="text-yellow-500 ml-2">
+                      ({getBulkEditTotal() < 100 ? `${(100 - getBulkEditTotal()).toFixed(3)}% remaining` : `${(getBulkEditTotal() - 100).toFixed(3)}% over`})
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={distributeBulkEvenly}>
+                    Auto-Distribute 100%
+                  </Button>
+                  <Button onClick={saveBulkChanges} disabled={savingBulk} className="bg-green-600 hover:bg-green-700">
+                    <Save className="h-4 w-4 mr-2" />
+                    {savingBulk ? 'Saving...' : 'Save All Changes'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : (
+            /* NORMAL VIEW MODE */
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {existingCards.map((card) => (
                 <div key={card.id} className="relative group">
