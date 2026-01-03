@@ -50,27 +50,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Card not found in this box' }, { status: 404 });
     }
 
-    // If updating pull rate, check total doesn't exceed 100%
-    if (validatedData.pullRate !== undefined) {
-      const otherCards = await prisma.card.findMany({
-        where: {
-          boxId: boxId,
-          id: { not: cardId },
-        },
-      });
-
-      const otherCardsTotal = otherCards.reduce((sum, card) => sum + Number(card.pullRate), 0);
-      const newTotal = otherCardsTotal + validatedData.pullRate;
-
-      if (newTotal > 100.01) { // Allow tiny floating point errors
-        return NextResponse.json(
-          { 
-            error: `Total pull rate would exceed 100%. Current other cards: ${otherCardsTotal.toFixed(3)}%, New rate: ${validatedData.pullRate}%, Total would be: ${newTotal.toFixed(3)}%` 
-          },
-          { status: 400 }
-        );
-      }
-    }
+    // Note: We no longer block saves that exceed 100% total
+    // This allows admins to freely adjust rates, then balance them
+    // The UI shows warnings if total != 100%
 
     // Update the card
     const updatedCard = await prisma.card.update({
