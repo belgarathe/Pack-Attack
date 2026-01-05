@@ -43,15 +43,20 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
     'all': 'All Games',
     'pokemon': 'Pokémon',
     'magic': 'Magic: The Gathering',
+    'magic_the_gathering': 'Magic: The Gathering',
     'yugioh': 'Yu-Gi-Oh!',
     'onepiece': 'One Piece',
+    'one_piece': 'One Piece',
     'lorcana': 'Disney Lorcana',
     'digimon': 'Digimon',
     'sports': 'Sports Cards',
+    'flesh_and_blood': 'Flesh & Blood',
+    'fleshblood': 'Flesh & Blood',
   };
 
   const getGameDisplayName = (game: string) => {
-    return gameDisplayNames[game.toLowerCase()] || game;
+    const normalized = game.toLowerCase().replace(/-/g, '_');
+    return gameDisplayNames[normalized] || game.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
   };
 
   return (
@@ -268,15 +273,20 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
 }
 
 function getGameBadgeColor(game: string): string {
+  const normalized = game.toLowerCase().replace(/-/g, '_');
   const colors: Record<string, string> = {
     pokemon: 'bg-yellow-400',
     magic: 'bg-purple-500',
+    magic_the_gathering: 'bg-purple-500',
     yugioh: 'bg-orange-500',
     onepiece: 'bg-red-500',
+    one_piece: 'bg-red-500',
     lorcana: 'bg-blue-500',
     digimon: 'bg-cyan-400',
     sports: 'bg-green-500',
+    flesh_and_blood: 'bg-rose-500',
+    fleshblood: 'bg-rose-500',
   };
-  return colors[game.toLowerCase()] || 'bg-gray-400';
+  return colors[normalized] || 'bg-gray-400';
 }
 
