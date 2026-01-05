@@ -129,11 +129,14 @@ model Transaction {
   user            User          @relation(fields: [userId], references: [id])
   amount          Decimal       @db.Decimal(10, 2)
   coins           Int
+  paypalOrderId   String?       @unique
+  paypalPayerId   String?
   stripePaymentId String?       @unique
   status          PaymentStatus
   timestamp       DateTime      @default(now())
 
   @@index([userId])
+  @@index([paypalOrderId])
 }
 
 enum Role {
