@@ -210,7 +210,7 @@ export default function PurchaseCoinsPage() {
 
         {/* Packages Grid */}
         <div 
-          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
@@ -306,15 +306,17 @@ export default function PurchaseCoinsPage() {
 
         {/* Purchase Summary */}
         <div 
-          className="w-full flex justify-center"
           style={{ 
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
             marginBottom: '96px',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
           }}
         >
-          <div className="w-full max-w-md">
+          <div style={{ width: '100%', maxWidth: '28rem' }}>
           <div className={`relative rounded-3xl bg-gray-900/80 backdrop-blur-xl border border-white/10 p-8 shadow-2xl`}>
             {/* Glow Effect */}
             <div className={`absolute -inset-0.5 bg-gradient-to-r ${selectedPackage.gradient} rounded-3xl blur opacity-20 -z-10`} />
