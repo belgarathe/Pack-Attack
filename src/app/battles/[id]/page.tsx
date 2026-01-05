@@ -14,7 +14,21 @@ async function getBattle(id: string) {
           user: { select: { id: true, name: true, email: true, isBot: true } },
         },
       },
-      box: true,
+      box: {
+        include: {
+          cards: {
+            orderBy: { coinValue: 'desc' },
+            take: 3,
+            select: {
+              id: true,
+              name: true,
+              imageUrlGatherer: true,
+              imageUrlScryfall: true,
+              coinValue: true,
+            }
+          }
+        }
+      },
       winner: { select: { id: true, name: true, email: true } },
       pulls: {
         include: {
