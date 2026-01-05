@@ -306,23 +306,25 @@ export default function PurchaseCoinsPage() {
           </div>
         </div>
 
-        {/* Spacer with visual divider */}
-        <div className="max-w-3xl mx-auto my-20">
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        </div>
+        {/* Purchase Summary Section */}
+        <section className="pt-20 pb-8">
+          {/* Visual divider */}
+          <div className="max-w-3xl mx-auto mb-12">
+            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          </div>
 
-        {/* Purchase Summary Card */}
-        <div 
-          className="max-w-lg mx-auto"
-          style={{ 
-            opacity: mounted ? 1 : 0,
-            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
-          }}
-        >
-          <div className="relative">
-            {/* Glow Effect */}
-            <div className={`absolute -inset-1 bg-gradient-to-r ${selectedPackage.gradient} rounded-[2rem] blur-xl opacity-20`} />
+          {/* Purchase Summary Card */}
+          <div 
+            className="max-w-lg mx-auto"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
+            }}
+          >
+            <div className="relative">
+              {/* Glow Effect */}
+              <div className={`absolute -inset-1 bg-gradient-to-r ${selectedPackage.gradient} rounded-[2rem] blur-xl opacity-20`} />
             
             {/* Card */}
             <div className="relative glass-strong rounded-3xl p-8 border border-white/10">
@@ -395,7 +397,8 @@ export default function PurchaseCoinsPage() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </section>
 
         {/* Features Section */}
         <div 
