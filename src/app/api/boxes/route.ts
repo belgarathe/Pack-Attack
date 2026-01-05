@@ -46,7 +46,17 @@ export async function GET(request: Request) {
       include: {
         cards: {
           orderBy: { coinValue: 'desc' },
-          take: 1,
+          take: 3,
+          select: {
+            id: true,
+            name: true,
+            imageUrlGatherer: true,
+            imageUrlScryfall: true,
+            coinValue: true,
+          },
+        },
+        _count: {
+          select: { cards: true },
         },
       },
       orderBy: [
