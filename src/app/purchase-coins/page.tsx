@@ -168,7 +168,7 @@ export default function PurchaseCoinsPage() {
             <span className="text-white">Get </span>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400">Coins</span>
           </h1>
-          <p className="text-gray-400 text-xl max-w-2xl mx-auto leading-relaxed">
+          <p className="text-gray-400 text-xl leading-relaxed" style={{ maxWidth: '42rem', margin: '0 auto' }}>
             Unlock packs, join epic battles, and build your ultimate trading card collection
           </p>
         </div>
