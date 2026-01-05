@@ -1,15 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createCheckoutSession, getPackageByPrice, isStripeConfigured } from '@/lib/stripe';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 const createCheckoutSchema = z.object({
   price: z.number().min(5).max(500),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting - 3 payment attempts per minute
+    const rateLimitResult = await rateLimit(request, 'payment');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     // Check if Stripe is configured
     if (!isStripeConfigured()) {
       return NextResponse.json(

@@ -1,16 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createPayPalOrder, isPayPalConfigured } from '@/lib/paypal';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 const createOrderSchema = z.object({
   amount: z.number().min(5).max(500), // 5 to 500 euros
   coins: z.number().min(500).max(50000),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting - 3 payment attempts per minute
+    const rateLimitResult = await rateLimit(request, 'payment');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     // Check if PayPal is configured
     if (!isPayPalConfigured()) {
       return NextResponse.json(

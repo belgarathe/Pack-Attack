@@ -85,8 +85,8 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
               />
               
               {/* Dropdown */}
-              <div className="absolute top-full left-0 mt-2 w-full min-w-[260px] glass-strong rounded-xl overflow-hidden z-50 border border-white/10 shadow-2xl">
-                <div className="max-h-[400px] overflow-y-auto py-2">
+              <div className="absolute top-full left-0 mt-2 w-full min-w-[260px] rounded-xl overflow-hidden z-50 border border-gray-700 shadow-2xl bg-gray-900">
+                <div className="max-h-[400px] overflow-y-auto py-2 bg-gray-900">
                   {/* All Games option */}
                   <button
                     onClick={() => {
@@ -95,8 +95,8 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                     }}
                     className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
                       selectedGame === 'all' 
-                        ? 'bg-blue-500/20 text-blue-400' 
-                        : 'text-gray-300 hover:bg-white/5'
+                        ? 'bg-blue-600/30 text-blue-400' 
+                        : 'text-gray-300 hover:bg-gray-800'
                     }`}
                   >
                     <Package className="w-4 h-4" />
@@ -105,7 +105,7 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                   </button>
 
                   {/* Divider */}
-                  <div className="my-2 border-t border-white/10" />
+                  <div className="my-2 border-t border-gray-700" />
 
                   {/* Game options */}
                   {availableGames.map(game => {
@@ -119,8 +119,8 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                         }}
                         className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
                           selectedGame === game 
-                            ? 'bg-blue-500/20 text-blue-400' 
-                            : 'text-gray-300 hover:bg-white/5'
+                            ? 'bg-blue-600/30 text-blue-400' 
+                            : 'text-gray-300 hover:bg-gray-800'
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full ${getGameBadgeColor(game)}`} />

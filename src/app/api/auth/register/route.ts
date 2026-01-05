@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { sendVerificationEmail, generateVerificationToken } from '@/lib/email';
+import { rateLimit } from '@/lib/rate-limit';
 
 const registerSchema = z.object({
   name: z.string().optional(),
@@ -10,7 +11,12 @@ const registerSchema = z.object({
   password: z.string().min(6),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Apply rate limiting - 5 attempts per 15 minutes
+  const rateLimitResult = await rateLimit(request, 'auth');
+  if (!rateLimitResult.success && rateLimitResult.response) {
+    return rateLimitResult.response;
+  }
   try {
     const body = await request.json();
     const data = registerSchema.parse(body);
