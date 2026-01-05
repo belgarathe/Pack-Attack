@@ -391,8 +391,9 @@ export default function PurchaseCoinsPage() {
 
         {/* Features Section */}
         <div 
-          style={{ maxWidth: '896px', margin: '0 auto' }}
           style={{ 
+            maxWidth: '896px', 
+            margin: '0 auto',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 600ms, transform 0.6s ease 600ms'
