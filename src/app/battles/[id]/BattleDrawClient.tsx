@@ -690,5 +690,3 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     </div>
   );
 }
-
-}
