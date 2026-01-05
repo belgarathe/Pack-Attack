@@ -212,7 +212,7 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
                           <span className="text-lg font-bold text-white">
                             {participant.user?.name || participant.user?.email || 'Unknown'}
                           </span>
-                          {participant.user?.isBot && (
+                          {isAdmin && participant.user?.isBot && (
                             <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold">
                               Bot
                             </span>

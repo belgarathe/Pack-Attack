@@ -386,7 +386,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                     <p className="text-purple-400 font-semibold mb-1">Round {currentReveal.roundNumber}</p>
                     <p className="text-2xl font-bold text-white">
                       {currentReveal.participantName}
-                      {currentReveal.isBot && (
+                      {isAdmin && currentReveal.isBot && (
                         <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">Bot</span>
                       )}
                     </p>
@@ -534,7 +534,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                           <span className="text-lg font-bold text-white">
                             {participant.user?.name || participant.user?.email}
                           </span>
-                          {participant.user?.isBot && (
+                          {isAdmin && participant.user?.isBot && (
                             <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold">
                               Bot
                             </span>
