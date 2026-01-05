@@ -210,7 +210,7 @@ export default function PurchaseCoinsPage() {
 
         {/* Packages Grid */}
         <div 
-          className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-20"
+          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
@@ -296,14 +296,18 @@ export default function PurchaseCoinsPage() {
           })}
         </div>
 
+        {/* Clear separator */}
+        <div className="w-full" style={{ clear: 'both', display: 'block', height: '80px' }} />
+
         {/* Divider */}
-        <div className="max-w-xl mx-auto mb-16">
+        <div className="max-w-xl mx-auto" style={{ display: 'block', marginBottom: '64px' }}>
           <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         </div>
 
         {/* Purchase Summary */}
         <div 
-          className="max-w-md mx-auto mb-24"
+          className="max-w-md mx-auto"
+          style={{ display: 'block', marginBottom: '96px' }}
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
