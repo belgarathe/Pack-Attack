@@ -23,7 +23,6 @@ import {
   Truck,
   XCircle,
   ShoppingCart,
-  Filter,
   Search,
   User,
   Mail,
@@ -36,6 +35,13 @@ import {
   Target,
   Award,
   X,
+  Flame,
+  Crown,
+  Gem,
+  Gift,
+  ArrowUpRight,
+  TrendingDown,
+  Activity,
 } from 'lucide-react';
 
 type UserProfile = {
@@ -112,11 +118,11 @@ type DashboardProps = {
 };
 
 const tabs = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'collection', label: 'Collection', icon: Package },
-  { id: 'orders', label: 'Orders', icon: ShoppingBag },
-  { id: 'statistics', label: 'Statistics', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, gradient: 'from-blue-500 to-cyan-500' },
+  { id: 'collection', label: 'Collection', icon: Package, gradient: 'from-purple-500 to-pink-500' },
+  { id: 'orders', label: 'Orders', icon: ShoppingBag, gradient: 'from-emerald-500 to-teal-500' },
+  { id: 'statistics', label: 'Statistics', icon: BarChart3, gradient: 'from-orange-500 to-red-500' },
+  { id: 'settings', label: 'Settings', icon: Settings, gradient: 'from-slate-500 to-zinc-500' },
 ];
 
 export function DashboardClient({ initialUser, initialPulls, initialStats }: DashboardProps) {
@@ -130,6 +136,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,6 +158,11 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     shippingCountry: user.shippingCountry || '',
     shippingPhone: user.shippingPhone || '',
   });
+
+  // Animation mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch detailed stats when statistics tab is opened
   useEffect(() => {
@@ -318,66 +330,82 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     }
   };
 
-  const getRarityColor = (rarity: string) => {
+  const getRarityConfig = (rarity: string) => {
     switch (rarity?.toLowerCase()) {
       case 'mythic':
+        return { 
+          color: 'text-orange-400', 
+          bg: 'bg-gradient-to-r from-orange-500/20 to-red-500/20', 
+          border: 'border-orange-500/40',
+          glow: 'shadow-orange-500/20',
+          icon: Crown
+        };
       case 'legendary':
-        return 'text-amber-400 bg-amber-500/20 border-amber-500/30';
+        return { 
+          color: 'text-amber-400', 
+          bg: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20', 
+          border: 'border-amber-500/40',
+          glow: 'shadow-amber-500/20',
+          icon: Gem
+        };
       case 'rare':
-        return 'text-purple-400 bg-purple-500/20 border-purple-500/30';
+        return { 
+          color: 'text-purple-400', 
+          bg: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20', 
+          border: 'border-purple-500/40',
+          glow: 'shadow-purple-500/20',
+          icon: Star
+        };
       case 'uncommon':
-        return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
+        return { 
+          color: 'text-blue-400', 
+          bg: 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20', 
+          border: 'border-blue-500/40',
+          glow: 'shadow-blue-500/20',
+          icon: Sparkles
+        };
       default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+        return { 
+          color: 'text-gray-400', 
+          bg: 'bg-gray-500/20', 
+          border: 'border-gray-500/40',
+          glow: '',
+          icon: Package
+        };
     }
   };
 
-  const getOrderStatusIcon = (status: string) => {
+  const getOrderStatusConfig = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return <Clock className="w-4 h-4 text-amber-400" />;
+        return { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'Pending' };
       case 'PROCESSING':
-        return <Package className="w-4 h-4 text-blue-400" />;
+        return { icon: Activity, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'Processing' };
       case 'SHIPPED':
-        return <Truck className="w-4 h-4 text-purple-400" />;
+        return { icon: Truck, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', label: 'Shipped' };
       case 'DELIVERED':
-        return <CheckCircle2 className="w-4 h-4 text-green-400" />;
+        return { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30', label: 'Delivered' };
       case 'CANCELLED':
-        return <XCircle className="w-4 h-4 text-red-400" />;
+        return { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', label: 'Cancelled' };
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/30', label: status };
     }
   };
 
-  const getOrderStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING':
-        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'PROCESSING':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'SHIPPED':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'DELIVERED':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'CANCELLED':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
-  };
-
-  const getGameBadge = (game: string) => {
+  const getGameConfig = (game: string) => {
     switch (game) {
       case 'MAGIC_THE_GATHERING':
-        return { label: 'MTG', class: 'badge-mtg' };
+        return { label: 'MTG', bg: 'bg-gradient-to-r from-red-600 to-red-700', text: 'text-white' };
       case 'POKEMON':
-        return { label: 'Pokemon', class: 'badge-pokemon' };
+        return { label: 'Pokemon', bg: 'bg-gradient-to-r from-yellow-500 to-amber-500', text: 'text-black' };
       case 'ONE_PIECE':
-        return { label: 'One Piece', class: 'badge-onepiece' };
+        return { label: 'One Piece', bg: 'bg-gradient-to-r from-red-500 to-rose-600', text: 'text-white' };
       case 'LORCANA':
-        return { label: 'Lorcana', class: 'badge-lorcana' };
+        return { label: 'Lorcana', bg: 'bg-gradient-to-r from-violet-600 to-purple-700', text: 'text-white' };
+      case 'YUGIOH':
+        return { label: 'Yu-Gi-Oh', bg: 'bg-gradient-to-r from-indigo-600 to-blue-700', text: 'text-white' };
       default:
-        return { label: game, class: 'bg-gray-600' };
+        return { label: game, bg: 'bg-gray-600', text: 'text-white' };
     }
   };
 
@@ -406,189 +434,235 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     });
   };
 
+  const currentTabConfig = tabs.find(t => t.id === activeTab);
+
   return (
     <>
-      {/* Tab Navigation */}
-      <div className="glass-strong rounded-2xl p-2 mb-8 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
+      {/* Premium Tab Navigation */}
+      <div className="relative mb-10">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl" />
+        <div className="relative glass-strong rounded-2xl p-2 overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            {tabs.map((tab, index) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`group relative flex items-center gap-3 px-5 py-3.5 rounded-xl font-medium transition-all duration-300 ${
+                    isActive
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg`
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                  style={{ 
+                    animationDelay: `${index * 50}ms`,
+                    opacity: mounted ? 1 : 0,
+                    transform: mounted ? 'translateY(0)' : 'translateY(10px)',
+                    transition: `opacity 0.3s ease ${index * 50}ms, transform 0.3s ease ${index * 50}ms`
+                  }}
+                >
+                  {isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl" />
+                  )}
+                  <Icon className={`w-5 h-5 relative z-10 ${isActive ? '' : 'group-hover:scale-110'} transition-transform`} />
+                  <span className="hidden sm:inline relative z-10">{tab.label}</span>
+                  {isActive && (
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* Balance Card */}
-          <div className="glass-strong rounded-2xl p-6 md:p-8 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-gray-400 mb-2">Your Balance</p>
-                <div className="flex items-center gap-3">
-                  <Coins className="w-10 h-10 text-amber-400" />
-                  <span className="text-4xl md:text-5xl font-bold text-white">{user.coins.toLocaleString()}</span>
-                  <span className="text-gray-400 text-xl">coins</span>
+          {/* Hero Balance Card */}
+          <div 
+            className="relative overflow-hidden rounded-3xl"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.5s ease, transform 0.5s ease'
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-red-500/30" />
+            <div className="absolute inset-0 bg-grid opacity-30" />
+            <div className="relative glass-strong p-8 md:p-10">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-sm font-medium mb-4">
+                    <Coins className="w-4 h-4" />
+                    Your Balance
+                  </div>
+                  <div className="flex items-baseline gap-4">
+                    <span className="text-5xl md:text-7xl font-bold text-white tracking-tight">
+                      {user.coins.toLocaleString()}
+                    </span>
+                    <span className="text-2xl text-amber-400/80 font-medium">coins</span>
+                  </div>
+                  <p className="text-gray-400 mt-3">Open packs, join battles, and win real cards!</p>
+                </div>
+                <div className="flex gap-3">
+                  <Link 
+                    href="/purchase-coins"
+                    className="group relative inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-2xl transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/25"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Gift className="w-5 h-5 relative z-10" />
+                    <span className="relative z-10">Buy Coins</span>
+                  </Link>
                 </div>
               </div>
-              <Link 
-                href="/purchase-coins"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold rounded-xl transition-all hover:scale-105"
-              >
-                Buy Coins
-              </Link>
             </div>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <div className="glass rounded-2xl p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-blue-400" />
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Total Pulls', value: initialStats.pulls, icon: Package, gradient: 'from-blue-500 to-cyan-500', delay: 100 },
+              { label: 'Battles', value: initialStats.battles, icon: Swords, gradient: 'from-purple-500 to-pink-500', delay: 150 },
+              { label: 'Victories', value: initialStats.wins, icon: Trophy, gradient: 'from-green-500 to-emerald-500', delay: 200 },
+              { label: 'Win Rate', value: `${initialStats.battles > 0 ? Math.round((initialStats.wins / initialStats.battles) * 100) : 0}%`, icon: Target, gradient: 'from-orange-500 to-red-500', delay: 250 },
+            ].map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <div 
+                  key={stat.label}
+                  className="group relative overflow-hidden rounded-2xl transition-all hover:scale-[1.02] hover:-translate-y-1"
+                  style={{ 
+                    opacity: mounted ? 1 : 0,
+                    transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                    transition: `opacity 0.4s ease ${stat.delay}ms, transform 0.4s ease ${stat.delay}ms`
+                  }}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                  <div className="relative glass-strong p-6">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} mb-4 shadow-lg`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <p className="text-3xl font-bold text-white mb-1">{stat.value}</p>
+                    <p className="text-sm text-gray-400">{stat.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-400">Total Pulls</p>
-                  <p className="text-2xl font-bold text-white">{initialStats.pulls}</p>
-                </div>
-              </div>
-            </div>
-            <div className="glass rounded-2xl p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                  <Swords className="w-6 h-6 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Battles</p>
-                  <p className="text-2xl font-bold text-white">{initialStats.battles}</p>
-                </div>
-              </div>
-            </div>
-            <div className="glass rounded-2xl p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <Trophy className="w-6 h-6 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Wins</p>
-                  <p className="text-2xl font-bold text-white">{initialStats.wins}</p>
-                </div>
-              </div>
-            </div>
-            <div className="glass rounded-2xl p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-pink-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Win Rate</p>
-                  <p className="text-2xl font-bold text-white">
-                    {initialStats.battles > 0 
-                      ? Math.round((initialStats.wins / initialStats.battles) * 100)
-                      : 0}%
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-400" />
+          {/* Quick Actions & Recent Pulls */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Quick Actions */}
+            <div 
+              className="glass-strong rounded-2xl p-6 overflow-hidden relative"
+              style={{ 
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.5s ease 300ms, transform 0.5s ease 300ms'
+              }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full" />
+              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
                 Quick Actions
               </h2>
               <div className="space-y-3">
-                <Link 
-                  href="/battles"
-                  className="group flex items-center justify-between p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <Swords className="w-5 h-5 text-purple-400" />
-                    <span className="font-semibold text-white">Join Battles</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link 
-                  href="/boxes"
-                  className="group flex items-center justify-between p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <Package className="w-5 h-5 text-blue-400" />
-                    <span className="font-semibold text-white">Open Packs</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link 
-                  href="/cart"
-                  className="group flex items-center justify-between p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <ShoppingCart className="w-5 h-5 text-emerald-400" />
-                    <span className="font-semibold text-white">View Cart</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                {[
+                  { href: '/battles', icon: Swords, label: 'Join Battles', desc: 'Compete and win', gradient: 'from-purple-500 to-pink-500' },
+                  { href: '/boxes', icon: Package, label: 'Open Packs', desc: 'Pull rare cards', gradient: 'from-blue-500 to-cyan-500' },
+                  { href: '/cart', icon: ShoppingCart, label: 'View Cart', desc: 'Checkout cards', gradient: 'from-emerald-500 to-teal-500' },
+                ].map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link 
+                      key={action.href}
+                      href={action.href}
+                      className="group flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.1] transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient} shadow-lg group-hover:scale-110 transition-transform`}>
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <span className="font-semibold text-white block">{action.label}</span>
+                          <span className="text-sm text-gray-500">{action.desc}</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Recent Cards */}
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
+            {/* Recent Pulls */}
+            <div 
+              className="glass-strong rounded-2xl p-6 overflow-hidden relative"
+              style={{ 
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.5s ease 350ms, transform 0.5s ease 350ms'
+              }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full" />
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
                 Recent Pulls
               </h2>
               {pulls.slice(0, 4).length > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {pulls.slice(0, 4).map((pull) => (
-                    pull.card && (
-                      <div
-                        key={pull.id}
-                        className="relative aspect-[63/88] rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500/50 transition-all"
-                        onClick={() => setZoomedCard(pull)}
-                      >
-                        <Image
-                          src={pull.card.imageUrlGatherer}
-                          alt={pull.card.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    )
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-4 gap-3">
+                    {pulls.slice(0, 4).map((pull, index) => {
+                      if (!pull.card) return null;
+                      const rarityConfig = getRarityConfig(pull.card.rarity);
+                      return (
+                        <div
+                          key={pull.id}
+                          className={`group relative aspect-[63/88] rounded-xl overflow-hidden cursor-pointer ring-2 ring-transparent hover:ring-2 ${rarityConfig.border.replace('border-', 'hover:ring-')} transition-all hover:scale-105`}
+                          onClick={() => setZoomedCard(pull)}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <Image
+                            src={pull.card.imageUrlGatherer}
+                            alt={pull.card.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                          <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <p className="text-xs text-white font-medium truncate">{pull.card.name}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {pulls.length > 4 && (
+                    <button
+                      onClick={() => setActiveTab('collection')}
+                      className="w-full mt-4 py-3 text-sm text-gray-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      View all {pulls.length} cards
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-8">
-                  <Package className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-400">No cards yet</p>
-                  <Link href="/boxes" className="text-blue-400 hover:text-blue-300 text-sm">
-                    Open some packs!
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-800/50 mb-4">
+                    <Package className="w-8 h-8 text-gray-600" />
+                  </div>
+                  <p className="text-gray-400 mb-2">No cards yet</p>
+                  <Link href="/boxes" className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm">
+                    Open some packs! <ArrowUpRight className="w-3 h-3" />
                   </Link>
                 </div>
-              )}
-              {pulls.length > 4 && (
-                <button
-                  onClick={() => setActiveTab('collection')}
-                  className="w-full mt-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  View all {pulls.length} cards →
-                </button>
               )}
             </div>
           </div>
@@ -598,25 +672,32 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       {/* Collection Tab */}
       {activeTab === 'collection' && (
         <div className="space-y-6">
-          {/* Filters */}
-          <div className="glass-strong rounded-2xl p-4">
+          {/* Search & Filters */}
+          <div 
+            className="glass-strong rounded-2xl p-5"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease'
+            }}
+          >
             <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <div className="flex-1 min-w-[250px]">
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-purple-400 transition-colors" />
                   <input
                     type="text"
-                    placeholder="Search cards..."
+                    placeholder="Search your collection..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-12 pr-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                 </div>
               </div>
               <select
                 value={rarityFilter}
                 onChange={(e) => setRarityFilter(e.target.value)}
-                className="px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:border-blue-500"
+                className="px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white focus:border-purple-500/50 min-w-[140px]"
               >
                 <option value="">All Rarities</option>
                 <option value="common">Common</option>
@@ -627,82 +708,101 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
               <select
                 value={gameFilter}
                 onChange={(e) => setGameFilter(e.target.value)}
-                className="px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:border-blue-500"
+                className="px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white focus:border-purple-500/50 min-w-[180px]"
               >
                 <option value="">All Games</option>
                 <option value="MAGIC_THE_GATHERING">Magic: The Gathering</option>
                 <option value="POKEMON">Pokemon</option>
                 <option value="ONE_PIECE">One Piece</option>
                 <option value="LORCANA">Lorcana</option>
+                <option value="YUGIOH">Yu-Gi-Oh</option>
               </select>
             </div>
           </div>
 
-          {/* Collection Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-white">{filteredPulls.length}</p>
-              <p className="text-sm text-gray-400">Cards Shown</p>
-            </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-amber-400">
-                {filteredPulls.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-400">Total Value</p>
-            </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-purple-400">
-                {filteredPulls.filter(p => p.card?.rarity.toLowerCase() === 'rare' || p.card?.rarity.toLowerCase() === 'mythic').length}
-              </p>
-              <p className="text-sm text-gray-400">Rare+</p>
-            </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-emerald-400">
-                {filteredPulls.filter(p => p.cartItem).length}
-              </p>
-              <p className="text-sm text-gray-400">In Cart</p>
-            </div>
+          {/* Collection Stats Bar */}
+          <div 
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease 100ms, transform 0.4s ease 100ms'
+            }}
+          >
+            {[
+              { label: 'Cards Shown', value: filteredPulls.length, color: 'text-white' },
+              { label: 'Total Value', value: filteredPulls.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0).toLocaleString(), color: 'text-amber-400', icon: Coins },
+              { label: 'Rare+', value: filteredPulls.filter(p => ['rare', 'mythic', 'legendary'].includes(p.card?.rarity.toLowerCase() || '')).length, color: 'text-purple-400', icon: Gem },
+              { label: 'In Cart', value: filteredPulls.filter(p => p.cartItem).length, color: 'text-emerald-400', icon: ShoppingCart },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="glass rounded-xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    {Icon && <Icon className={`w-4 h-4 ${stat.color}`} />}
+                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                  </div>
+                  <p className="text-sm text-gray-500">{stat.label}</p>
+                </div>
+              );
+            })}
           </div>
 
           {/* Card Grid */}
           {filteredPulls.length > 0 ? (
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {filteredPulls.map((pull) => {
+              {filteredPulls.map((pull, index) => {
                 if (!pull.card) return null;
-                const gameBadge = getGameBadge(pull.card.sourceGame);
+                const rarityConfig = getRarityConfig(pull.card.rarity);
+                const gameConfig = getGameConfig(pull.card.sourceGame);
+                const RarityIcon = rarityConfig.icon;
 
                 return (
                   <div
                     key={pull.id}
-                    className="group glass rounded-xl overflow-hidden hover:ring-2 hover:ring-blue-500/50 transition-all cursor-pointer"
+                    className={`group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1`}
                     onClick={() => setZoomedCard(pull)}
+                    style={{ 
+                      opacity: mounted ? 1 : 0,
+                      transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                      transition: `opacity 0.3s ease ${Math.min(index * 30, 300)}ms, transform 0.3s ease ${Math.min(index * 30, 300)}ms`
+                    }}
                   >
-                    <div className="relative aspect-[63/88] w-full">
-                      <Image
-                        src={pull.card.imageUrlGatherer}
-                        alt={pull.card.name}
-                        fill
-                        className="object-cover transition-transform group-hover:scale-105"
-                        unoptimized
-                      />
-                      {pull.cartItem && (
-                        <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
-                          In Cart
+                    <div className={`absolute inset-0 ${rarityConfig.bg} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                    <div className={`relative glass border ${rarityConfig.border} rounded-2xl overflow-hidden`}>
+                      <div className="relative aspect-[63/88] w-full">
+                        <Image
+                          src={pull.card.imageUrlGatherer}
+                          alt={pull.card.name}
+                          fill
+                          className="object-cover transition-transform group-hover:scale-110"
+                          unoptimized
+                        />
+                        {/* Overlays */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                        
+                        {/* Badges */}
+                        {pull.cartItem && (
+                          <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-lg">
+                            In Cart
+                          </div>
+                        )}
+                        <div className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${rarityConfig.bg} ${rarityConfig.color} border ${rarityConfig.border}`}>
+                          <RarityIcon className="w-3 h-3" />
+                          {pull.card.rarity}
                         </div>
-                      )}
-                      <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold ${getRarityColor(pull.card.rarity)}`}>
-                        {pull.card.rarity}
-                      </div>
-                      <div className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold ${gameBadge.class} text-white`}>
-                        {gameBadge.label}
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-semibold text-white text-sm truncate mb-1">{pull.card.name}</h3>
-                      <p className="text-xs text-gray-500 truncate mb-2">{pull.box.name}</p>
-                      <div className="flex items-center gap-1">
-                        <Coins className="h-3 w-3 text-amber-400" />
-                        <span className="text-sm font-semibold text-amber-400">{pull.card.coinValue}</span>
+                        <div className={`absolute bottom-12 left-2 rounded-full px-2 py-0.5 text-xs font-bold ${gameConfig.bg} ${gameConfig.text}`}>
+                          {gameConfig.label}
+                        </div>
+                        
+                        {/* Card Info */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <h3 className="font-bold text-white text-sm truncate mb-0.5">{pull.card.name}</h3>
+                          <div className="flex items-center gap-1">
+                            <Coins className="h-3.5 w-3.5 text-amber-400" />
+                            <span className="text-sm font-bold text-amber-400">{pull.card.coinValue}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -710,17 +810,26 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
               })}
             </div>
           ) : (
-            <div className="glass-strong rounded-2xl p-12 text-center">
-              <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">No cards found</h3>
-              <p className="text-gray-400 mb-6">
+            <div 
+              className="glass-strong rounded-2xl p-16 text-center"
+              style={{ 
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.4s ease 200ms, transform 0.4s ease 200ms'
+              }}
+            >
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 mb-6">
+                <Package className="w-10 h-10 text-purple-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">No cards found</h3>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
                 {searchQuery || rarityFilter || gameFilter
-                  ? "Try adjusting your filters"
+                  ? "Try adjusting your filters to see more cards"
                   : "Start opening packs to build your collection!"}
               </p>
               <Link
                 href="/boxes"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-lg shadow-purple-500/25"
               >
                 <Package className="w-5 h-5" />
                 Browse Boxes
@@ -733,115 +842,149 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       {/* Orders Tab */}
       {activeTab === 'orders' && (
         <div className="space-y-6">
-          {/* Order Filters */}
-          <div className="glass-strong rounded-2xl p-4">
-            <div className="flex flex-wrap gap-4 items-center">
-              <span className="text-gray-400 flex items-center gap-2">
-                <Filter className="w-4 h-4" />
-                Filter by status:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {['', 'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      setOrderStatusFilter(status);
-                      setOrders([]);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      orderStatusFilter === status
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    {status || 'All'}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Status Filter Pills */}
+          <div 
+            className="flex flex-wrap gap-2"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease'
+            }}
+          >
+            {['', 'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((status, index) => {
+              const config = status ? getOrderStatusConfig(status) : null;
+              const Icon = config?.icon;
+              const isActive = orderStatusFilter === status;
+              return (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setOrderStatusFilter(status);
+                    setOrders([]);
+                  }}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    isActive
+                      ? config
+                        ? `${config.bg} ${config.color} border ${config.border}`
+                        : 'bg-white/10 text-white border border-white/20'
+                      : 'bg-white/[0.03] text-gray-400 border border-white/[0.05] hover:bg-white/[0.06] hover:text-white'
+                  }`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {Icon && <Icon className="w-4 h-4" />}
+                  {status || 'All Orders'}
+                </button>
+              );
+            })}
           </div>
 
           {/* Orders List */}
           {loading ? (
-            <div className="glass-strong rounded-2xl p-12 text-center">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-400">Loading orders...</p>
+            <div className="glass-strong rounded-2xl p-16 text-center">
+              <div className="relative w-16 h-16 mx-auto mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+              </div>
+              <p className="text-gray-400">Loading your orders...</p>
             </div>
           ) : orders.length > 0 ? (
             <div className="space-y-4">
-              {orders.map((order) => (
-                <div key={order.id} className="glass-strong rounded-2xl overflow-hidden">
-                  {/* Order Header */}
-                  <div className="p-4 md:p-6 border-b border-gray-800">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${getOrderStatusColor(order.status)}`}>
-                          {getOrderStatusIcon(order.status)}
-                          <span className="font-medium text-sm">{order.status}</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-semibold">Order #{order.id.slice(-8).toUpperCase()}</p>
-                          <p className="text-gray-400 text-sm">{formatDate(order.createdAt)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-amber-400">
-                        <Coins className="w-5 h-5" />
-                        <span className="font-bold text-lg">{order.totalCoins.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="p-4 md:p-6">
-                    <div className="flex gap-3 overflow-x-auto pb-2">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex-shrink-0 w-20">
-                          <div className="relative aspect-[63/88] rounded-lg overflow-hidden bg-gray-800">
-                            {item.cardImage ? (
-                              <Image
-                                src={item.cardImage}
-                                alt={item.cardName}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <Package className="w-6 h-6 text-gray-600" />
-                              </div>
-                            )}
+              {orders.map((order, index) => {
+                const statusConfig = getOrderStatusConfig(order.status);
+                const StatusIcon = statusConfig.icon;
+                return (
+                  <div 
+                    key={order.id} 
+                    className="glass-strong rounded-2xl overflow-hidden"
+                    style={{ 
+                      opacity: mounted ? 1 : 0,
+                      transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                      transition: `opacity 0.4s ease ${index * 100}ms, transform 0.4s ease ${index * 100}ms`
+                    }}
+                  >
+                    {/* Order Header */}
+                    <div className="p-5 md:p-6 border-b border-white/[0.05]">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${statusConfig.bg} border ${statusConfig.border}`}>
+                            <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
+                            <span className={`font-semibold text-sm ${statusConfig.color}`}>{statusConfig.label}</span>
                           </div>
-                          <p className="text-xs text-gray-400 mt-1 truncate">{item.cardName}</p>
+                          <div>
+                            <p className="text-white font-bold">Order #{order.id.slice(-8).toUpperCase()}</p>
+                            <p className="text-gray-500 text-sm">{formatDate(order.createdAt)}</p>
+                          </div>
                         </div>
-                      ))}
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                          <Coins className="w-5 h-5 text-amber-400" />
+                          <span className="font-bold text-lg text-amber-400">{order.totalCoins.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Shipping Info */}
-                    <div className="mt-4 pt-4 border-t border-gray-800">
-                      <div className="flex items-start gap-2 text-gray-400 text-sm">
-                        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-white">{order.shippingName}</p>
-                          <p>{order.shippingAddress}</p>
-                          <p>{order.shippingCity}, {order.shippingZip}</p>
-                          <p>{order.shippingCountry}</p>
+                    {/* Order Items */}
+                    <div className="p-5 md:p-6">
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex-shrink-0 w-24">
+                            <div className="relative aspect-[63/88] rounded-xl overflow-hidden bg-gray-800 ring-1 ring-white/10">
+                              {item.cardImage ? (
+                                <Image
+                                  src={item.cardImage}
+                                  alt={item.cardName}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Package className="w-8 h-8 text-gray-600" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2 truncate text-center">{item.cardName}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Shipping Info */}
+                      <div className="mt-5 pt-5 border-t border-white/[0.05]">
+                        <div className="flex items-start gap-3 text-sm">
+                          <div className="p-2 rounded-lg bg-emerald-500/10">
+                            <MapPin className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="text-gray-400">
+                            <p className="text-white font-medium">{order.shippingName}</p>
+                            <p>{order.shippingAddress}</p>
+                            <p>{order.shippingCity}, {order.shippingZip}</p>
+                            <p>{order.shippingCountry}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="glass-strong rounded-2xl p-12 text-center">
-              <ShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">No orders yet</h3>
-              <p className="text-gray-400 mb-6">
-                When you checkout cards from your collection, they'll appear here.
+            <div 
+              className="glass-strong rounded-2xl p-16 text-center"
+              style={{ 
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.4s ease 100ms, transform 0.4s ease 100ms'
+              }}
+            >
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 mb-6">
+                <ShoppingBag className="w-10 h-10 text-emerald-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">No orders yet</h3>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                When you checkout cards from your collection, they'll appear here for tracking.
               </p>
               <button
                 onClick={() => setActiveTab('collection')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-lg shadow-emerald-500/25"
               >
                 <Package className="w-5 h-5" />
                 View Collection
@@ -855,125 +998,183 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       {activeTab === 'statistics' && (
         <div className="space-y-6">
           {loading ? (
-            <div className="glass-strong rounded-2xl p-12 text-center">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-400">Loading statistics...</p>
+            <div className="glass-strong rounded-2xl p-16 text-center">
+              <div className="relative w-16 h-16 mx-auto mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-orange-500/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-orange-500 border-t-transparent animate-spin" />
+              </div>
+              <p className="text-gray-400">Crunching your numbers...</p>
             </div>
           ) : stats ? (
             <>
-              {/* Main Stats */}
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                <div className="glass-strong rounded-2xl p-6 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Package className="w-7 h-7 text-blue-400" />
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats.totalPulls}</p>
-                  <p className="text-gray-400">Total Pulls</p>
-                </div>
-                <div className="glass-strong rounded-2xl p-6 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Swords className="w-7 h-7 text-purple-400" />
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats.totalBattles}</p>
-                  <p className="text-gray-400">Battles Joined</p>
-                </div>
-                <div className="glass-strong rounded-2xl p-6 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Trophy className="w-7 h-7 text-green-400" />
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats.battlesWon}</p>
-                  <p className="text-gray-400">Battles Won</p>
-                </div>
-                <div className="glass-strong rounded-2xl p-6 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-pink-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Target className="w-7 h-7 text-pink-400" />
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats.winRate}%</p>
-                  <p className="text-gray-400">Win Rate</p>
-                </div>
+              {/* Main Stats Grid */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                {[
+                  { label: 'Total Pulls', value: stats.totalPulls, icon: Package, gradient: 'from-blue-500 to-cyan-500', delay: 0 },
+                  { label: 'Battles Joined', value: stats.totalBattles, icon: Swords, gradient: 'from-purple-500 to-pink-500', delay: 50 },
+                  { label: 'Victories', value: stats.battlesWon, icon: Trophy, gradient: 'from-green-500 to-emerald-500', delay: 100 },
+                  { label: 'Win Rate', value: `${stats.winRate}%`, icon: Target, gradient: 'from-orange-500 to-red-500', delay: 150 },
+                ].map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div 
+                      key={stat.label}
+                      className="relative overflow-hidden rounded-2xl"
+                      style={{ 
+                        opacity: mounted ? 1 : 0,
+                        transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                        transition: `opacity 0.4s ease ${stat.delay}ms, transform 0.4s ease ${stat.delay}ms`
+                      }}
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-10`} />
+                      <div className="relative glass-strong p-6 text-center">
+                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${stat.gradient} mb-4 shadow-lg`}>
+                          <Icon className="w-7 h-7 text-white" />
+                        </div>
+                        <p className="text-3xl font-bold text-white mb-1">{stat.value}</p>
+                        <p className="text-sm text-gray-400">{stat.label}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Financial Stats */}
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="glass-strong rounded-2xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-amber-400" />
+              {/* Economy & Orders */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div 
+                  className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+                  style={{ 
+                    opacity: mounted ? 1 : 0,
+                    transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                    transition: 'opacity 0.4s ease 200ms, transform 0.4s ease 200ms'
+                  }}
+                >
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full" />
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
+                      <Coins className="w-5 h-5 text-white" />
+                    </div>
                     Coin Economy
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Current Balance</span>
-                      <span className="text-amber-400 font-bold text-xl">{stats.currentCoins.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Coins from Sales</span>
-                      <span className="text-green-400 font-bold">+{stats.totalCoinsEarned.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Collection Value</span>
-                      <span className="text-purple-400 font-bold">{stats.collectionValue.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Cards Sold</span>
-                      <span className="text-white font-bold">{stats.totalSales}</span>
-                    </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Current Balance', value: stats.currentCoins.toLocaleString(), color: 'text-amber-400', icon: Coins },
+                      { label: 'From Sales', value: `+${stats.totalCoinsEarned.toLocaleString()}`, color: 'text-green-400', icon: TrendingUp },
+                      { label: 'Collection Value', value: stats.collectionValue.toLocaleString(), color: 'text-purple-400', icon: Gem },
+                      { label: 'Cards Sold', value: stats.totalSales.toString(), color: 'text-white', icon: Package },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div key={item.label} className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
+                          <span className="text-gray-400 flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            {item.label}
+                          </span>
+                          <span className={`font-bold text-lg ${item.color}`}>{item.value}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="glass-strong rounded-2xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-emerald-400" />
+                <div 
+                  className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+                  style={{ 
+                    opacity: mounted ? 1 : 0,
+                    transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                    transition: 'opacity 0.4s ease 250ms, transform 0.4s ease 250ms'
+                  }}
+                >
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-full" />
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500">
+                      <ShoppingBag className="w-5 h-5 text-white" />
+                    </div>
                     Orders Overview
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
                       <span className="text-gray-400">Total Orders</span>
-                      <span className="text-white font-bold text-xl">{stats.totalOrders}</span>
+                      <span className="font-bold text-2xl text-white">{stats.totalOrders}</span>
                     </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Pending/Processing</span>
-                      <span className="text-amber-400 font-bold">{stats.pendingOrders}</span>
+                    <div className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
+                      <span className="text-gray-400 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Pending/Processing
+                      </span>
+                      <span className="font-bold text-lg text-amber-400">{stats.pendingOrders}</span>
                     </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-xl">
-                      <span className="text-gray-400">Completed</span>
-                      <span className="text-green-400 font-bold">{stats.totalOrders - stats.pendingOrders}</span>
+                    <div className="flex justify-between items-center p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
+                      <span className="text-gray-400 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Completed
+                      </span>
+                      <span className="font-bold text-lg text-green-400">{stats.totalOrders - stats.pendingOrders}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Achievement-like Stats */}
-              <div className="glass-strong rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  Milestones
+              {/* Milestones */}
+              <div 
+                className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+                style={{ 
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                  transition: 'opacity 0.4s ease 300ms, transform 0.4s ease 300ms'
+                }}
+              >
+                <div className="absolute top-0 right-0 w-60 h-60 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-bl-full" />
+                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-500">
+                    <Award className="w-5 h-5 text-white" />
+                  </div>
+                  Milestones & Achievements
                 </h3>
                 <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                  <div className={`p-4 rounded-xl border ${stats.totalPulls >= 100 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
-                    <Star className={`w-8 h-8 mb-2 ${stats.totalPulls >= 100 ? 'text-amber-400' : 'text-gray-600'}`} />
-                    <p className={`font-bold ${stats.totalPulls >= 100 ? 'text-white' : 'text-gray-500'}`}>100 Pulls</p>
-                    <p className="text-sm text-gray-400">{stats.totalPulls}/100</p>
-                  </div>
-                  <div className={`p-4 rounded-xl border ${stats.battlesWon >= 10 ? 'bg-green-500/10 border-green-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
-                    <Trophy className={`w-8 h-8 mb-2 ${stats.battlesWon >= 10 ? 'text-green-400' : 'text-gray-600'}`} />
-                    <p className={`font-bold ${stats.battlesWon >= 10 ? 'text-white' : 'text-gray-500'}`}>10 Wins</p>
-                    <p className="text-sm text-gray-400">{stats.battlesWon}/10</p>
-                  </div>
-                  <div className={`p-4 rounded-xl border ${stats.totalSales >= 50 ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
-                    <Coins className={`w-8 h-8 mb-2 ${stats.totalSales >= 50 ? 'text-purple-400' : 'text-gray-600'}`} />
-                    <p className={`font-bold ${stats.totalSales >= 50 ? 'text-white' : 'text-gray-500'}`}>50 Sales</p>
-                    <p className="text-sm text-gray-400">{stats.totalSales}/50</p>
-                  </div>
-                  <div className={`p-4 rounded-xl border ${stats.totalOrders >= 5 ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
-                    <ShoppingBag className={`w-8 h-8 mb-2 ${stats.totalOrders >= 5 ? 'text-blue-400' : 'text-gray-600'}`} />
-                    <p className={`font-bold ${stats.totalOrders >= 5 ? 'text-white' : 'text-gray-500'}`}>5 Orders</p>
-                    <p className="text-sm text-gray-400">{stats.totalOrders}/5</p>
-                  </div>
+                  {[
+                    { label: '100 Pulls', current: stats.totalPulls, target: 100, icon: Package, gradient: 'from-blue-500 to-cyan-500' },
+                    { label: '10 Victories', current: stats.battlesWon, target: 10, icon: Trophy, gradient: 'from-green-500 to-emerald-500' },
+                    { label: '50 Sales', current: stats.totalSales, target: 50, icon: Coins, gradient: 'from-purple-500 to-pink-500' },
+                    { label: '5 Orders', current: stats.totalOrders, target: 5, icon: ShoppingBag, gradient: 'from-orange-500 to-red-500' },
+                  ].map((milestone) => {
+                    const Icon = milestone.icon;
+                    const isComplete = milestone.current >= milestone.target;
+                    const progress = Math.min((milestone.current / milestone.target) * 100, 100);
+                    return (
+                      <div 
+                        key={milestone.label}
+                        className={`relative p-5 rounded-2xl border transition-all ${
+                          isComplete 
+                            ? 'bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border-amber-500/30' 
+                            : 'bg-white/[0.02] border-white/[0.05]'
+                        }`}
+                      >
+                        {isComplete && (
+                          <div className="absolute top-3 right-3">
+                            <CheckCircle2 className="w-5 h-5 text-amber-400" />
+                          </div>
+                        )}
+                        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${isComplete ? `bg-gradient-to-br ${milestone.gradient}` : 'bg-gray-800'} mb-4`}>
+                          <Icon className={`w-6 h-6 ${isComplete ? 'text-white' : 'text-gray-500'}`} />
+                        </div>
+                        <p className={`font-bold mb-1 ${isComplete ? 'text-white' : 'text-gray-400'}`}>{milestone.label}</p>
+                        <p className="text-sm text-gray-500 mb-3">{milestone.current}/{milestone.target}</p>
+                        {/* Progress bar */}
+                        <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full bg-gradient-to-r ${milestone.gradient} transition-all duration-500`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
           ) : (
-            <div className="glass-strong rounded-2xl p-12 text-center">
+            <div className="glass-strong rounded-2xl p-16 text-center">
               <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400">Unable to load statistics</p>
             </div>
@@ -985,9 +1186,19 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       {activeTab === 'settings' && (
         <div className="space-y-6">
           {/* Profile Section */}
-          <div className="glass-strong rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-400" />
+          <div 
+            className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease'
+            }}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-bl-full" />
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                <User className="w-5 h-5 text-white" />
+              </div>
               Profile Information
             </h3>
             <div className="grid gap-6 md:grid-cols-2">
@@ -997,17 +1208,20 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.name}
                   onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   placeholder="Your name"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl">
+                <div className="flex items-center gap-3 px-4 py-3 bg-black/20 border border-white/[0.05] rounded-xl">
                   <Mail className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-400">{user.email}</span>
+                  <span className="text-gray-400 flex-1">{user.email}</span>
                   {user.emailVerified && (
-                    <CheckCircle2 className="w-4 h-4 text-green-400 ml-auto" />
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/30">
+                      <CheckCircle2 className="w-3 h-3 text-green-400" />
+                      <span className="text-xs text-green-400 font-medium">Verified</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1017,7 +1231,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   value={profileForm.bio}
                   onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
                   placeholder="Tell us about yourself..."
                 />
               </div>
@@ -1025,14 +1239,22 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
           </div>
 
           {/* Shipping Address Section */}
-          <div className="glass-strong rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-emerald-400" />
+          <div 
+            className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease 100ms, transform 0.4s ease 100ms'
+            }}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-full" />
+            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500">
+                <MapPin className="w-5 h-5 text-white" />
+              </div>
               Default Shipping Address
             </h3>
-            <p className="text-gray-400 text-sm mb-6">
-              This address will be pre-filled when you checkout cards.
-            </p>
+            <p className="text-gray-500 text-sm mb-6">This address will be pre-filled when you checkout cards.</p>
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
@@ -1040,7 +1262,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.shippingName}
                   onChange={(e) => setProfileForm({ ...profileForm, shippingName: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="John Doe"
                 />
               </div>
@@ -1052,7 +1274,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                     type="tel"
                     value={profileForm.shippingPhone}
                     onChange={(e) => setProfileForm({ ...profileForm, shippingPhone: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                    className="w-full pl-12 pr-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     placeholder="+1 234 567 8900"
                   />
                 </div>
@@ -1063,7 +1285,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.shippingAddress}
                   onChange={(e) => setProfileForm({ ...profileForm, shippingAddress: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="123 Main Street, Apt 4"
                 />
               </div>
@@ -1073,7 +1295,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.shippingCity}
                   onChange={(e) => setProfileForm({ ...profileForm, shippingCity: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="New York"
                 />
               </div>
@@ -1083,7 +1305,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.shippingZip}
                   onChange={(e) => setProfileForm({ ...profileForm, shippingZip: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="10001"
                 />
               </div>
@@ -1093,7 +1315,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                   type="text"
                   value={profileForm.shippingCountry}
                   onChange={(e) => setProfileForm({ ...profileForm, shippingCountry: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   placeholder="United States"
                 />
               </div>
@@ -1101,28 +1323,38 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
           </div>
 
           {/* Account Info */}
-          <div className="glass-strong rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-purple-400" />
+          <div 
+            className="glass-strong rounded-2xl p-6 relative overflow-hidden"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease 200ms, transform 0.4s ease 200ms'
+            }}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-full" />
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
               Account Information
             </h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 bg-gray-800/50 rounded-xl">
-                <p className="text-sm text-gray-400 mb-1">Member Since</p>
-                <p className="text-white font-medium">{formatDate(user.createdAt)}</p>
+              <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
+                <p className="text-sm text-gray-500 mb-1">Member Since</p>
+                <p className="text-white font-semibold">{formatDate(user.createdAt)}</p>
               </div>
-              <div className="p-4 bg-gray-800/50 rounded-xl">
-                <p className="text-sm text-gray-400 mb-1">Account Status</p>
+              <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
+                <p className="text-sm text-gray-500 mb-1">Account Status</p>
                 <div className="flex items-center gap-2">
                   {user.emailVerified ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      <span className="text-green-400 font-medium">Verified</span>
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-green-400 font-semibold">Verified & Active</span>
                     </>
                   ) : (
                     <>
-                      <XCircle className="w-4 h-4 text-amber-400" />
-                      <span className="text-amber-400 font-medium">Unverified</span>
+                      <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="text-amber-400 font-semibold">Pending Verification</span>
                     </>
                   )}
                 </div>
@@ -1131,21 +1363,29 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div 
+            className="flex justify-end"
+            style={{ 
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 0.4s ease 300ms, transform 0.4s ease 300ms'
+            }}
+          >
             <button
               onClick={handleSaveProfile}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+              className="group relative inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:hover:scale-100"
             >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               {saving ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
+                  <span className="relative z-10">Saving...</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  Save Changes
+                  <Save className="w-5 h-5 relative z-10" />
+                  <span className="relative z-10">Save Changes</span>
                 </>
               )}
             </button>
@@ -1156,63 +1396,80 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       {/* Card Zoom Modal */}
       {zoomedCard && zoomedCard.card && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setZoomedCard(null);
           }}
         >
-          <div className="relative max-w-4xl w-full flex flex-col items-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+          
+          {/* Content */}
+          <div className="relative max-w-lg w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setZoomedCard(null)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+              className="absolute -top-14 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110"
               aria-label="Close"
             >
-              <X className="h-8 w-8" />
+              <X className="h-6 w-6" />
             </button>
 
-            <div className="relative w-full max-w-md aspect-[63/88] mb-4">
+            {/* Card Image */}
+            <div className="relative w-full max-w-xs aspect-[63/88] mb-6 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
               <Image
                 src={zoomedCard.card.imageUrlGatherer}
                 alt={zoomedCard.card.name}
                 fill
-                className="object-contain rounded-xl"
+                className="object-cover"
                 unoptimized
               />
             </div>
 
-            <div className="glass-strong rounded-2xl p-6 w-full max-w-md text-center">
-              <div className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mb-3 border ${getRarityColor(zoomedCard.card.rarity)}`}>
-                {zoomedCard.card.rarity}
-              </div>
+            {/* Card Details */}
+            <div className="glass-strong rounded-2xl p-6 w-full text-center border border-white/10">
+              {/* Rarity Badge */}
+              {(() => {
+                const config = getRarityConfig(zoomedCard.card.rarity);
+                const Icon = config.icon;
+                return (
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold mb-4 ${config.bg} ${config.color} border ${config.border}`}>
+                    <Icon className="w-4 h-4" />
+                    {zoomedCard.card.rarity}
+                  </div>
+                );
+              })()}
+              
               <h2 className="text-2xl font-bold text-white mb-2">{zoomedCard.card.name}</h2>
-              <p className="text-gray-400 mb-4">{zoomedCard.box.name}</p>
-              <div className="flex items-center justify-center gap-2 mb-6">
+              <p className="text-gray-400 mb-6">{zoomedCard.box.name}</p>
+              
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 mb-6">
                 <Coins className="h-5 w-5 text-amber-400" />
-                <span className="text-xl font-semibold text-white">{zoomedCard.card.coinValue} coins</span>
+                <span className="text-xl font-bold text-amber-400">{zoomedCard.card.coinValue}</span>
+                <span className="text-amber-400/70">coins</span>
               </div>
 
               {zoomedCard.cartItem ? (
-                <div className="px-6 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl font-semibold border border-emerald-500/30">
-                  <ShoppingCart className="h-4 w-4 inline mr-2" />
-                  In Cart
+                <div className="flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500/10 text-emerald-400 rounded-xl font-bold border border-emerald-500/30">
+                  <ShoppingCart className="h-5 w-5" />
+                  Already in Cart
                 </div>
               ) : (
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleAddToCart(zoomedCard.id)}
                     disabled={loading}
-                    className="flex-1 px-4 py-3 rounded-xl font-semibold text-white bg-gray-800 hover:bg-gray-700 border border-gray-600 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 px-6 py-4 rounded-xl font-bold text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all flex items-center justify-center gap-2"
                   >
-                    <ShoppingCart className="h-4 w-4" />
-                    Checkout
+                    <ShoppingCart className="h-5 w-5" />
+                    Add to Cart
                   </button>
                   <button
                     onClick={() => handleSellCard(zoomedCard.id, zoomedCard.card!.coinValue)}
                     disabled={loading}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-semibold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25"
                   >
-                    <Coins className="h-4 w-4" />
-                    Sell
+                    <Coins className="h-5 w-5" />
+                    Sell Card
                   </button>
                 </div>
               )}
@@ -1223,4 +1480,3 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     </>
   );
 }
-
