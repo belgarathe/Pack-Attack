@@ -150,7 +150,7 @@ export default function PurchaseCoinsPage() {
       <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none" />
       <div className="fixed inset-0 radial-gradient pointer-events-none" />
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+      <div className="relative container py-16 md:py-24">
         {/* Header */}
         <div 
           className="text-center mb-16"
@@ -210,8 +210,10 @@ export default function PurchaseCoinsPage() {
 
         {/* Packages Grid */}
         <div 
-          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
+          className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           style={{ 
+            maxWidth: '1024px',
+            margin: '0 auto',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 300ms, transform 0.6s ease 300ms'
@@ -389,7 +391,7 @@ export default function PurchaseCoinsPage() {
 
         {/* Features Section */}
         <div 
-          className="max-w-4xl mx-auto"
+          style={{ maxWidth: '896px', margin: '0 auto' }}
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
