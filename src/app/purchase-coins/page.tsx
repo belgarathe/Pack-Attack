@@ -9,7 +9,6 @@ import {
   Zap, 
   Crown, 
   Star, 
-  Gift,
   Shield,
   Clock,
   CheckCircle2,
@@ -148,10 +147,10 @@ export default function PurchaseCoinsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
       {/* Background Effects */}
-      <div className="fixed inset-0 bg-grid opacity-20" />
-      <div className="fixed inset-0 radial-gradient" />
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none" />
+      <div className="fixed inset-0 radial-gradient pointer-events-none" />
 
-      <div className="relative container py-16 md:py-24">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
         {/* Header */}
         <div 
           className="text-center mb-16"
@@ -177,7 +176,7 @@ export default function PurchaseCoinsPage() {
         {/* Current Balance Card */}
         {userCoins !== null && (
           <div 
-            className="max-w-lg mx-auto mb-20"
+            className="max-w-lg mx-auto mb-16"
             style={{ 
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(20px)',
@@ -204,205 +203,185 @@ export default function PurchaseCoinsPage() {
           </div>
         )}
 
+        {/* Section Title */}
+        <h2 className="text-center text-gray-400 text-sm font-semibold uppercase tracking-wider mb-8">
+          Choose Your Package
+        </h2>
+
         {/* Packages Grid */}
         <div 
-          className="max-w-5xl mx-auto"
+          className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-20"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 300ms, transform 0.6s ease 300ms'
           }}
         >
-          <h2 className="text-center text-gray-400 text-sm font-semibold uppercase tracking-wider mb-8">
-            Choose Your Package
-          </h2>
-          
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {coinPackages.map((pkg, index) => {
-              const Icon = pkg.icon;
-              const isSelected = selectedPackage.amount === pkg.amount;
-              
-              return (
-                <button
-                  key={pkg.amount}
-                  onClick={() => setSelectedPackage(pkg)}
-                  className={`group relative text-left transition-all duration-300 ${
-                    isSelected 
-                      ? 'scale-[1.02]' 
-                      : 'hover:scale-[1.01]'
-                  }`}
-                  style={{ 
-                    animationDelay: `${index * 80}ms`,
-                  }}
-                >
-                  {/* Card Container */}
-                  <div className={`relative rounded-3xl overflow-hidden transition-all duration-300 ${
-                    isSelected 
-                      ? `ring-2 ring-offset-2 ring-offset-gray-950 ${pkg.gradient.includes('amber') ? 'ring-amber-500' : pkg.gradient.includes('purple') ? 'ring-purple-500' : pkg.gradient.includes('blue') ? 'ring-blue-500' : pkg.gradient.includes('orange') ? 'ring-orange-500' : pkg.gradient.includes('emerald') ? 'ring-emerald-500' : 'ring-slate-500'}` 
-                      : ''
-                  }`}>
-                    
-                    {/* Badges */}
-                    {pkg.popular && (
-                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-lg">
-                        POPULAR
+          {coinPackages.map((pkg, index) => {
+            const Icon = pkg.icon;
+            const isSelected = selectedPackage.amount === pkg.amount;
+            
+            return (
+              <button
+                key={pkg.amount}
+                onClick={() => setSelectedPackage(pkg)}
+                className={`group relative text-left transition-all duration-300 ${
+                  isSelected 
+                    ? 'scale-[1.02]' 
+                    : 'hover:scale-[1.01]'
+                }`}
+                style={{ animationDelay: `${index * 80}ms` }}
+              >
+                <div className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${
+                  isSelected 
+                    ? `ring-2 ring-offset-2 ring-offset-gray-950 ${pkg.gradient.includes('amber') ? 'ring-amber-500' : pkg.gradient.includes('purple') ? 'ring-purple-500' : pkg.gradient.includes('blue') ? 'ring-blue-500' : pkg.gradient.includes('orange') ? 'ring-orange-500' : pkg.gradient.includes('emerald') ? 'ring-emerald-500' : 'ring-slate-500'}` 
+                    : ''
+                }`}>
+                  
+                  {/* Badges */}
+                  {pkg.popular && (
+                    <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-lg">
+                      POPULAR
+                    </div>
+                  )}
+                  {pkg.bestValue && (
+                    <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-bold shadow-lg">
+                      BEST VALUE
+                    </div>
+                  )}
+
+                  {/* Card Background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${pkg.gradient} opacity-[0.08] group-hover:opacity-[0.12] transition-opacity`} />
+                  <div className="absolute inset-0 bg-gray-900/90" />
+
+                  {/* Card Content */}
+                  <div className="relative p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${pkg.gradient} shadow-lg ${pkg.shadowColor}`}>
+                        <Icon className="w-5 h-5 text-white" />
                       </div>
-                    )}
-                    {pkg.bestValue && (
-                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-bold shadow-lg">
-                        BEST VALUE
+                      <div>
+                        <p className="text-white font-bold text-sm">{pkg.label}</p>
+                        <p className="text-gray-500 text-xs">Package</p>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Card Background */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${pkg.gradient} opacity-[0.08] group-hover:opacity-[0.12] transition-opacity`} />
-                    <div className="absolute inset-0 bg-gray-900/90" />
-
-                    {/* Card Content */}
-                    <div className="relative p-6">
-                      {/* Icon & Label */}
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${pkg.gradient} shadow-lg ${pkg.shadowColor}`}>
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-white font-bold">{pkg.label}</p>
-                          <p className="text-gray-500 text-xs">Package</p>
-                        </div>
+                    <div className="mb-4">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-2xl font-bold text-white">{pkg.amount.toLocaleString()}</span>
+                        <span className="text-gray-500 text-sm">coins</span>
                       </div>
+                    </div>
 
-                      {/* Coins Amount */}
-                      <div className="mb-5">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-white">{pkg.amount.toLocaleString()}</span>
-                          <span className="text-gray-500 text-sm font-medium">coins</span>
-                        </div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-4" />
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-baseline gap-0.5">
+                        <Euro className="w-4 h-4 text-white" />
+                        <span className="text-xl font-bold text-white">{pkg.price}</span>
                       </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
-
-                      {/* Price */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-baseline gap-1">
-                          <Euro className="w-4 h-4 text-white" />
-                          <span className="text-2xl font-bold text-white">{pkg.price}</span>
-                        </div>
-                        
-                        {/* Selection Indicator */}
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isSelected 
-                            ? `bg-gradient-to-br ${pkg.gradient} border-transparent` 
-                            : 'border-gray-600 group-hover:border-gray-500'
-                        }`}>
-                          {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                        </div>
+                      
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? `bg-gradient-to-br ${pkg.gradient} border-transparent` 
+                          : 'border-gray-600 group-hover:border-gray-500'
+                      }`}>
+                        {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
                       </div>
                     </div>
                   </div>
-                </button>
-              );
-            })}
-          </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Purchase Summary Section */}
-        <section className="pt-20 pb-8">
-          {/* Visual divider */}
-          <div className="max-w-3xl mx-auto mb-12">
-            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-          </div>
+        {/* Divider */}
+        <div className="max-w-xl mx-auto mb-16">
+          <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        </div>
 
-          {/* Purchase Summary Card */}
-          <div 
-            className="max-w-lg mx-auto"
-            style={{ 
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-              transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
-            }}
-          >
-            <div className="relative">
-              {/* Glow Effect */}
-              <div className={`absolute -inset-1 bg-gradient-to-r ${selectedPackage.gradient} rounded-[2rem] blur-xl opacity-20`} />
+        {/* Purchase Summary */}
+        <div 
+          className="max-w-md mx-auto mb-24"
+          style={{ 
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
+          }}
+        >
+          <div className={`relative rounded-3xl bg-gray-900/80 backdrop-blur-xl border border-white/10 p-8 shadow-2xl`}>
+            {/* Glow Effect */}
+            <div className={`absolute -inset-0.5 bg-gradient-to-r ${selectedPackage.gradient} rounded-3xl blur opacity-20 -z-10`} />
             
-            {/* Card */}
-            <div className="relative glass-strong rounded-3xl p-8 border border-white/10">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-3">Your Purchase</p>
-                <div className="flex items-center justify-center gap-3">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${selectedPackage.gradient}`}>
-                    <Coins className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-4xl font-bold text-white">{selectedPackage.amount.toLocaleString()}</span>
-                    <p className="text-gray-400 text-sm">coins</p>
-                  </div>
+            <div className="text-center mb-6">
+              <p className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-3">Your Purchase</p>
+              <div className="flex items-center justify-center gap-3">
+                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${selectedPackage.gradient}`}>
+                  <Coins className="w-6 h-6 text-white" />
                 </div>
-              </div>
-
-              {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8" />
-
-              {/* Price Summary */}
-              <div className="flex items-center justify-between mb-8">
-                <span className="text-gray-400">Total</span>
-                <div className="flex items-baseline gap-1">
-                  <Euro className="w-5 h-5 text-white" />
-                  <span className="text-3xl font-bold text-white">{selectedPackage.price}</span>
-                </div>
-              </div>
-
-              {/* Purchase Button */}
-              <button
-                onClick={handlePurchase}
-                disabled={loading}
-                className={`group relative w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 ${
-                  loading 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:scale-[1.02] hover:shadow-2xl'
-                } bg-gradient-to-r ${selectedPackage.gradient} text-white shadow-xl ${selectedPackage.shadowColor}`}
-              >
-                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative flex items-center justify-center gap-2">
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-5 h-5" />
-                      Purchase Now
-                    </>
-                  )}
-                </span>
-              </button>
-
-              {/* Trust Indicators */}
-              <div className="flex items-center justify-center gap-6 mt-6 text-gray-500 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Secure</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Instant</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Verified</span>
+                <div className="text-left">
+                  <span className="text-3xl font-bold text-white">{selectedPackage.amount.toLocaleString()}</span>
+                  <p className="text-gray-400 text-sm">coins</p>
                 </div>
               </div>
             </div>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-6" />
+
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-gray-400">Total</span>
+              <div className="flex items-baseline gap-0.5">
+                <Euro className="w-5 h-5 text-white" />
+                <span className="text-2xl font-bold text-white">{selectedPackage.price}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePurchase}
+              disabled={loading}
+              className={`group relative w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 ${
+                loading 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:scale-[1.02] hover:shadow-2xl'
+              } bg-gradient-to-r ${selectedPackage.gradient} text-white shadow-xl`}
+            >
+              <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    Purchase Now
+                  </>
+                )}
+              </span>
+            </button>
+
+            <div className="flex items-center justify-center gap-6 mt-6 text-gray-500 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Secure</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Instant</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Verified</span>
+              </div>
+            </div>
           </div>
-          </div>
-        </section>
+        </div>
 
         {/* Features Section */}
         <div 
-          className="max-w-5xl mx-auto mt-32"
+          className="max-w-4xl mx-auto"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
@@ -412,11 +391,11 @@ export default function PurchaseCoinsPage() {
           <h2 className="text-center text-2xl md:text-3xl font-bold text-white mb-4">
             What can you do with coins?
           </h2>
-          <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
+          <p className="text-center text-gray-500 mb-10 max-w-xl mx-auto">
             Use your coins to unlock amazing features and build your collection
           </p>
           
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3">
             {[
               { 
                 icon: Package, 
@@ -441,13 +420,13 @@ export default function PurchaseCoinsPage() {
               return (
                 <div 
                   key={item.title}
-                  className="glass rounded-3xl p-8 text-center hover:bg-white/[0.03] transition-colors"
+                  className="glass rounded-2xl p-6 text-center hover:bg-white/[0.03] transition-colors"
                 >
-                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${item.gradient} mb-6 shadow-lg`}>
-                    <Icon className="w-8 h-8 text-white" />
+                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${item.gradient} mb-5 shadow-lg`}>
+                    <Icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-white font-bold text-xl mb-3">{item.title}</h3>
-                  <p className="text-gray-500 leading-relaxed">{item.description}</p>
+                  <h3 className="text-white font-bold text-lg mb-2">{item.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{item.description}</p>
                 </div>
               );
             })}
@@ -455,7 +434,7 @@ export default function PurchaseCoinsPage() {
         </div>
 
         {/* Note */}
-        <p className="text-center text-xs text-gray-600 mt-20">
+        <p className="text-center text-xs text-gray-600 mt-16">
           Secure payments processed via Stripe
         </p>
       </div>
