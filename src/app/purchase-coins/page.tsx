@@ -306,15 +306,15 @@ export default function PurchaseCoinsPage() {
 
         {/* Purchase Summary */}
         <div 
-          className="max-w-md mx-auto"
+          className="w-full flex justify-center"
           style={{ 
-            display: 'block',
             marginBottom: '96px',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
           }}
         >
+          <div className="w-full max-w-md">
           <div className={`relative rounded-3xl bg-gray-900/80 backdrop-blur-xl border border-white/10 p-8 shadow-2xl`}>
             {/* Glow Effect */}
             <div className={`absolute -inset-0.5 bg-gradient-to-r ${selectedPackage.gradient} rounded-3xl blur opacity-20 -z-10`} />
@@ -381,6 +381,7 @@ export default function PurchaseCoinsPage() {
                 <span>Verified</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
 
