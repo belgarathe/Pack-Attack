@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Coins, 
@@ -19,6 +20,8 @@ import {
   Swords,
   Rocket,
   AlertCircle,
+  CreditCard,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
@@ -87,26 +90,21 @@ const coinPackages: CoinPackage[] = [
   },
 ];
 
-declare global {
-  interface Window {
-    paypal?: any;
-  }
-}
-
 export default function PurchaseCoinsPage() {
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage>(coinPackages[2]);
   const [mounted, setMounted] = useState(false);
-  const [paypalLoaded, setPaypalLoaded] = useState(false);
-  const [paypalError, setPaypalError] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const paypalButtonRef = useRef<HTMLDivElement>(null);
-  const paypalScriptLoaded = useRef(false);
+  const [loading, setLoading] = useState(false);
+  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
-  // Fetch user coins
+  // Fetch user coins and check Stripe config
   useEffect(() => {
     setMounted(true);
+    
+    // Fetch user coins
     fetch('/api/user/coins')
       .then((res) => res.json())
       .then((data) => {
@@ -115,154 +113,97 @@ export default function PurchaseCoinsPage() {
         }
       })
       .catch(console.error);
+
+    // Check if Stripe is configured
+    fetch('/api/payments/stripe/config')
+      .then((res) => {
+        setStripeConfigured(res.ok);
+      })
+      .catch(() => setStripeConfigured(false));
   }, []);
 
-  // Load PayPal SDK
+  // Handle successful payment redirect
   useEffect(() => {
-    if (paypalScriptLoaded.current) return;
+    const success = searchParams.get('success');
+    const sessionId = searchParams.get('session_id');
+    const cancelled = searchParams.get('cancelled');
 
-    const loadPayPal = async () => {
-      try {
-        // Get PayPal config
-        const configRes = await fetch('/api/payments/paypal/config');
-        if (!configRes.ok) {
-          setPaypalError('PayPal is not configured');
-          return;
-        }
-        
-        const config = await configRes.json();
-        
-        // Load PayPal SDK script
-        const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${config.clientId}&currency=EUR&intent=capture`;
-        script.async = true;
-        
-        script.onload = () => {
-          paypalScriptLoaded.current = true;
-          setPaypalLoaded(true);
-        };
-        
-        script.onerror = () => {
-          setPaypalError('Failed to load PayPal');
-        };
-        
-        document.body.appendChild(script);
-      } catch (error) {
-        console.error('Error loading PayPal:', error);
-        setPaypalError('Failed to load PayPal');
-      }
-    };
+    if (cancelled === 'true') {
+      addToast({
+        title: 'Payment Cancelled',
+        description: 'Your payment was cancelled.',
+      });
+      // Clean URL
+      window.history.replaceState({}, '', '/purchase-coins');
+      return;
+    }
 
-    loadPayPal();
-  }, []);
-
-  // Render PayPal buttons when SDK is loaded or package changes
-  useEffect(() => {
-    if (!paypalLoaded || !window.paypal || !paypalButtonRef.current) return;
-
-    // Clear existing buttons
-    paypalButtonRef.current.innerHTML = '';
-
-    // Render new PayPal buttons
-    window.paypal.Buttons({
-      style: {
-        layout: 'vertical',
-        color: 'gold',
-        shape: 'rect',
-        label: 'paypal',
-        height: 50,
-      },
+    if (success === 'true' && sessionId && !verifying) {
+      setVerifying(true);
       
-      // Create order
-      createOrder: async () => {
-        setProcessing(true);
-        try {
-          const res = await fetch('/api/payments/paypal/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              amount: selectedPackage.price,
-              coins: selectedPackage.amount,
-            }),
-          });
-
-          const data = await res.json();
-          
-          if (!res.ok) {
-            throw new Error(data.error || 'Failed to create order');
+      // Verify the payment
+      fetch('/api/payments/stripe/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            addToast({
+              title: 'Payment Successful! 🎉',
+              description: `You received ${data.coinsAdded?.toLocaleString()} coins!`,
+            });
+            setUserCoins(data.newBalance);
+            emitCoinBalanceUpdate({ balance: data.newBalance });
           }
+        })
+        .catch((error) => {
+          console.error('Error verifying payment:', error);
+        })
+        .finally(() => {
+          setVerifying(false);
+          // Clean URL
+          window.history.replaceState({}, '', '/purchase-coins');
+        });
+    }
+  }, [searchParams, addToast, verifying]);
 
-          return data.orderId;
-        } catch (error) {
-          console.error('Error creating order:', error);
-          addToast({
-            title: 'Error',
-            description: 'Failed to create order. Please try again.',
-            variant: 'destructive',
-          });
-          throw error;
-        } finally {
-          setProcessing(false);
-        }
-      },
+  const handlePurchase = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/payments/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price: selectedPackage.price }),
+      });
 
-      // Capture order on approval
-      onApprove: async (data: { orderID: string }) => {
-        setProcessing(true);
-        try {
-          const res = await fetch('/api/payments/paypal/capture-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: data.orderID }),
-          });
+      const data = await res.json();
 
-          const result = await res.json();
-
-          if (!res.ok) {
-            throw new Error(result.error || 'Payment failed');
-          }
-
-          // Success!
-          addToast({
-            title: 'Payment Successful! 🎉',
-            description: `You received ${selectedPackage.amount.toLocaleString()} coins!`,
-          });
-
-          setUserCoins(result.newBalance);
-          emitCoinBalanceUpdate({ balance: result.newBalance });
-        } catch (error) {
-          console.error('Error capturing payment:', error);
-          addToast({
-            title: 'Payment Failed',
-            description: 'There was an issue processing your payment. Please contact support.',
-            variant: 'destructive',
-          });
-        } finally {
-          setProcessing(false);
-        }
-      },
-
-      // Handle errors
-      onError: (err: any) => {
-        console.error('PayPal error:', err);
-        setProcessing(false);
+      if (!res.ok) {
         addToast({
-          title: 'Payment Error',
-          description: 'Something went wrong. Please try again.',
+          title: 'Error',
+          description: data.error || 'Failed to create checkout session',
           variant: 'destructive',
         });
-      },
+        return;
+      }
 
-      // Handle cancel
-      onCancel: () => {
-        setProcessing(false);
-        addToast({
-          title: 'Payment Cancelled',
-          description: 'You cancelled the payment.',
-        });
-      },
-    }).render(paypalButtonRef.current);
-  }, [paypalLoaded, selectedPackage, addToast]);
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      addToast({
+        title: 'Error',
+        description: 'Failed to start checkout. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
@@ -427,7 +368,7 @@ export default function PurchaseCoinsPage() {
           <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         </div>
 
-        {/* Purchase Summary with PayPal */}
+        {/* Purchase Summary */}
         <div 
           style={{ 
             width: '100%',
@@ -467,29 +408,37 @@ export default function PurchaseCoinsPage() {
               </div>
             </div>
 
-            {/* PayPal Button Container */}
-            {paypalError ? (
+            {/* Stripe Payment Button */}
+            {stripeConfigured === false ? (
               <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
                 <AlertCircle className="w-5 h-5" />
-                <span>{paypalError}</span>
-              </div>
-            ) : !paypalLoaded ? (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <div className="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
-                <span className="text-gray-400">Loading PayPal...</span>
+                <span>Payments are not configured</span>
               </div>
             ) : (
-              <div className="relative">
-                {processing && (
-                  <div className="absolute inset-0 bg-gray-900/80 rounded-xl flex items-center justify-center z-10">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
-                      <span className="text-white">Processing...</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={paypalButtonRef} className="min-h-[50px]" />
-              </div>
+              <button
+                onClick={handlePurchase}
+                disabled={loading || verifying || stripeConfigured === null}
+                className={`group relative w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 ${
+                  loading || verifying
+                    ? 'opacity-70 cursor-not-allowed' 
+                    : 'hover:scale-[1.02] hover:shadow-2xl'
+                } bg-gradient-to-r ${selectedPackage.gradient} text-white shadow-xl`}
+              >
+                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="relative flex items-center justify-center gap-2">
+                  {loading || verifying ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {verifying ? 'Verifying...' : 'Redirecting...'}
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      Pay with Card
+                    </>
+                  )}
+                </span>
+              </button>
             )}
 
             <div className="flex items-center justify-center gap-6 mt-6 text-gray-500 text-xs">
@@ -565,11 +514,11 @@ export default function PurchaseCoinsPage() {
           </div>
         </div>
 
-        {/* PayPal Note */}
+        {/* Stripe Note */}
         <div className="text-center mt-16">
           <div className="inline-flex items-center gap-2 text-gray-600 text-sm">
             <Shield className="w-4 h-4" />
-            <span>Secure payments processed via PayPal</span>
+            <span>Secure payments processed via Stripe</span>
           </div>
         </div>
       </div>
