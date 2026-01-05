@@ -3,12 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Coins, Trophy, Swords, Users, ArrowLeft, Sparkles } from 'lucide-react';
+import { Coins, Trophy, Swords, Users, ArrowLeft, Sparkles, Crown, Zap, Package } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { formatDate } from '@/lib/date-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AddBotsControl } from '../components/AddBotsControl';
 
@@ -27,6 +25,15 @@ interface PullResult {
   roundNumber: number;
 }
 
+interface RoundResult {
+  roundNumber: number;
+  pulls: PullResult[];
+  winnerId: string;
+  winnerName: string;
+  winningCard: any;
+  winningValue: number;
+}
+
 export default function BattleDrawClient({ battle: initialBattle, currentUserId, isAdmin }: BattleDrawClientProps) {
   const router = useRouter();
   const { addToast } = useToast();
@@ -34,17 +41,19 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [starting, setStarting] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
-  const [currentParticipantIndex, setCurrentParticipantIndex] = useState(0);
   const [allPulls, setAllPulls] = useState<PullResult[]>([]);
+  const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
   const [participantTotals, setParticipantTotals] = useState<Map<string, number>>(new Map());
   const [currentReveal, setCurrentReveal] = useState<PullResult | null>(null);
   const [isShowingReveal, setIsShowingReveal] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [battleComplete, setBattleComplete] = useState(false);
+  const [showingRoundWinner, setShowingRoundWinner] = useState<RoundResult | null>(null);
   
   const revealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const REVEAL_DURATION = 2000;
-  const BETWEEN_PULLS_DELAY = 500;
+  const ROUND_WINNER_DURATION = 1500;
+  const BETWEEN_PULLS_DELAY = 300;
 
   const isCreator = currentUserId === battle.creatorId;
   const canStartBattle = (isCreator || isAdmin) && 
@@ -63,57 +72,89 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   };
 
   useEffect(() => {
+    // Initialize totals to 0 for all participants
+    const initialTotals = new Map<string, number>();
+    battle.participants.forEach((p: any) => {
+      initialTotals.set(p.userId, 0);
+    });
+    setParticipantTotals(initialTotals);
+    
     return () => {
       clearRevealTimeouts();
     };
-  }, []);
+  }, [battle.participants]);
 
-  const simulateDraws = async (battleData: any) => {
-    const pulls: PullResult[] = [];
-    const totals = new Map<string, number>();
+  const prepareDrawData = (battleData: any) => {
+    const pullsByRound: Map<number, PullResult[]> = new Map();
     
-    // Initialize totals
-    battleData.participants.forEach((p: any) => {
-      totals.set(p.userId, 0);
-    });
-
-    // Simulate pulls for each round and participant
+    // Group pulls by round
     for (let round = 1; round <= battleData.rounds; round++) {
+      const roundPulls: PullResult[] = [];
+      
       for (const participant of battleData.participants) {
-        // Simulate multiple cards per round based on cardsPerPack
-        for (let cardIndex = 0; cardIndex < battleData.box.cardsPerPack; cardIndex++) {
-          // Find the corresponding pull from battle data
-          const pullData = battleData.pulls?.find((p: any) => 
-            p.participant.userId === participant.userId && 
-            p.roundNumber === round
-          );
-          
-          if (pullData) {
-            const pull: PullResult = {
-              participantId: participant.userId,
-              participantName: participant.user?.name || participant.user?.email || 'Unknown',
-              isBot: participant.user?.isBot || false,
-              card: pullData.pull?.card || null,
-              coinValue: pullData.coinValue || 0,
-              roundNumber: round,
-            };
-            pulls.push(pull);
-            
-            // Update totals
-            const currentTotal = totals.get(participant.userId) || 0;
-            totals.set(participant.userId, currentTotal + pull.coinValue);
-          }
+        const pullData = battleData.pulls?.find((p: any) => 
+          p.participant.userId === participant.userId && 
+          p.roundNumber === round
+        );
+        
+        if (pullData) {
+          roundPulls.push({
+            participantId: participant.userId,
+            participantName: participant.user?.name || participant.user?.email || 'Unknown',
+            isBot: participant.user?.isBot || false,
+            card: pullData.pull?.card || null,
+            coinValue: pullData.coinValue || 0,
+            roundNumber: round,
+          });
+        }
+      }
+      
+      pullsByRound.set(round, roundPulls);
+    }
+    
+    return pullsByRound;
+  };
+
+  const determineRoundWinner = (roundPulls: PullResult[], isUpsideDown: boolean): RoundResult => {
+    let winner = roundPulls[0];
+    
+    for (const pull of roundPulls) {
+      if (isUpsideDown) {
+        // Lowest value wins
+        if (pull.coinValue < winner.coinValue) {
+          winner = pull;
+        }
+      } else {
+        // Highest value wins
+        if (pull.coinValue > winner.coinValue) {
+          winner = pull;
         }
       }
     }
-
-    return { pulls, totals };
+    
+    return {
+      roundNumber: roundPulls[0]?.roundNumber || 0,
+      pulls: roundPulls,
+      winnerId: winner.participantId,
+      winnerName: winner.participantName,
+      winningCard: winner.card,
+      winningValue: winner.coinValue,
+    };
   };
 
   const startBattleWithAnimation = async () => {
     setStarting(true);
     setIsDrawing(true);
     clearRevealTimeouts();
+    setAllPulls([]);
+    setRoundResults([]);
+    
+    // Reset totals to 0
+    const initialTotals = new Map<string, number>();
+    battle.participants.forEach((p: any) => {
+      initialTotals.set(p.userId, 0);
+    });
+    setParticipantTotals(initialTotals);
     
     try {
       const response = await fetch(`/api/battles/${battle.id}/start`, {
@@ -126,51 +167,71 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         throw new Error(data.error || 'Failed to start battle');
       }
 
-      // Get the pulls and totals
-      const { pulls, totals } = await simulateDraws(data.battle);
-      setParticipantTotals(totals);
+      const pullsByRound = prepareDrawData(data.battle);
+      const isUpsideDown = data.battle.battleMode === 'UPSIDE_DOWN';
       
-      // Animate each pull
       let timeline = 1000;
       
-      pulls.forEach((pull, index) => {
-        const isLast = index === pulls.length - 1;
+      // Process each round
+      for (let round = 1; round <= data.battle.rounds; round++) {
+        const roundPulls = pullsByRound.get(round) || [];
         
-        // Show card reveal
-        scheduleTimeout(() => {
-          setCurrentReveal(pull);
-          setIsShowingReveal(true);
-          setAllPulls(prev => [...prev, pull]);
+        // Reveal each pull in the round
+        roundPulls.forEach((pull, index) => {
+          scheduleTimeout(() => {
+            setCurrentReveal(pull);
+            setIsShowingReveal(true);
+            setAllPulls(prev => [...prev, pull]);
+            setCurrentRound(round);
+            
+            // Update total for this participant when card is revealed
+            setParticipantTotals(prev => {
+              const newTotals = new Map(prev);
+              const currentTotal = newTotals.get(pull.participantId) || 0;
+              newTotals.set(pull.participantId, currentTotal + pull.coinValue);
+              return newTotals;
+            });
+          }, timeline);
           
-          // Update current round display
-          setCurrentRound(pull.roundNumber);
+          timeline += REVEAL_DURATION;
+          
+          scheduleTimeout(() => {
+            setIsShowingReveal(false);
+            setCurrentReveal(null);
+          }, timeline);
+          
+          timeline += BETWEEN_PULLS_DELAY;
+        });
+        
+        // Show round winner after all pulls in round
+        const roundResult = determineRoundWinner(roundPulls, isUpsideDown);
+        
+        scheduleTimeout(() => {
+          setRoundResults(prev => [...prev, roundResult]);
+          setShowingRoundWinner(roundResult);
         }, timeline);
         
-        timeline += REVEAL_DURATION;
+        timeline += ROUND_WINNER_DURATION;
         
-        // Hide reveal and prepare for next
         scheduleTimeout(() => {
-          setIsShowingReveal(false);
-          setCurrentReveal(null);
-          
-          if (isLast) {
-            // Battle complete - determine and show winner
-            setTimeout(() => {
-              setWinner(data.battle.winnerId);
-              setBattleComplete(true);
-              setBattle(data.battle);
-              setIsDrawing(false);
-              
-              addToast({
-                title: 'Battle Complete!',
-                description: `Winner: ${data.battle.winner?.name || data.battle.winner?.email}`,
-              });
-            }, 500);
-          }
+          setShowingRoundWinner(null);
         }, timeline);
         
-        timeline += BETWEEN_PULLS_DELAY;
-      });
+        timeline += 500;
+      }
+      
+      // Battle complete
+      scheduleTimeout(() => {
+        setWinner(data.battle.winnerId);
+        setBattleComplete(true);
+        setBattle(data.battle);
+        setIsDrawing(false);
+        
+        addToast({
+          title: 'Battle Complete! 🏆',
+          description: `Winner: ${data.battle.winner?.name || data.battle.winner?.email}`,
+        });
+      }, timeline);
       
     } catch (error) {
       clearRevealTimeouts();
@@ -197,126 +258,144 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     }
   };
 
-  const getStatusColor = () => {
+  const getStatusBadge = () => {
     switch (battle.status) {
       case 'WAITING':
-        return 'text-yellow-400';
+        return <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-semibold">Waiting</span>;
       case 'IN_PROGRESS':
-        return 'text-blue-400';
+        return <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-semibold">In Progress</span>;
       case 'FINISHED':
-        return 'text-green-400';
+        return <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold">Finished</span>;
       case 'CANCELLED':
-        return 'text-red-400';
+        return <span className="px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-sm font-semibold">Cancelled</span>;
       default:
-        return 'text-gray-400';
+        return <span className="px-3 py-1 rounded-full bg-gray-500/20 text-gray-400 text-sm font-semibold">{battle.status}</span>;
     }
   };
 
   const participants = battle.participants || [];
   const spotsLeft = Math.max(0, battle.maxParticipants - participants.length);
 
-  // Group pulls by participant
+  // Group pulls by participant for display
   const pullsByParticipant = allPulls.reduce((acc: any, pull) => {
     if (!acc[pull.participantId]) {
-      acc[pull.participantId] = {
-        name: pull.participantName,
-        isBot: pull.isBot,
-        pulls: [],
-        total: 0,
-      };
+      acc[pull.participantId] = [];
     }
-    acc[pull.participantId].pulls.push(pull);
-    acc[pull.participantId].total += pull.coinValue;
+    acc[pull.participantId].push(pull);
     return acc;
   }, {});
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      <div className="container py-12">
-        <div className="mb-6">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/battles">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Battles
-            </Link>
-          </Button>
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none" />
+      <div className="fixed inset-0 radial-gradient pointer-events-none" />
+
+      <div className="relative container py-12">
+        {/* Back Button */}
+        <div className="mb-8">
+          <Link 
+            href="/battles"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Battles
+          </Link>
         </div>
 
         {/* Winner Announcement */}
         <AnimatePresence>
           {battleComplete && winner && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="mb-8 rounded-lg border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-900/20 to-yellow-800/10 p-6"
+              className="mb-8"
             >
-              <div className="flex items-center gap-3 mb-2">
-                <Trophy className="h-8 w-8 text-yellow-500" />
-                <h2 className="text-2xl font-bold text-yellow-400">Battle Complete!</h2>
+              <div className="relative overflow-hidden rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-900/30 via-amber-900/20 to-orange-900/30 p-8">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/10 via-transparent to-transparent" />
+                <div className="relative flex items-center gap-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500 to-amber-600 shadow-lg shadow-yellow-500/30">
+                    <Trophy className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-1">Battle Complete!</h2>
+                    <p className="text-xl text-gray-300">
+                      Winner: <span className="font-bold text-yellow-400">{battle.winner?.name || battle.winner?.email}</span>
+                      {battle.totalPrize > 0 && (
+                        <span className="ml-3 text-gray-400">• Prize: <span className="text-yellow-400">{battle.totalPrize} coins</span></span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-lg text-white">
-                Winner: <span className="font-bold text-yellow-400">
-                  {battle.winner?.name || battle.winner?.email}
-                </span>
-                {battle.totalPrize > 0 && (
-                  <span className="ml-2 text-gray-300">
-                    • Prize: {battle.totalPrize} coins
-                  </span>
-                )}
-              </p>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Start Battle Button */}
         {canStartBattle && !battleComplete && (
-          <div className="mb-8 rounded-lg border-2 border-green-500/50 bg-gradient-to-br from-green-900/20 to-green-800/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-green-400">Battle Ready!</h3>
-                <p className="text-sm text-gray-300">All spots are filled. You can start the battle now.</p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="rounded-3xl border border-green-500/30 bg-gradient-to-br from-green-900/30 to-emerald-900/20 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-400">Battle Ready!</h3>
+                    <p className="text-gray-400">All spots are filled. Start the battle when ready.</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={startBattleWithAnimation}
+                  disabled={starting || isDrawing}
+                  size="lg"
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold px-8"
+                >
+                  {starting ? 'Starting...' : 'Start Battle'}
+                </Button>
               </div>
-              <Button
-                onClick={startBattleWithAnimation}
-                disabled={starting || isDrawing}
-                size="lg"
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {starting ? 'Starting Battle...' : 'Start Battle'}
-              </Button>
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {/* Current Card Reveal */}
+        {/* Current Card Reveal Modal */}
         <AnimatePresence>
           {isShowingReveal && currentReveal && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
             >
               <motion.div
-                initial={{ rotateY: 180 }}
-                animate={{ rotateY: 0 }}
-                transition={{ duration: 0.6 }}
+                initial={{ scale: 0.5, rotateY: 180 }}
+                animate={{ scale: 1, rotateY: 0 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ type: 'spring', duration: 0.6 }}
                 className="relative"
               >
-                <Card className="border-2 border-yellow-500/50 bg-gray-900 p-8 max-w-md">
-                  <div className="text-center mb-4">
-                    <p className="text-lg text-gray-400">Round {currentReveal.roundNumber}</p>
-                    <p className="text-xl font-bold text-white">
+                <div className="relative rounded-3xl border-2 border-purple-500/50 bg-gray-900/95 p-8 max-w-sm shadow-2xl shadow-purple-500/20">
+                  {/* Header */}
+                  <div className="text-center mb-6">
+                    <p className="text-purple-400 font-semibold mb-1">Round {currentReveal.roundNumber}</p>
+                    <p className="text-2xl font-bold text-white">
                       {currentReveal.participantName}
                       {currentReveal.isBot && (
-                        <span className="ml-2 text-sm text-amber-400">(Bot)</span>
+                        <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">Bot</span>
                       )}
                     </p>
                   </div>
+                  
+                  {/* Card Image */}
                   {currentReveal.card && (
                     <div className="space-y-4">
-                      <div className="relative h-80 w-60 mx-auto overflow-hidden rounded-lg border border-gray-700">
+                      <div className="relative h-80 w-56 mx-auto overflow-hidden rounded-xl border-2 border-gray-700 shadow-xl">
                         <Image
                           src={currentReveal.card.imageUrlGatherer || currentReveal.card.imageUrlScryfall}
                           alt={currentReveal.card.name}
@@ -326,202 +405,290 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                         />
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-semibold text-white">{currentReveal.card.name}</p>
-                        <p className="text-sm text-gray-400">{currentReveal.card.rarity}</p>
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                          <Coins className="h-5 w-5 text-yellow-500" />
-                          <span className="text-2xl font-bold text-yellow-400">
-                            {currentReveal.coinValue}
-                          </span>
+                        <p className="text-xl font-bold text-white mb-1">{currentReveal.card.name}</p>
+                        <p className="text-gray-400 text-sm mb-3">{currentReveal.card.rarity}</p>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 border border-yellow-500/30">
+                          <Coins className="w-5 h-5 text-yellow-400" />
+                          <span className="text-2xl font-bold text-yellow-400">{currentReveal.coinValue}</span>
                         </div>
                       </div>
                     </div>
                   )}
-                </Card>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="absolute -inset-4"
-                >
-                  <Sparkles className="absolute top-0 left-0 h-8 w-8 text-yellow-400 animate-pulse" />
-                  <Sparkles className="absolute top-0 right-0 h-8 w-8 text-yellow-400 animate-pulse" />
-                  <Sparkles className="absolute bottom-0 left-0 h-8 w-8 text-yellow-400 animate-pulse" />
-                  <Sparkles className="absolute bottom-0 right-0 h-8 w-8 text-yellow-400 animate-pulse" />
-                </motion.div>
+                </div>
+                
+                {/* Sparkle Effects */}
+                <Sparkles className="absolute -top-4 -left-4 w-8 h-8 text-purple-400 animate-pulse" />
+                <Sparkles className="absolute -top-4 -right-4 w-8 h-8 text-purple-400 animate-pulse" />
+                <Sparkles className="absolute -bottom-4 -left-4 w-8 h-8 text-yellow-400 animate-pulse" />
+                <Sparkles className="absolute -bottom-4 -right-4 w-8 h-8 text-yellow-400 animate-pulse" />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Round Winner Announcement */}
+        <AnimatePresence>
+          {showingRoundWinner && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.8, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="rounded-3xl border border-green-500/50 bg-gray-900/95 p-8 max-w-md text-center shadow-2xl"
+              >
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4">
+                  <Crown className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-green-400 font-semibold mb-2">Round {showingRoundWinner.roundNumber} Winner</p>
+                <p className="text-2xl font-bold text-white mb-4">{showingRoundWinner.winnerName}</p>
+                {showingRoundWinner.winningCard && (
+                  <div className="flex items-center justify-center gap-3 text-gray-300">
+                    <span>{showingRoundWinner.winningCard.name}</span>
+                    <span className="text-yellow-400 font-bold">{showingRoundWinner.winningValue} coins</span>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="grid gap-8 lg:grid-cols-3">
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Battle Details Card */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl">Battle Details</CardTitle>
-                  <span className={`text-sm font-semibold uppercase ${getStatusColor()}`}>
-                    {battle.status}
-                  </span>
+            {/* Battle Info Card */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-white">Battle #{battle.id.slice(-6)}</h1>
+                {getStatusBadge()}
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 text-gray-400 mb-1">
+                    <Swords className="w-4 h-4" />
+                    <span className="text-sm">Mode</span>
+                  </div>
+                  <p className="text-white font-semibold">{getBattleModeLabel()}</p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Swords className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-400">Mode:</span>
-                    <span className="text-white font-semibold">{getBattleModeLabel()}</span>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 text-gray-400 mb-1">
+                    <Users className="w-4 h-4" />
+                    <span className="text-sm">Players</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-400">Players:</span>
-                    <span className="text-white font-semibold">
-                      {participants.length}/{battle.maxParticipants}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Coins className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-400">Entry Fee:</span>
-                    <span className="text-white font-semibold">{battle.entryFee} coins</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400">Rounds:</span>
-                    <span className="text-white font-semibold">
-                      {isDrawing ? `${currentRound}/${battle.rounds}` : battle.rounds}
-                    </span>
-                  </div>
+                  <p className="text-white font-semibold">{participants.length}/{battle.maxParticipants}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 text-gray-400 mb-1">
+                    <Coins className="w-4 h-4" />
+                    <span className="text-sm">Entry Fee</span>
+                  </div>
+                  <p className="text-white font-semibold">{battle.entryFee} coins</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 text-gray-400 mb-1">
+                    <Package className="w-4 h-4" />
+                    <span className="text-sm">Rounds</span>
+                  </div>
+                  <p className="text-white font-semibold">
+                    {isDrawing ? `${currentRound}/${battle.rounds}` : battle.rounds}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            {/* Participants / Results */}
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>
-                  {allPulls.length > 0 ? 'Battle Progress' : 'Participants'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isAdmin && spotsLeft > 0 && !battleComplete && (
-                  <div className="mb-6">
-                    <AddBotsControl battleId={battle.id} maxAddable={spotsLeft} />
-                  </div>
-                )}
-                <div className="space-y-4">
-                  {participants.map((participant: any) => {
-                    const pulls = pullsByParticipant[participant.userId];
-                    const total = participantTotals.get(participant.userId) || 0;
-                    const isWinner = winner === participant.userId;
-                    
-                    return (
-                      <div
-                        key={participant.id}
-                        className={`rounded-lg border ${
-                          isWinner 
-                            ? 'border-yellow-500 bg-yellow-900/20' 
-                            : 'border-gray-800 bg-gray-900/70'
-                        } p-4 transition-all`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold">
-                              {participant.user?.name || participant.user?.email}
+            {/* Participants */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10">
+              <h2 className="text-xl font-bold text-white mb-6">
+                {allPulls.length > 0 ? 'Battle Progress' : 'Participants'}
+              </h2>
+              
+              {isAdmin && spotsLeft > 0 && !battleComplete && (
+                <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <AddBotsControl battleId={battle.id} maxAddable={spotsLeft} />
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                {participants.map((participant: any) => {
+                  const pulls = pullsByParticipant[participant.userId] || [];
+                  const total = participantTotals.get(participant.userId) || 0;
+                  const isWinner = winner === participant.userId;
+                  
+                  return (
+                    <motion.div
+                      key={participant.id}
+                      layout
+                      className={`rounded-2xl border p-5 transition-all ${
+                        isWinner 
+                          ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-900/30 to-amber-900/20' 
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-bold text-white">
+                            {participant.user?.name || participant.user?.email}
+                          </span>
+                          {participant.user?.isBot && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold">
+                              Bot
                             </span>
-                            {participant.user?.isBot && (
-                              <span className="rounded-full border border-amber-600/40 bg-amber-500/10 px-2 py-0.5 text-xs font-semibold uppercase text-amber-200">
-                                Bot
-                              </span>
-                            )}
-                            {isWinner && (
-                              <Trophy className="h-5 w-5 text-yellow-500" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {total > 0 && (
-                              <>
-                                <Coins className="h-4 w-4 text-yellow-500" />
-                                <span className="text-lg font-bold text-yellow-400">
-                                  {total.toFixed(2)}
-                                </span>
-                              </>
-                            )}
-                          </div>
+                          )}
+                          {isWinner && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
+                              <Trophy className="w-3 h-3" />
+                              Winner
+                            </div>
+                          )}
                         </div>
-                        
-                        {pulls && pulls.pulls.length > 0 && (
-                          <div className="grid grid-cols-6 gap-1">
-                            {pulls.pulls.map((pull: PullResult, index: number) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="relative group cursor-pointer"
-                                title={`${pull.card?.name || 'Unknown'} - ${pull.coinValue} coins`}
-                              >
-                                <div className="relative h-20 w-full overflow-hidden rounded border border-gray-700 bg-gray-800">
-                                  {pull.card && (
-                                    <Image
-                                      src={pull.card.imageUrlGatherer || pull.card.imageUrlScryfall}
-                                      alt={pull.card.name}
-                                      fill
-                                      className="object-cover transition-transform group-hover:scale-110"
-                                      unoptimized
-                                    />
-                                  )}
-                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1">
-                                    <p className="text-xs text-yellow-400 font-semibold text-center">
-                                      {pull.coinValue}
-                                    </p>
-                                  </div>
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-5 h-5 text-yellow-400" />
+                          <motion.span 
+                            key={total}
+                            initial={{ scale: 1.2 }}
+                            animate={{ scale: 1 }}
+                            className="text-xl font-bold text-yellow-400"
+                          >
+                            {total.toFixed(0)}
+                          </motion.span>
+                        </div>
+                      </div>
+                      
+                      {pulls.length > 0 && (
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                          {pulls.map((pull: PullResult, index: number) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.05 }}
+                              className="group relative cursor-pointer"
+                              title={`${pull.card?.name || 'Unknown'} - ${pull.coinValue} coins`}
+                            >
+                              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-white/20 bg-gray-800">
+                                {pull.card && (
+                                  <Image
+                                    src={pull.card.imageUrlGatherer || pull.card.imageUrlScryfall}
+                                    alt={pull.card.name}
+                                    fill
+                                    className="object-cover transition-transform group-hover:scale-110"
+                                    unoptimized
+                                  />
+                                )}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-1">
+                                  <p className="text-xs text-yellow-400 font-bold text-center">
+                                    {pull.coinValue}
+                                  </p>
                                 </div>
-                              </motion.div>
-                            ))}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Round Results */}
+            {roundResults.length > 0 && (
+              <div className="glass-strong rounded-3xl p-6 border border-white/10">
+                <h2 className="text-xl font-bold text-white mb-6">Round Results</h2>
+                <div className="space-y-3">
+                  {roundResults.map((round) => (
+                    <motion.div
+                      key={round.roundNumber}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                          {round.roundNumber}
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold">{round.winnerName}</p>
+                          <p className="text-gray-400 text-sm">{round.winningCard?.name || 'Unknown'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {round.winningCard && (
+                          <div className="relative w-12 h-16 rounded overflow-hidden border border-white/20">
+                            <Image
+                              src={round.winningCard.imageUrlGatherer || round.winningCard.imageUrlScryfall}
+                              alt={round.winningCard.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
                           </div>
                         )}
+                        <div className="flex items-center gap-1 text-yellow-400 font-bold">
+                          <Coins className="w-4 h-4" />
+                          {round.winningValue}
+                        </div>
                       </div>
-                    );
-                  })}
+                    </motion.div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            )}
           </div>
 
-          {/* Box Details Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            <Card className="border-gray-800 bg-gray-900/50">
-              <CardHeader>
-                <CardTitle>Box Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative h-48 w-full overflow-hidden rounded-lg border border-gray-800">
-                  <Image
-                    src={battle.box.imageUrl}
-                    alt={battle.box.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+            {/* Box Details */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10">
+              <h3 className="text-lg font-bold text-white mb-4">Box Details</h3>
+              <div className="relative h-48 w-full overflow-hidden rounded-xl border border-white/20 mb-4">
+                <Image
+                  src={battle.box.imageUrl}
+                  alt={battle.box.name}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <h4 className="text-white font-semibold mb-2">{battle.box.name}</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Price per box</span>
+                  <span className="text-white font-semibold">{battle.box.price.toLocaleString()} coins</span>
                 </div>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div className="flex items-center justify-between">
-                    <span>Price per box</span>
-                    <span className="text-white font-semibold">
-                      {battle.box.price.toLocaleString()} coins
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Cards per pack</span>
-                    <span className="text-white font-semibold">{battle.box.cardsPerPack}</span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Cards per pack</span>
+                  <span className="text-white font-semibold">{battle.box.cardsPerPack}</span>
                 </div>
-                <p className="text-sm text-gray-400">{battle.box.description}</p>
-              </CardContent>
-            </Card>
+              </div>
+              {battle.box.description && (
+                <p className="text-gray-400 text-sm mt-4">{battle.box.description}</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="glass-strong rounded-3xl p-6 border border-white/10">
+              <div className="space-y-3">
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/battles">View All Battles</Link>
+                </Button>
+                {currentUserId && (
+                  <Button asChild className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Link href="/battles/create">Create New Battle</Link>
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
 }
