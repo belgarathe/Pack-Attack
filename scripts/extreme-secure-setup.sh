@@ -138,11 +138,15 @@ cd app
 echo "⚙️ Creating environment configuration..."
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 cat > .env << EOF
-DATABASE_URL="postgresql://neondb_owner:npg_8nRWsIZdUN9P@ep-patient-resonance-ahmtm2jq-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
-NEXTAUTH_URL="https://pack-attack.de"
+DATABASE_URL="postgresql://username:password@localhost:5432/packattack"
+NEXTAUTH_URL="https://your-domain.com"
 NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 NODE_ENV="production"
+# Add your API keys here:
+# RESEND_API_KEY="re_your_api_key"
+# RESEND_FROM_EMAIL="noreply@your-domain.com"
 EOF
+echo "⚠️  IMPORTANT: Edit .env with your actual database credentials!"
 chown packattack:packattack .env
 chmod 600 .env
 
