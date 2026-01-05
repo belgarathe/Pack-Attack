@@ -206,18 +206,18 @@ export default function PurchaseCoinsPage() {
 
         {/* Packages Grid */}
         <div 
-          className="max-w-6xl mx-auto mb-24"
+          className="max-w-5xl mx-auto"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 300ms, transform 0.6s ease 300ms'
           }}
         >
-          <h2 className="text-center text-gray-400 text-sm font-semibold uppercase tracking-wider mb-10">
+          <h2 className="text-center text-gray-400 text-sm font-semibold uppercase tracking-wider mb-8">
             Choose Your Package
           </h2>
           
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {coinPackages.map((pkg, index) => {
               const Icon = pkg.icon;
               const isSelected = selectedPackage.amount === pkg.amount;
@@ -259,43 +259,43 @@ export default function PurchaseCoinsPage() {
                     <div className="absolute inset-0 bg-gray-900/90" />
 
                     {/* Card Content */}
-                    <div className="relative p-8">
+                    <div className="relative p-6">
                       {/* Icon & Label */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className={`p-4 rounded-2xl bg-gradient-to-br ${pkg.gradient} shadow-lg ${pkg.shadowColor}`}>
-                          <Icon className="w-7 h-7 text-white" />
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${pkg.gradient} shadow-lg ${pkg.shadowColor}`}>
+                          <Icon className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-white font-bold text-lg">{pkg.label}</p>
-                          <p className="text-gray-500 text-sm">Package</p>
+                          <p className="text-white font-bold">{pkg.label}</p>
+                          <p className="text-gray-500 text-xs">Package</p>
                         </div>
                       </div>
 
                       {/* Coins Amount */}
-                      <div className="mb-6">
+                      <div className="mb-5">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-4xl font-bold text-white">{pkg.amount.toLocaleString()}</span>
-                          <span className="text-gray-500 font-medium">coins</span>
+                          <span className="text-3xl font-bold text-white">{pkg.amount.toLocaleString()}</span>
+                          <span className="text-gray-500 text-sm font-medium">coins</span>
                         </div>
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6" />
+                      <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
 
                       {/* Price */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-baseline gap-1">
-                          <Euro className="w-5 h-5 text-white" />
-                          <span className="text-3xl font-bold text-white">{pkg.price}</span>
+                          <Euro className="w-4 h-4 text-white" />
+                          <span className="text-2xl font-bold text-white">{pkg.price}</span>
                         </div>
                         
                         {/* Selection Indicator */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isSelected 
                             ? `bg-gradient-to-br ${pkg.gradient} border-transparent` 
                             : 'border-gray-600 group-hover:border-gray-500'
                         }`}>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
+                          {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
                         </div>
                       </div>
                     </div>
@@ -306,9 +306,14 @@ export default function PurchaseCoinsPage() {
           </div>
         </div>
 
+        {/* Spacer with visual divider */}
+        <div className="max-w-3xl mx-auto my-20">
+          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
+
         {/* Purchase Summary Card */}
         <div 
-          className="max-w-md mx-auto"
+          className="max-w-lg mx-auto"
           style={{ 
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
@@ -320,30 +325,30 @@ export default function PurchaseCoinsPage() {
             <div className={`absolute -inset-1 bg-gradient-to-r ${selectedPackage.gradient} rounded-[2rem] blur-xl opacity-20`} />
             
             {/* Card */}
-            <div className="relative glass-strong rounded-3xl p-10 border border-white/10">
+            <div className="relative glass-strong rounded-3xl p-8 border border-white/10">
               {/* Header */}
-              <div className="text-center mb-10">
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-4">Your Purchase</p>
-                <div className="flex items-center justify-center gap-4">
+              <div className="text-center mb-8">
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-3">Your Purchase</p>
+                <div className="flex items-center justify-center gap-3">
                   <div className={`p-3 rounded-xl bg-gradient-to-br ${selectedPackage.gradient}`}>
-                    <Coins className="w-8 h-8 text-white" />
+                    <Coins className="w-7 h-7 text-white" />
                   </div>
                   <div className="text-left">
-                    <span className="text-5xl font-bold text-white">{selectedPackage.amount.toLocaleString()}</span>
-                    <p className="text-gray-400">coins</p>
+                    <span className="text-4xl font-bold text-white">{selectedPackage.amount.toLocaleString()}</span>
+                    <p className="text-gray-400 text-sm">coins</p>
                   </div>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-10" />
+              <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8" />
 
               {/* Price Summary */}
-              <div className="flex items-center justify-between mb-10">
-                <span className="text-gray-400 text-lg">Total</span>
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-gray-400">Total</span>
                 <div className="flex items-baseline gap-1">
-                  <Euro className="w-6 h-6 text-white" />
-                  <span className="text-4xl font-bold text-white">{selectedPackage.price}</span>
+                  <Euro className="w-5 h-5 text-white" />
+                  <span className="text-3xl font-bold text-white">{selectedPackage.price}</span>
                 </div>
               </div>
 
@@ -351,22 +356,22 @@ export default function PurchaseCoinsPage() {
               <button
                 onClick={handlePurchase}
                 disabled={loading}
-                className={`group relative w-full py-5 px-8 rounded-2xl font-bold text-lg transition-all duration-300 ${
+                className={`group relative w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 ${
                   loading 
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'hover:scale-[1.02] hover:shadow-2xl'
                 } bg-gradient-to-r ${selectedPackage.gradient} text-white shadow-xl ${selectedPackage.shadowColor}`}
               >
-                <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative flex items-center justify-center gap-3">
+                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="relative flex items-center justify-center gap-2">
                   {loading ? (
                     <>
-                      <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Processing...
                     </>
                   ) : (
                     <>
-                      <Zap className="w-6 h-6" />
+                      <Zap className="w-5 h-5" />
                       Purchase Now
                     </>
                   )}
@@ -374,18 +379,18 @@ export default function PurchaseCoinsPage() {
               </button>
 
               {/* Trust Indicators */}
-              <div className="flex items-center justify-center gap-8 mt-8">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Shield className="w-4 h-4" />
-                  <span className="text-sm">Secure</span>
+              <div className="flex items-center justify-center gap-6 mt-6 text-gray-500 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Secure</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm">Instant</span>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Instant</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-500">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-sm">Verified</span>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Verified</span>
                 </div>
               </div>
             </div>
