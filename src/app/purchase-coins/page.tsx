@@ -176,8 +176,9 @@ export default function PurchaseCoinsPage() {
         {/* Current Balance Card */}
         {userCoins !== null && (
           <div 
-            className="max-w-lg mx-auto mb-16"
             style={{ 
+              maxWidth: '32rem',
+              margin: '0 auto 4rem auto',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(20px)',
               transition: 'opacity 0.6s ease 150ms, transform 0.6s ease 150ms'
