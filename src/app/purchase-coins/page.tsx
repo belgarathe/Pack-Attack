@@ -307,8 +307,9 @@ export default function PurchaseCoinsPage() {
         {/* Purchase Summary */}
         <div 
           className="max-w-md mx-auto"
-          style={{ display: 'block', marginBottom: '96px' }}
           style={{ 
+            display: 'block',
+            marginBottom: '96px',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.6s ease 450ms, transform 0.6s ease 450ms'
