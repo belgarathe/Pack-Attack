@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, Plus, Minus, Coins, Swords, Users, Trophy, Sparkles, Lock, Globe } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Coins, Swords, Users, Trophy, Sparkles, Lock, Globe, Package, Zap, Crown, Share2 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type Box = {
   id: string;
@@ -19,7 +20,7 @@ export default function CreateBattlePage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [boxes, setBoxes] = useState<Box[]>([]);
-  const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
+  const [selectedBox, setSelectedBox] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     players: '2' as '2' | '3' | '4',
     winCondition: 'NORMAL' as 'NORMAL' | 'UPSIDE_DOWN' | 'SHARE' | 'JACKPOT',
@@ -40,26 +41,18 @@ export default function CreateBattlePage() {
       });
   }, []);
 
-  const toggleBox = (boxId: string) => {
-    setSelectedBoxes((prev) =>
-      prev.includes(boxId) ? prev.filter((id) => id !== boxId) : [...prev, boxId]
-    );
-  };
-
   const calculateTotalCost = () => {
-    return selectedBoxes.reduce((total, boxId) => {
-      const box = boxes.find((b) => b.id === boxId);
-      return total + (box ? box.price * formData.rounds : 0);
-    }, 0);
+    const box = boxes.find((b) => b.id === selectedBox);
+    return box ? box.price * formData.rounds : 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedBoxes.length === 0) {
+    if (!selectedBox) {
       addToast({
         title: 'Error',
-        description: 'Please select at least one box',
+        description: 'Please select a box',
         variant: 'destructive',
       });
       return;
@@ -72,7 +65,7 @@ export default function CreateBattlePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          boxId: selectedBoxes[0],
+          boxId: selectedBox,
           entryFee: 0,
           rounds: formData.rounds,
           battleMode: formData.winCondition === 'SHARE' ? 'NORMAL' : formData.winCondition,
@@ -93,8 +86,8 @@ export default function CreateBattlePage() {
       }
 
       addToast({
-        title: 'Success',
-        description: 'Battle created successfully!',
+        title: 'Battle Created! ⚔️',
+        description: 'Your battle is ready. Waiting for players...',
       });
 
       router.push(`/battles/${data.battle.id}`);
@@ -111,18 +104,17 @@ export default function CreateBattlePage() {
   };
 
   const winConditions = [
-    { value: 'NORMAL', label: 'Highest Total Value', description: 'Player with highest value wins all', icon: Trophy },
-    { value: 'UPSIDE_DOWN', label: 'Lowest Total Value', description: 'Player with lowest value wins all', icon: Trophy },
-    { value: 'SHARE', label: 'Share Mode', description: 'Items split evenly among all players', icon: Users },
-    { value: 'JACKPOT', label: 'Jackpot', description: 'Weighted random - one winner takes all', icon: Sparkles },
+    { value: 'NORMAL', label: 'Highest Wins', description: 'Highest total value wins all cards', icon: Crown, color: 'from-amber-500 to-yellow-500' },
+    { value: 'UPSIDE_DOWN', label: 'Lowest Wins', description: 'Lowest total value wins all cards', icon: Trophy, color: 'from-blue-500 to-cyan-500' },
+    { value: 'SHARE', label: 'Share Mode', description: 'Cards split evenly among players', icon: Share2, color: 'from-green-500 to-emerald-500' },
+    { value: 'JACKPOT', label: 'Jackpot', description: 'Random weighted winner takes all', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
       {/* Background Effects */}
-      <div className="fixed inset-0 bg-grid opacity-30" />
-      <div className="fixed inset-0 radial-gradient" />
-      <div className="fixed top-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl hidden lg:block" />
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none" />
+      <div className="fixed inset-0 radial-gradient pointer-events-none" />
 
       <div className="relative container py-12">
         {/* Back Link */}
@@ -135,233 +127,305 @@ export default function CreateBattlePage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full glass text-sm border border-purple-500/20">
-            <Swords className="w-4 h-4 text-purple-400" />
-            <span className="text-gray-300">New Battle</span>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full glass border border-purple-500/20">
+            <Swords className="w-5 h-5 text-purple-400" />
+            <span className="text-purple-400 font-semibold">New Battle</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4">
             <span className="text-white">Create </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Battle</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400">Battle</span>
           </h1>
+          <p className="text-gray-400 text-lg max-w-xl mx-auto">
+            Set up your battle parameters and challenge other players
+          </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Players Selection */}
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-purple-400" />
-                Players
-              </h2>
-              <div className="grid grid-cols-3 gap-4">
-                {(['2', '3', '4'] as const).map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, players: count })}
-                    className={`rounded-xl border-2 p-4 text-center transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
-                      formData.players === count
-                        ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 text-purple-300 shadow-purple-500/25'
-                        : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-gray-300 hover:border-purple-400/50 hover:bg-gray-700/70'
-                    }`}
-                  >
-                    <div className="text-3xl font-bold mb-1">{count}</div>
-                    <div className="text-sm font-medium uppercase tracking-wide">players</div>
-                  </button>
-                ))}
+        <div className="max-w-5xl mx-auto">
+          {/* Step 1: Select Box */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                1
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Select Box</h2>
+                <p className="text-gray-400 text-sm">Choose which box to battle with</p>
               </div>
             </div>
-
-            {/* Boxes Selection */}
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-400" />
-                Select Box
-              </h2>
-              {boxes.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">No boxes available</p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {boxes.map((box) => {
-                    const isSelected = selectedBoxes.includes(box.id);
-                    return (
-                      <button
-                        key={box.id}
-                        type="button"
-                        onClick={() => toggleBox(box.id)}
-                        className={`group relative rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
-                          isSelected
-                            ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
-                            : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
-                        }`}
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-amber-400">
-                            <Coins className="w-4 h-4" />
-                            <span className="font-bold">{box.price.toLocaleString()}</span>
+            
+            {boxes.length === 0 ? (
+              <div className="glass-strong rounded-2xl p-8 text-center border border-white/10">
+                <Package className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                <p className="text-gray-400">No boxes available</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {boxes.map((box) => {
+                  const isSelected = selectedBox === box.id;
+                  return (
+                    <button
+                      key={box.id}
+                      type="button"
+                      onClick={() => setSelectedBox(box.id)}
+                      className={`group relative rounded-2xl border-2 overflow-hidden text-left transition-all ${
+                        isSelected
+                          ? 'border-purple-500 ring-2 ring-purple-500/30 shadow-lg shadow-purple-500/20'
+                          : 'border-white/10 hover:border-purple-500/50'
+                      }`}
+                    >
+                      {/* Box Image */}
+                      <div className="relative h-32 bg-gray-800">
+                        {box.imageUrl && (
+                          <Image
+                            src={box.imageUrl}
+                            alt={box.name}
+                            fill
+                            className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                            unoptimized
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent" />
+                        
+                        {/* Selected Badge */}
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold">
+                            ✓ Selected
                           </div>
-                          {isSelected ? (
-                            <div className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-xs font-bold text-white shadow-lg">
-                              ✓ Selected
-                            </div>
-                          ) : (
-                            <div className="px-3 py-1 rounded-full border border-gray-500 text-xs font-medium text-gray-400 group-hover:border-purple-400/50 group-hover:text-purple-300">
-                              Click to Select
-                            </div>
-                          )}
-                        </div>
-                        <h3 className="font-semibold text-white mb-1">{box.name}</h3>
-                        <p className="line-clamp-2 text-sm text-gray-400">{box.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Win Condition */}
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-purple-400" />
-                Win Condition
-              </h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                {winConditions.map((condition) => {
-                  const Icon = condition.icon;
-                  const isActive = formData.winCondition === condition.value;
-                  return (
-                    <button
-                      key={condition.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, winCondition: condition.value as any })}
-                      className={`rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
-                        isActive
-                          ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
-                          : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-purple-500/30' : 'bg-gray-700/50'}`}>
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-purple-300' : 'text-gray-400'}`} />
-                        </div>
-                        <span className={`font-semibold ${isActive ? 'text-purple-300' : 'text-white'}`}>{condition.label}</span>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-400">{condition.description}</p>
+                      
+                      {/* Box Info */}
+                      <div className="p-4 bg-gray-900/80">
+                        <h3 className="font-bold text-white mb-1">{box.name}</h3>
+                        <div className="flex items-center gap-1 text-amber-400">
+                          <Coins className="w-4 h-4" />
+                          <span className="font-bold">{box.price.toLocaleString()}</span>
+                          <span className="text-gray-500 text-sm">coins</span>
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            </div>
-
-            {/* Privacy */}
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-purple-400" />
-                Privacy
-              </h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                {[
-                  { value: 'PUBLIC', label: 'Public', description: 'Visible to everyone', icon: Globe },
-                  { value: 'PRIVATE', label: 'Private', description: 'Hidden from list', icon: Lock },
-                ].map((option) => {
-                  const Icon = option.icon;
-                  const isActive = formData.privacy === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, privacy: option.value as any })}
-                      className={`rounded-xl border-2 p-4 text-left transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
-                        isActive
-                          ? 'border-purple-500 bg-gradient-to-br from-purple-600/30 to-purple-800/20 shadow-purple-500/25 ring-2 ring-purple-500/30'
-                          : 'border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 hover:border-purple-400/50 hover:bg-gray-700/70'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-purple-500/30' : 'bg-gray-700/50'}`}>
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-purple-300' : 'text-gray-400'}`} />
-                        </div>
-                        <span className={`font-semibold ${isActive ? 'text-purple-300' : 'text-white'}`}>{option.label}</span>
-                      </div>
-                      <p className="text-sm text-gray-400">{option.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-4 glass-strong rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-6">Battle Summary</h2>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                  <span className="text-gray-400">Boxes</span>
-                  <span className="text-white font-semibold">
-                    {selectedBoxes.length} selected
-                  </span>
+          {/* Step 2: Battle Settings */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                2
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Battle Settings</h2>
+                <p className="text-gray-400 text-sm">Configure your battle</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Players */}
+              <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-lg font-bold text-white">Players</h3>
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                  <span className="text-gray-400">Players</span>
-                  <span className="text-white font-semibold">{formData.players}</span>
-                </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                  <span className="text-gray-400">Mode</span>
-                  <span className="text-white font-semibold">
-                    {winConditions.find(c => c.value === formData.winCondition)?.label}
-                  </span>
+                <div className="grid grid-cols-3 gap-3">
+                  {(['2', '3', '4'] as const).map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, players: count })}
+                      className={`py-4 rounded-xl font-bold text-2xl transition-all ${
+                        formData.players === count
+                          ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                          : 'bg-white/5 text-gray-400 border border-white/10 hover:border-purple-500/50 hover:text-white'
+                      }`}
+                    >
+                      {count}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Rounds Control */}
-              <div className="mb-6">
-                <span className="text-gray-300 text-sm font-medium block mb-3">Rounds</span>
-                <div className="flex items-center gap-3">
+              {/* Rounds */}
+              <div className="glass-strong rounded-2xl p-6 border border-white/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-lg font-bold text-white">Rounds</h3>
+                </div>
+                <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, rounds: Math.max(1, formData.rounds - 1) })}
-                    className="w-14 h-14 rounded-xl border-2 border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white hover:border-purple-400/50 hover:bg-gray-700/70 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center"
+                    className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-purple-500/50 transition-all flex items-center justify-center"
                   >
                     <Minus className="w-6 h-6" />
                   </button>
-                  <div className="flex-1 text-center py-3 px-4 rounded-xl bg-gray-800/50 border border-gray-700">
-                    <span className="text-3xl font-bold text-white">{formData.rounds}</span>
-                    <span className="text-gray-400 text-sm block mt-1">round{formData.rounds !== 1 ? 's' : ''}</span>
+                  <div className="flex-1 text-center">
+                    <span className="text-4xl font-bold text-white">{formData.rounds}</span>
+                    <p className="text-gray-500 text-sm">round{formData.rounds !== 1 ? 's' : ''}</p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, rounds: formData.rounds + 1 })}
-                    className="w-14 h-14 rounded-xl border-2 border-gray-600 bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white hover:border-purple-400/50 hover:bg-gray-700/70 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center"
+                    onClick={() => setFormData({ ...formData, rounds: Math.min(10, formData.rounds + 1) })}
+                    className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-purple-500/50 transition-all flex items-center justify-center"
                   >
                     <Plus className="w-6 h-6" />
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Total Cost */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 mb-6">
-                <span className="text-gray-400 text-sm block mb-1">Entry Cost</span>
-                <div className="flex items-center gap-2">
-                  <Coins className="w-6 h-6 text-amber-400" />
-                  <span className="text-3xl font-bold text-white">{calculateTotalCost().toFixed(0)}</span>
-                  <span className="text-gray-400">coins</span>
+          {/* Step 3: Win Condition */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                3
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Win Condition</h2>
+                <p className="text-gray-400 text-sm">How the winner is determined</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {winConditions.map((condition) => {
+                const Icon = condition.icon;
+                const isActive = formData.winCondition === condition.value;
+                return (
+                  <button
+                    key={condition.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, winCondition: condition.value as any })}
+                    className={`relative rounded-2xl p-5 text-left transition-all border-2 ${
+                      isActive
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-purple-500/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${condition.color}`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`font-bold mb-1 ${isActive ? 'text-purple-400' : 'text-white'}`}>
+                          {condition.label}
+                        </h4>
+                        <p className="text-gray-400 text-sm">{condition.description}</p>
+                      </div>
+                      {isActive && (
+                        <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 4: Privacy */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                4
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Privacy</h2>
+                <p className="text-gray-400 text-sm">Battle visibility</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { value: 'PUBLIC', label: 'Public Battle', description: 'Anyone can join', icon: Globe, color: 'from-green-500 to-emerald-500' },
+                { value: 'PRIVATE', label: 'Private Battle', description: 'Invite only', icon: Lock, color: 'from-orange-500 to-red-500' },
+              ].map((option) => {
+                const Icon = option.icon;
+                const isActive = formData.privacy === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, privacy: option.value as any })}
+                    className={`relative rounded-2xl p-5 text-left transition-all border-2 ${
+                      isActive
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-purple-500/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${option.color}`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`font-bold mb-1 ${isActive ? 'text-purple-400' : 'text-white'}`}>
+                          {option.label}
+                        </h4>
+                        <p className="text-gray-400 text-sm">{option.description}</p>
+                      </div>
+                      {isActive && (
+                        <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Summary & Create Button */}
+          <div className="glass-strong rounded-3xl p-8 border border-white/10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              {/* Summary */}
+              <div className="flex flex-wrap items-center gap-6">
+                <div>
+                  <p className="text-gray-400 text-sm mb-1">Entry Cost</p>
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-6 h-6 text-amber-400" />
+                    <span className="text-3xl font-bold text-white">{calculateTotalCost().toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="hidden sm:block w-px h-12 bg-white/10" />
+                <div>
+                  <p className="text-gray-400 text-sm mb-1">Players</p>
+                  <p className="text-xl font-bold text-white">{formData.players}</p>
+                </div>
+                <div className="hidden sm:block w-px h-12 bg-white/10" />
+                <div>
+                  <p className="text-gray-400 text-sm mb-1">Rounds</p>
+                  <p className="text-xl font-bold text-white">{formData.rounds}</p>
+                </div>
+                <div className="hidden sm:block w-px h-12 bg-white/10" />
+                <div>
+                  <p className="text-gray-400 text-sm mb-1">Mode</p>
+                  <p className="text-xl font-bold text-white">
+                    {winConditions.find(c => c.value === formData.winCondition)?.label}
+                  </p>
                 </div>
               </div>
 
+              {/* Create Button */}
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || selectedBoxes.length === 0}
-                className="w-full py-5 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white font-bold text-lg rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-3 shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 border-2 border-purple-400/30"
+                disabled={loading || !selectedBox}
+                className="flex items-center justify-center gap-3 px-10 py-5 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 text-white font-bold text-lg rounded-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 shadow-xl shadow-purple-500/30"
               >
                 {loading ? (
                   <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Swords className="w-6 h-6" />
+                    <Zap className="w-6 h-6" />
                     Create Battle
                   </>
                 )}

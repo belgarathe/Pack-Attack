@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X, Check } from 'lucide-react';
+import { Search, Plus, Trash2, X, Check, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 type CardData = {
@@ -24,8 +25,47 @@ type CardData = {
 
 export default function CreateBoxPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (status === 'loading') return;
+    
+    if (!session) {
+      router.push('/login');
+      return;
+    }
+    
+    if (session.user?.role !== 'ADMIN') {
+      router.push('/dashboard');
+    }
+  }, [session, status, router]);
+
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render content for non-admin users
+  if (!session || session.user?.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-400">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
   const [searching, setSearching] = useState(false);
   const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD'>('MAGIC_THE_GATHERING');
   const [apiSource, setApiSource] = useState<'default' | 'justtcg'>('default');
