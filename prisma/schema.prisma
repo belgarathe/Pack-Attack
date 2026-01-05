@@ -18,6 +18,17 @@ model User {
   emailVerified       Boolean             @default(false)
   verificationToken   String?             @unique
   verificationExpires DateTime?
+  // Profile fields
+  avatar              String?
+  bio                 String?
+  // Default shipping address
+  shippingName        String?
+  shippingAddress     String?
+  shippingCity        String?
+  shippingZip         String?
+  shippingCountry     String?
+  shippingPhone       String?
+  // Relations
   pulls               Pull[]
   transactions        Transaction[]
   sales               SaleHistory[]
