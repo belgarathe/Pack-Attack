@@ -45,7 +45,7 @@ export function isJustTCGConfigured(): boolean {
 }
 
 /**
- * Search cards using JustTCG API
+ * Search cards using JustTCG API with retry logic
  */
 export async function searchJustTCG(
   game: JustTCGGame,
@@ -61,24 +61,27 @@ export async function searchJustTCG(
   }
 
   const gameId = JUSTTCG_GAMES[game];
+  const maxRetries = 2;
+  let lastError: Error | null = null;
   
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    const response = await fetch(
-      `${JUSTTCG_API_URL}?game=${gameId}&q=${encodeURIComponent(query)}&limit=${limit}`,
-      {
-        headers: {
-          'X-API-Key': JUSTTCG_API_KEY,
-          'Accept': 'application/json',
-        },
-        cache: 'no-store',
-        signal: controller.signal,
-      }
-    );
+      const response = await fetch(
+        `${JUSTTCG_API_URL}?game=${gameId}&q=${encodeURIComponent(query)}&limit=${limit}`,
+        {
+          headers: {
+            'X-API-Key': JUSTTCG_API_KEY,
+            'Accept': 'application/json',
+          },
+          cache: 'no-store',
+          signal: controller.signal,
+        }
+      );
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -133,25 +136,40 @@ export async function searchJustTCG(
       total: cards.length,
     };
 
-  } catch (error) {
-    console.error(`JustTCG search error for ${game}:`, error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    if (errorMessage.includes('abort')) {
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+      
+      // Only retry on timeout/abort errors
+      if (lastError.message.includes('abort') && attempt < maxRetries) {
+        console.warn(`JustTCG search timeout for ${game}, retrying (${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        continue;
+      }
+      
+      console.error(`JustTCG search error for ${game}:`, error);
+      
+      if (lastError.message.includes('abort')) {
+        return {
+          success: false,
+          error: 'Request timeout',
+          message: 'The card search took too long. Please try a more specific search term.',
+        };
+      }
+
       return {
         success: false,
-        error: 'Request timeout',
-        message: 'The card search took too long. Please try a more specific search term.',
+        error: 'Failed to search cards',
+        message: lastError.message,
       };
     }
-
-    return {
-      success: false,
-      error: 'Failed to search cards',
-      message: errorMessage,
-    };
   }
+  
+  // All retries exhausted
+  return {
+    success: false,
+    error: 'Request timeout after retries',
+    message: 'The card search repeatedly timed out. Please try again later.',
+  };
 }
 
 
