@@ -112,13 +112,29 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     };
   }, [battle.participants]);
 
-  // Auto-start animation if user loads a page with a battle that already has pulls
-  // This ensures users who join late or refresh still see the animation
+  // Auto-start countdown or animation if user loads a page mid-battle
+  // This ensures users who join late or refresh still see everything
   useEffect(() => {
+    // If battle is in COUNTDOWN and we have startedAt, start synchronized countdown
+    if (initialBattle.status === 'COUNTDOWN' && initialBattle.startedAt && !isCountingDown && !hasAnimated) {
+      const serverStartedAt = new Date(initialBattle.startedAt);
+      const elapsed = (Date.now() - serverStartedAt.getTime()) / 1000;
+      
+      // Only start countdown if there's still time remaining
+      if (elapsed < COUNTDOWN_SECONDS) {
+        console.log('Auto-starting synchronized countdown on page load');
+        const timer = setTimeout(() => {
+          startSyncedCountdown(serverStartedAt);
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+    
+    // If battle has pulls already, start animation
     const battleHasPulls = initialBattle.pulls?.length > 0;
     const battleStartedOrFinished = initialBattle.status === 'IN_PROGRESS' || initialBattle.status === 'FINISHED';
     
-    if (battleStartedOrFinished && battleHasPulls && !hasAnimated && !isDrawing) {
+    if (battleStartedOrFinished && battleHasPulls && !hasAnimated && !isDrawing && !isCountingDown) {
       // Small delay to let the page render first
       const timer = setTimeout(() => {
         console.log('Auto-starting animation for late joiner/refresh');
@@ -625,9 +641,9 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
           )}
         </AnimatePresence>
 
-        {/* Countdown Overlay */}
+        {/* Countdown Overlay - Shown to ALL participants synchronized */}
         <AnimatePresence>
-          {countdown !== null && (
+          {(countdown !== null && countdown > 0) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -639,18 +655,25 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.3 }}
                 className="text-center"
               >
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: [0.8, 1.1, 1] }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                   className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-yellow-400"
                 >
-                  {countdown === 0 ? 'GO!' : countdown}
+                  {countdown}
                 </motion.div>
-                <p className="text-2xl text-gray-400 mt-4">Battle starting...</p>
+                <p className="text-2xl text-gray-400 mt-4">
+                  {isCreator ? 'Starting battle...' : 'Get ready!'}
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <Swords className="w-6 h-6 text-purple-400 animate-pulse" />
+                  <span className="text-lg text-purple-300">Battle begins soon</span>
+                  <Swords className="w-6 h-6 text-purple-400 animate-pulse" />
+                </div>
               </motion.div>
             </motion.div>
           )}
