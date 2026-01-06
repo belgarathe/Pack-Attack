@@ -4,64 +4,79 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Connection pool settings for production stability
-const PRISMA_CONNECTION_OPTIONS = {
-  // Log only errors in production, more verbose in development
-  log: process.env.NODE_ENV === 'development' 
-    ? ['query', 'error', 'warn'] as Prisma.LogLevel[]
-    : ['error'] as Prisma.LogLevel[],
+// Maximum retries for database operations
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+// Helper function to check if error is a connection error
+function isConnectionError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // P1001: Can't reach database server
+    // P1002: Database server was reached but timed out
+    // P1003: Database does not exist
+    // P1008: Operations timed out
+    // P1017: Server closed the connection
+    return ['P1001', 'P1002', 'P1003', 'P1008', 'P1017'].includes(error.code);
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+  return false;
+}
+
+// Sleep helper
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Execute a database operation with automatic retry on connection errors
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  context?: string
+): Promise<T> {
+  let lastError: unknown;
   
-  // Configure connection pool for stability
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
-};
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      
+      if (isConnectionError(error) && attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAY_MS * attempt;
+        console.warn(
+          `[Prisma] Database connection error${context ? ` in ${context}` : ''}, ` +
+          `retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})...`,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        await sleep(delay);
+        continue;
+      }
+      
+      // Log and throw for non-retryable errors or max retries exceeded
+      console.error('[Prisma] Database operation failed:', {
+        context,
+        attempt,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
+      });
+      
+      throw error;
+    }
+  }
+  
+  // This shouldn't be reached, but TypeScript needs it
+  throw lastError;
+}
 
 function createPrismaClient(): PrismaClient {
-  const client = new PrismaClient(PRISMA_CONNECTION_OPTIONS);
-  
-  // Add middleware for connection error handling
-  client.$use(async (params, next) => {
-    const maxRetries = 3;
-    const retryDelay = 1000; // 1 second
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await next(params);
-      } catch (error) {
-        const isConnectionError = 
-          error instanceof Prisma.PrismaClientKnownRequestError && 
-          (error.code === 'P1001' || error.code === 'P1002' || error.code === 'P1003');
-        
-        const isTimeoutError = 
-          error instanceof Prisma.PrismaClientKnownRequestError && 
-          error.code === 'P1008';
-        
-        if ((isConnectionError || isTimeoutError) && attempt < maxRetries) {
-          console.warn(
-            `[Prisma] Database connection error (${error instanceof Error ? (error as Prisma.PrismaClientKnownRequestError).code : 'unknown'}), ` +
-            `retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})...`
-          );
-          await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
-          continue;
-        }
-        
-        // Log the error for monitoring
-        console.error('[Prisma] Database operation failed:', {
-          model: params.model,
-          action: params.action,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
-        });
-        
-        throw error;
-      }
-    }
-    
-    // This shouldn't be reached, but TypeScript needs it
-    throw new Error('Max retries exceeded');
+  const client = new PrismaClient({
+    // Log only errors in production, more verbose in development
+    log: process.env.NODE_ENV === 'development' 
+      ? ['query', 'error', 'warn']
+      : ['error'],
   });
   
   return client;
@@ -73,11 +88,7 @@ export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient
 // Cache the Prisma client globally to prevent connection pool exhaustion
 // This is critical for production stability - without this, each request
 // creates a new connection which can exhaust the database connection pool
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-} else {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.prisma = prisma;
 
 // Graceful shutdown handling
 const gracefulShutdown = async () => {
@@ -89,8 +100,6 @@ const gracefulShutdown = async () => {
 // Handle process termination signals
 if (typeof process !== 'undefined') {
   process.on('beforeExit', gracefulShutdown);
-  process.on('SIGINT', gracefulShutdown);
-  process.on('SIGTERM', gracefulShutdown);
 }
 
 /**
