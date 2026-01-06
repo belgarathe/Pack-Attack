@@ -85,22 +85,11 @@ export async function GET(
       })),
     };
 
-    // Calculate countdown remaining if in COUNTDOWN status
-    let countdownRemaining = null;
-    if (battle.status === 'COUNTDOWN' && battle.startedAt) {
-      const elapsedMs = Date.now() - new Date(battle.startedAt).getTime();
-      const countdownSeconds = 3; // 3 second countdown
-      countdownRemaining = Math.max(0, countdownSeconds - (elapsedMs / 1000));
-    }
-
     return NextResponse.json({ 
       success: true, 
       battle: serializedBattle,
       allReady,
       isFull: battle.participants.length >= battle.maxParticipants,
-      isCountingDown: battle.status === 'COUNTDOWN',
-      countdownStartedAt: battle.startedAt?.toISOString() || null,
-      countdownRemaining,
     });
   } catch (error) {
     console.error('Error getting battle status:', error);
