@@ -51,7 +51,6 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [showingRoundWinner, setShowingRoundWinner] = useState<RoundResult | null>(null);
   const [joining, setJoining] = useState(false);
   const [readyLoading, setReadyLoading] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [hasAnimated, setHasAnimated] = useState(false); // Track if we've played animation
   
   const revealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
@@ -59,7 +58,8 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const REVEAL_DURATION = 2000;
   const ROUND_WINNER_DURATION = 1500;
   const BETWEEN_PULLS_DELAY = 300;
-  const POLLING_INTERVAL = 1000; // Poll every second
+  const POLLING_INTERVAL_NORMAL = 2000; // Poll every 2 seconds normally
+  const POLLING_INTERVAL_FAST = 500; // Poll every 500ms when all ready (battle about to start)
 
   const isCreator = currentUserId === battle.creatorId;
   const isParticipant = battle.participants.some((p: any) => p.userId === currentUserId);
@@ -168,7 +168,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
       }
-      pollingRef.current = setInterval(pollBattleStatus, POLLING_INTERVAL);
+      // Poll faster when all participants are ready (battle is about to start)
+      const interval = humanParticipantsReady ? POLLING_INTERVAL_FAST : POLLING_INTERVAL_NORMAL;
+      pollingRef.current = setInterval(pollBattleStatus, interval);
+      
+      // Also do an immediate poll when all ready
+      if (humanParticipantsReady) {
+        pollBattleStatus();
+      }
     }
     
     return () => {
@@ -177,7 +184,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         pollingRef.current = null;
       }
     };
-  }, [battle.status, battleComplete, isDrawing, hasAnimated, pollBattleStatus]);
+  }, [battle.status, battleComplete, isDrawing, hasAnimated, humanParticipantsReady, pollBattleStatus]);
 
 
   const toggleReady = async () => {
@@ -374,31 +381,17 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     }
     
     setStarting(true);
-    
-    // Show countdown before starting
-    setCountdown(3);
-    
-    // Countdown animation
-    const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev === null || prev <= 1) {
-          clearInterval(countdownInterval);
-          // After countdown, execute the battle
-          executeBattleAfterCountdown();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-  
-  // Called after countdown finishes
-  const executeBattleAfterCountdown = async () => {
     setIsDrawing(true);
+    setHasAnimated(true);
     clearRevealTimeouts();
     setAllPulls([]);
     setRoundResults([]);
-    setCountdown(null);
+    
+    // Stop polling - we're the one starting the battle
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
     
     // Reset totals to 0
     const initialTotals = new Map<string, number>();
@@ -424,6 +417,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     } catch (error) {
       clearRevealTimeouts();
       setIsDrawing(false);
+      setHasAnimated(false); // Reset so they can try again
       setStarting(false);
       addToast({
         title: 'Error',
@@ -432,6 +426,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       });
     }
   };
+  
 
   const joinBattle = async () => {
     if (!currentUserId || joining) return;
@@ -551,42 +546,6 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                   </div>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Countdown Overlay - Shown to ALL participants synchronized */}
-        <AnimatePresence>
-          {(countdown !== null && countdown > 0) && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
-            >
-              <motion.div
-                key={countdown}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="text-center"
-              >
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: [0.8, 1.1, 1] }}
-                  transition={{ duration: 0.3 }}
-                  className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-yellow-400"
-                >
-                  {countdown}
-                </motion.div>
-                <p className="text-2xl text-gray-400 mt-4">Get ready!</p>
-                <div className="flex items-center justify-center gap-2 mt-6">
-                  <Swords className="w-6 h-6 text-purple-400 animate-pulse" />
-                  <span className="text-lg text-purple-300">Battle begins soon</span>
-                  <Swords className="w-6 h-6 text-purple-400 animate-pulse" />
-                </div>
-              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
