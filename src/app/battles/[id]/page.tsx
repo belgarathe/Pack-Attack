@@ -91,9 +91,9 @@ export default async function BattleDetailPage({
 
   const isAdmin = session?.user?.role === 'ADMIN';
 
-  // Use BattleDrawClient for animated experience on waiting/countdown/in-progress battles
+  // Use BattleDrawClient for animated experience on waiting/in-progress battles
   // Use BattleClient for already finished battles to show results immediately
-  if (battle.status === 'WAITING' || battle.status === 'COUNTDOWN' || battle.status === 'IN_PROGRESS') {
+  if (battle.status === 'WAITING' || battle.status === 'IN_PROGRESS') {
     return (
       <BattleDrawClient 
         battle={battle} 
