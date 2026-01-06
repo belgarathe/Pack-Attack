@@ -120,94 +120,130 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     };
   }, [battle.participants]);
 
-  // Function to trigger animation - can be called from multiple places
-  const triggerAnimation = useCallback((battleData: any) => {
-    if (animationTriggered || isDrawing) {
-      console.log('[ANIMATION] Already triggered or drawing, skipping');
+  // Use a ref to track animation state (avoids stale closure issues)
+  const animationStartedRef = useRef(false);
+  
+  // Direct function to start animation - no useCallback to avoid stale closures
+  const tryStartAnimation = (battleData: any) => {
+    // Check ref first (synchronous, no stale closure)
+    if (animationStartedRef.current) {
+      console.log('[ANIM] Already started (ref), skipping');
       return false;
     }
     
-    // Check if we've already seen this animation in this session
+    if (isDrawing) {
+      console.log('[ANIM] Already drawing, skipping');
+      return false;
+    }
+    
+    // Check sessionStorage
     if (hasSeenAnimation(battleData.id)) {
-      console.log('[ANIMATION] Already seen in session, showing final state');
+      console.log('[ANIM] Already seen in session, showing final state');
+      animationStartedRef.current = true;
+      setAnimationTriggered(true);
       setBattle(battleData);
       setWinner(battleData.winnerId);
       setBattleComplete(true);
       return false;
     }
     
-    console.log('[ANIMATION] Triggering animation for battle', battleData.id, 'with', battleData.pulls?.length, 'pulls');
+    // START THE ANIMATION
+    console.log('[ANIM] ===== STARTING ANIMATION =====');
+    console.log('[ANIM] Battle ID:', battleData.id);
+    console.log('[ANIM] Pulls count:', battleData.pulls?.length);
+    
+    animationStartedRef.current = true;
     setAnimationTriggered(true);
     markAnimationSeen(battleData.id);
+    
+    // Stop polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
     playBattleAnimation(battleData);
     return true;
-  }, [animationTriggered, isDrawing]);
+  };
 
-  // Auto-start animation if user loads a page with existing pulls
+  // Auto-start animation if page loads with existing pulls
   useEffect(() => {
     const battleHasPulls = initialBattle.pulls?.length > 0;
     const battleStartedOrFinished = initialBattle.status === 'IN_PROGRESS' || initialBattle.status === 'FINISHED';
     
+    console.log('[INIT] Page load - status:', initialBattle.status, 'hasPulls:', battleHasPulls);
+    
     if (battleStartedOrFinished && battleHasPulls) {
-      // Small delay to let the page render first
       const timer = setTimeout(() => {
-        triggerAnimation(initialBattle);
-      }, 300);
+        console.log('[INIT] Trying to start animation from page load...');
+        tryStartAnimation(initialBattle);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, []); // Only run on initial mount
+  }, []);
 
-
-  // Polling for battle status updates
-  const pollBattleStatus = useCallback(async () => {
-    // Don't poll if we've already triggered animation or battle is complete
-    if (animationTriggered || battleComplete) {
+  // Polling effect - runs continuously until animation starts
+  useEffect(() => {
+    // Don't poll if animation already started
+    if (animationStartedRef.current || battleComplete) {
+      console.log('[POLL] Not polling - animation started or battle complete');
       return;
     }
     
-    try {
-      const response = await fetch(`/api/battles/${battle.id}/status`);
-      if (!response.ok) return;
-      
-      const data = await response.json();
-      if (!data.battle) return;
-      
-      // Update battle state for UI (participant list, ready status, etc.)
-      setBattle(data.battle);
-      
-      // Check if battle has started and has pulls
-      const battleHasPulls = data.battle.pulls?.length > 0;
-      const battleStartedOrFinished = data.battle.status === 'IN_PROGRESS' || data.battle.status === 'FINISHED';
-      
-      if (battleStartedOrFinished && battleHasPulls) {
-        console.log('[POLL] Detected battle with pulls, triggering animation...');
-        triggerAnimation(data.battle);
-      }
-    } catch (error) {
-      console.error('[POLL] Error:', error);
-    }
-  }, [battle.id, battleComplete, animationTriggered, triggerAnimation]);
-
-  // Start polling when waiting for battle
-  useEffect(() => {
-    // Poll if battle is waiting and we haven't triggered animation yet
-    const shouldPoll = battle.status === 'WAITING' && !animationTriggered && !battleComplete;
+    console.log('[POLL] Setting up polling interval...');
     
-    if (shouldPoll) {
-      // Clear any existing interval first
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
+    const poll = async () => {
+      // Check ref again (might have changed)
+      if (animationStartedRef.current) {
+        console.log('[POLL] Animation started, stopping poll');
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        return;
       }
       
-      console.log('[POLL] Starting polling for battle updates...');
-      
-      // Start polling
-      pollingRef.current = setInterval(pollBattleStatus, POLLING_INTERVAL);
-      
-      // Do an immediate poll
-      pollBattleStatus();
+      try {
+        console.log('[POLL] Fetching battle status...');
+        const response = await fetch(`/api/battles/${battle.id}/status`);
+        if (!response.ok) {
+          console.log('[POLL] Response not ok:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        if (!data.battle) {
+          console.log('[POLL] No battle data');
+          return;
+        }
+        
+        console.log('[POLL] Got status:', data.battle.status, 'pulls:', data.battle.pulls?.length || 0);
+        
+        // Update UI state
+        setBattle(data.battle);
+        
+        // Check if battle has pulls
+        const hasPulls = data.battle.pulls?.length > 0;
+        const isStartedOrFinished = data.battle.status === 'IN_PROGRESS' || data.battle.status === 'FINISHED';
+        
+        if (isStartedOrFinished && hasPulls && !animationStartedRef.current) {
+          console.log('[POLL] Battle has pulls! Starting animation...');
+          tryStartAnimation(data.battle);
+        }
+      } catch (error) {
+        console.error('[POLL] Error:', error);
+      }
+    };
+    
+    // Clear any existing interval
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
     }
+    
+    // Start polling immediately and then every 500ms
+    poll();
+    pollingRef.current = setInterval(poll, POLLING_INTERVAL);
     
     return () => {
       if (pollingRef.current) {
@@ -215,7 +251,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         pollingRef.current = null;
       }
     };
-  }, [battle.status, animationTriggered, battleComplete, pollBattleStatus]);
+  }, [battle.id, battleComplete]);
 
 
   const toggleReady = async () => {
@@ -414,13 +450,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       return;
     }
     
-    if (animationTriggered || isDrawing) {
-      console.log('[START] Already triggered or drawing');
+    if (animationStartedRef.current || isDrawing) {
+      console.log('[START] Already started or drawing');
       return;
     }
     
     setStarting(true);
-    setAnimationTriggered(true); // Prevent double-starts
+    animationStartedRef.current = true;
+    setAnimationTriggered(true);
     
     // Stop polling immediately
     if (pollingRef.current) {
@@ -440,12 +477,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         throw new Error(data.error || 'Failed to start battle');
       }
 
-      console.log('[START] Battle started successfully, playing animation...');
+      console.log('[START] Battle started! Playing animation...');
       markAnimationSeen(data.battle.id);
       playBattleAnimation(data.battle);
       
     } catch (error) {
-      setAnimationTriggered(false); // Reset on error so they can try again
+      // Reset on error
+      animationStartedRef.current = false;
+      setAnimationTriggered(false);
       clearRevealTimeouts();
       setIsDrawing(false);
       setStarting(false);
