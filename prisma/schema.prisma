@@ -195,6 +195,7 @@ model BattleParticipant {
   user         User         @relation(fields: [userId], references: [id])
   totalValue   Int          @default(0)
   roundsPulled Int          @default(0)
+  isReady      Boolean      @default(false)
   joinedAt     DateTime     @default(now())
   pulls        BattlePull[]
 

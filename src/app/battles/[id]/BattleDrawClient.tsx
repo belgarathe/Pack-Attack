@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Coins, Trophy, Swords, Users, ArrowLeft, Sparkles, Crown, Zap, Package } from 'lucide-react';
+import { Coins, Trophy, Swords, Users, ArrowLeft, Sparkles, Crown, Zap, Package, Check, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,21 +50,34 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [battleComplete, setBattleComplete] = useState(false);
   const [showingRoundWinner, setShowingRoundWinner] = useState<RoundResult | null>(null);
   const [joining, setJoining] = useState(false);
+  const [readyLoading, setReadyLoading] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   
   const revealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const REVEAL_DURATION = 2000;
   const ROUND_WINNER_DURATION = 1500;
   const BETWEEN_PULLS_DELAY = 300;
+  const POLLING_INTERVAL = 2000; // Poll every 2 seconds
+  const COUNTDOWN_SECONDS = 3;
 
   const isCreator = currentUserId === battle.creatorId;
   const isParticipant = battle.participants.some((p: any) => p.userId === currentUserId);
+  const myParticipant = battle.participants.find((p: any) => p.userId === currentUserId);
+  const amIReady = myParticipant?.isReady ?? false;
+  const isBattleFull = battle.participants.length >= battle.maxParticipants;
+  const allParticipantsReady = isBattleFull && battle.participants.every((p: any) => p.isReady || p.user?.isBot);
+  const humanParticipantsReady = isBattleFull && battle.participants.filter((p: any) => !p.user?.isBot).every((p: any) => p.isReady);
+  
   const canJoinBattle = currentUserId && 
                         !isParticipant && 
                         battle.status === 'WAITING' && 
                         battle.participants.length < battle.maxParticipants;
   const canStartBattle = (isCreator || isAdmin) && 
                         battle.status === 'WAITING' && 
-                        battle.participants.length === battle.maxParticipants;
+                        isBattleFull &&
+                        humanParticipantsReady;
   
   // Filter out bots from participants for non-admin users
   const visibleParticipants = isAdmin 
@@ -94,6 +107,182 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       clearRevealTimeouts();
     };
   }, [battle.participants]);
+
+  // Polling for battle status updates
+  const pollBattleStatus = useCallback(async () => {
+    if (battleComplete || isDrawing) return;
+    
+    try {
+      const response = await fetch(`/api/battles/${battle.id}/status`);
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      if (data.battle) {
+        setBattle(data.battle);
+        
+        // If battle has started (IN_PROGRESS) and we have pulls, start the animation
+        if (data.battle.status === 'IN_PROGRESS' && data.battle.pulls?.length > 0 && !isDrawing) {
+          // Battle was started by someone else, play the animation
+          playBattleAnimation(data.battle);
+        }
+        
+        // If battle is finished, show results
+        if (data.battle.status === 'FINISHED' && !battleComplete) {
+          setBattleComplete(true);
+          setWinner(data.battle.winnerId);
+        }
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+    }
+  }, [battle.id, battleComplete, isDrawing]);
+
+  // Start polling when waiting for battle
+  useEffect(() => {
+    if (battle.status === 'WAITING' && !battleComplete) {
+      pollingRef.current = setInterval(pollBattleStatus, POLLING_INTERVAL);
+    }
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [battle.status, battleComplete, pollBattleStatus]);
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) {
+        clearTimeout(countdownRef.current);
+      }
+    };
+  }, []);
+
+  const toggleReady = async () => {
+    if (!currentUserId || !isParticipant || readyLoading) return;
+    
+    setReadyLoading(true);
+    try {
+      const method = amIReady ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/battles/${battle.id}/ready`, { method });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update ready status');
+      }
+      
+      // Update local battle state
+      setBattle((prev: any) => ({
+        ...prev,
+        participants: prev.participants.map((p: any) => 
+          p.userId === currentUserId ? { ...p, isReady: !amIReady } : p
+        ),
+      }));
+      
+      addToast({
+        title: amIReady ? 'Unreadied' : 'Ready!',
+        description: amIReady ? 'You are no longer ready' : 'Waiting for other players...',
+      });
+      
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update ready status',
+        variant: 'destructive',
+      });
+    } finally {
+      setReadyLoading(false);
+    }
+  };
+
+  const playBattleAnimation = (battleData: any) => {
+    setIsDrawing(true);
+    clearRevealTimeouts();
+    setAllPulls([]);
+    setRoundResults([]);
+    
+    // Stop polling during animation
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
+    // Reset totals to 0
+    const initialTotals = new Map<string, number>();
+    battleData.participants.forEach((p: any) => {
+      initialTotals.set(p.userId, 0);
+    });
+    setParticipantTotals(initialTotals);
+    
+    const pullsByRound = prepareDrawData(battleData);
+    const isUpsideDown = battleData.battleMode === 'UPSIDE_DOWN';
+    
+    let timeline = 500;
+    
+    // Process each round
+    for (let round = 1; round <= battleData.rounds; round++) {
+      const roundPulls = pullsByRound.get(round) || [];
+      
+      // Reveal each pull in the round
+      roundPulls.forEach((pull, index) => {
+        scheduleTimeout(() => {
+          setCurrentReveal(pull);
+          setIsShowingReveal(true);
+          setAllPulls(prev => [...prev, pull]);
+          setCurrentRound(round);
+          
+          // Update total for this participant when card is revealed
+          setParticipantTotals(prev => {
+            const newTotals = new Map(prev);
+            const currentTotal = newTotals.get(pull.participantId) || 0;
+            newTotals.set(pull.participantId, currentTotal + pull.coinValue);
+            return newTotals;
+          });
+        }, timeline);
+        
+        timeline += REVEAL_DURATION;
+        
+        scheduleTimeout(() => {
+          setIsShowingReveal(false);
+          setCurrentReveal(null);
+        }, timeline);
+        
+        timeline += BETWEEN_PULLS_DELAY;
+      });
+      
+      // Show round winner after all pulls in round
+      const roundResult = determineRoundWinner(roundPulls, isUpsideDown);
+      
+      scheduleTimeout(() => {
+        setRoundResults(prev => [...prev, roundResult]);
+        setShowingRoundWinner(roundResult);
+      }, timeline);
+      
+      timeline += ROUND_WINNER_DURATION;
+      
+      scheduleTimeout(() => {
+        setShowingRoundWinner(null);
+      }, timeline);
+      
+      timeline += 500;
+    }
+    
+    // Battle complete
+    scheduleTimeout(() => {
+      setWinner(battleData.winnerId);
+      setBattleComplete(true);
+      setBattle(battleData);
+      setIsDrawing(false);
+      
+      addToast({
+        title: 'Battle Complete! 🏆',
+        description: `Winner: ${battleData.winner?.name || battleData.winner?.email}`,
+      });
+    }, timeline);
+  };
 
   const prepareDrawData = (battleData: any) => {
     const pullsByRound: Map<number, PullResult[]> = new Map();
@@ -154,7 +343,40 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   };
 
   const startBattleWithAnimation = async () => {
+    if (!humanParticipantsReady) {
+      addToast({
+        title: 'Not Ready',
+        description: 'All participants must be ready before starting',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setStarting(true);
+    
+    // Stop polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
+    // Start countdown
+    setCountdown(COUNTDOWN_SECONDS);
+    
+    const runCountdown = (count: number) => {
+      if (count > 0) {
+        setCountdown(count);
+        countdownRef.current = setTimeout(() => runCountdown(count - 1), 1000);
+      } else {
+        setCountdown(null);
+        executeBattleStart();
+      }
+    };
+    
+    runCountdown(COUNTDOWN_SECONDS);
+  };
+  
+  const executeBattleStart = async () => {
     setIsDrawing(true);
     clearRevealTimeouts();
     setAllPulls([]);
@@ -178,71 +400,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         throw new Error(data.error || 'Failed to start battle');
       }
 
-      const pullsByRound = prepareDrawData(data.battle);
-      const isUpsideDown = data.battle.battleMode === 'UPSIDE_DOWN';
-      
-      let timeline = 1000;
-      
-      // Process each round
-      for (let round = 1; round <= data.battle.rounds; round++) {
-        const roundPulls = pullsByRound.get(round) || [];
-        
-        // Reveal each pull in the round
-        roundPulls.forEach((pull, index) => {
-          scheduleTimeout(() => {
-            setCurrentReveal(pull);
-            setIsShowingReveal(true);
-            setAllPulls(prev => [...prev, pull]);
-            setCurrentRound(round);
-            
-            // Update total for this participant when card is revealed
-            setParticipantTotals(prev => {
-              const newTotals = new Map(prev);
-              const currentTotal = newTotals.get(pull.participantId) || 0;
-              newTotals.set(pull.participantId, currentTotal + pull.coinValue);
-              return newTotals;
-            });
-          }, timeline);
-          
-          timeline += REVEAL_DURATION;
-          
-          scheduleTimeout(() => {
-            setIsShowingReveal(false);
-            setCurrentReveal(null);
-          }, timeline);
-          
-          timeline += BETWEEN_PULLS_DELAY;
-        });
-        
-        // Show round winner after all pulls in round
-        const roundResult = determineRoundWinner(roundPulls, isUpsideDown);
-        
-        scheduleTimeout(() => {
-          setRoundResults(prev => [...prev, roundResult]);
-          setShowingRoundWinner(roundResult);
-        }, timeline);
-        
-        timeline += ROUND_WINNER_DURATION;
-        
-        scheduleTimeout(() => {
-          setShowingRoundWinner(null);
-        }, timeline);
-        
-        timeline += 500;
-      }
-      
-      // Battle complete
-      scheduleTimeout(() => {
-        setWinner(data.battle.winnerId);
-        setBattleComplete(true);
-        setBattle(data.battle);
-        setIsDrawing(false);
-        
-        addToast({
-          title: 'Battle Complete! 🏆',
-          description: `Winner: ${data.battle.winner?.name || data.battle.winner?.email}`,
-        });
-      }, timeline);
+      playBattleAnimation(data.battle);
       
     } catch (error) {
       clearRevealTimeouts();
@@ -379,7 +537,93 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
           )}
         </AnimatePresence>
 
-        {/* Start Battle Button */}
+        {/* Countdown Overlay */}
+        <AnimatePresence>
+          {countdown !== null && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
+            >
+              <motion.div
+                key={countdown}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center"
+              >
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: [0.8, 1.1, 1] }}
+                  transition={{ duration: 0.5 }}
+                  className="text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-yellow-400"
+                >
+                  {countdown === 0 ? 'GO!' : countdown}
+                </motion.div>
+                <p className="text-2xl text-gray-400 mt-4">Battle starting...</p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Ready Up Section - For participants who need to ready up */}
+        {isParticipant && isBattleFull && battle.status === 'WAITING' && !battleComplete && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className={`rounded-3xl border p-6 ${
+              amIReady 
+                ? 'border-green-500/30 bg-gradient-to-br from-green-900/30 to-emerald-900/20' 
+                : 'border-yellow-500/30 bg-gradient-to-br from-yellow-900/30 to-orange-900/20'
+            }`}>
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-xl ${
+                    amIReady 
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                      : 'bg-gradient-to-br from-yellow-500 to-orange-600'
+                  }`}>
+                    {amIReady ? <Check className="w-6 h-6 text-white" /> : <Clock className="w-6 h-6 text-white" />}
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-bold ${amIReady ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {amIReady ? "You're Ready!" : 'Ready Up!'}
+                    </h3>
+                    <p className="text-gray-400">
+                      {humanParticipantsReady 
+                        ? 'All players ready! Waiting for battle to start...' 
+                        : `Waiting for ${battle.participants.filter((p: any) => !p.isReady && !p.user?.isBot).length} player(s) to ready up`
+                      }
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={toggleReady}
+                  disabled={readyLoading}
+                  size="lg"
+                  className={amIReady 
+                    ? 'bg-gray-600 hover:bg-gray-700 text-white font-bold px-8' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold px-8'
+                  }
+                >
+                  {readyLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : amIReady ? (
+                    'Cancel Ready'
+                  ) : (
+                    "I'm Ready!"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Start Battle Button - Only for creator/admin when all are ready */}
         {canStartBattle && !battleComplete && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -393,8 +637,8 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                     <Zap className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-green-400">Battle Ready!</h3>
-                    <p className="text-gray-400">All spots are filled. Start the battle when ready.</p>
+                    <h3 className="text-xl font-bold text-green-400">All Players Ready!</h3>
+                    <p className="text-gray-400">Everyone is ready. Start the battle now!</p>
                   </div>
                 </div>
                 <Button
@@ -623,6 +867,26 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
                               <Trophy className="w-3 h-3" />
                               Winner
+                            </div>
+                          )}
+                          {/* Ready Status - Show when battle is waiting and full */}
+                          {battle.status === 'WAITING' && isBattleFull && !participant.user?.isBot && (
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              participant.isReady 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {participant.isReady ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  Ready
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-3 h-3" />
+                                  Waiting
+                                </>
+                              )}
                             </div>
                           )}
                         </div>

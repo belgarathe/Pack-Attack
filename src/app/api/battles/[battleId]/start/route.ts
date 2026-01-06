@@ -96,6 +96,26 @@ export async function POST(
       );
     }
 
+    // Check if all participants are ready
+    const notReadyParticipants = battle.participants.filter(p => !p.isReady && !p.user.isBot);
+    if (notReadyParticipants.length > 0) {
+      return NextResponse.json(
+        { error: `Waiting for ${notReadyParticipants.length} participant(s) to be ready` },
+        { status: 400 }
+      );
+    }
+
+    // Auto-mark bots as ready if they aren't already
+    const botsToReady = battle.participants.filter(p => p.user.isBot && !p.isReady);
+    if (botsToReady.length > 0) {
+      await prisma.battleParticipant.updateMany({
+        where: {
+          id: { in: botsToReady.map(p => p.id) },
+        },
+        data: { isReady: true },
+      });
+    }
+
     // Start the battle
     await prisma.battle.update({
       where: { id: battleId },

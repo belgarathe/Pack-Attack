@@ -13,6 +13,7 @@ async function getBattle(id: string) {
         include: {
           user: { select: { id: true, name: true, email: true, isBot: true } },
         },
+        orderBy: { joinedAt: 'asc' },
       },
       box: {
         include: {

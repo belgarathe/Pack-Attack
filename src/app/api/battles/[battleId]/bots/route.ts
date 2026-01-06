@@ -117,6 +117,7 @@ export async function POST(
           data: {
             battleId,
             userId: bot.id,
+            isReady: true, // Bots are always ready
           },
         })
       )
