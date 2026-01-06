@@ -120,51 +120,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     };
   }, [battle.participants]);
 
-  // Use a ref to track animation state (avoids stale closure issues)
+  // Use refs to avoid stale closure issues in polling
   const animationStartedRef = useRef(false);
+  const playAnimationRef = useRef<((data: any) => void) | null>(null);
   
-  // Direct function to start animation - no useCallback to avoid stale closures
-  const tryStartAnimation = (battleData: any) => {
-    // Check ref first (synchronous, no stale closure)
-    if (animationStartedRef.current) {
-      console.log('[ANIM] Already started (ref), skipping');
-      return false;
-    }
-    
-    if (isDrawing) {
-      console.log('[ANIM] Already drawing, skipping');
-      return false;
-    }
-    
-    // Check sessionStorage
-    if (hasSeenAnimation(battleData.id)) {
-      console.log('[ANIM] Already seen in session, showing final state');
-      animationStartedRef.current = true;
-      setAnimationTriggered(true);
-      setBattle(battleData);
-      setWinner(battleData.winnerId);
-      setBattleComplete(true);
-      return false;
-    }
-    
-    // START THE ANIMATION
-    console.log('[ANIM] ===== STARTING ANIMATION =====');
-    console.log('[ANIM] Battle ID:', battleData.id);
-    console.log('[ANIM] Pulls count:', battleData.pulls?.length);
-    
-    animationStartedRef.current = true;
-    setAnimationTriggered(true);
-    markAnimationSeen(battleData.id);
-    
-    // Stop polling
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-    
-    playBattleAnimation(battleData);
-    return true;
-  };
+  // Keep playAnimationRef updated with the latest playBattleAnimation function
+  useEffect(() => {
+    playAnimationRef.current = playBattleAnimation;
+  });
 
   // Auto-start animation if page loads with existing pulls
   useEffect(() => {
@@ -175,8 +138,29 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     
     if (battleStartedOrFinished && battleHasPulls) {
       const timer = setTimeout(() => {
-        console.log('[INIT] Trying to start animation from page load...');
-        tryStartAnimation(initialBattle);
+        if (animationStartedRef.current) {
+          console.log('[INIT] Already started, skipping');
+          return;
+        }
+        
+        // Check sessionStorage
+        if (hasSeenAnimation(initialBattle.id)) {
+          console.log('[INIT] Already seen in session');
+          animationStartedRef.current = true;
+          setAnimationTriggered(true);
+          setWinner(initialBattle.winnerId);
+          setBattleComplete(true);
+          return;
+        }
+        
+        console.log('[INIT] Starting animation from page load!');
+        animationStartedRef.current = true;
+        setAnimationTriggered(true);
+        markAnimationSeen(initialBattle.id);
+        
+        if (playAnimationRef.current) {
+          playAnimationRef.current(initialBattle);
+        }
       }, 500);
       
       return () => clearTimeout(timer);
@@ -187,16 +171,17 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   useEffect(() => {
     // Don't poll if animation already started
     if (animationStartedRef.current || battleComplete) {
-      console.log('[POLL] Not polling - animation started or battle complete');
+      console.log('[POLL] Not polling - animationStarted:', animationStartedRef.current, 'battleComplete:', battleComplete);
       return;
     }
     
-    console.log('[POLL] Setting up polling interval...');
+    const battleId = battle.id;
+    console.log('[POLL] Setting up polling for battle:', battleId);
     
     const poll = async () => {
-      // Check ref again (might have changed)
+      // Check ref again
       if (animationStartedRef.current) {
-        console.log('[POLL] Animation started, stopping poll');
+        console.log('[POLL] Animation already started, clearing interval');
         if (pollingRef.current) {
           clearInterval(pollingRef.current);
           pollingRef.current = null;
@@ -205,31 +190,59 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       }
       
       try {
-        console.log('[POLL] Fetching battle status...');
-        const response = await fetch(`/api/battles/${battle.id}/status`);
-        if (!response.ok) {
-          console.log('[POLL] Response not ok:', response.status);
-          return;
-        }
+        const response = await fetch(`/api/battles/${battleId}/status`);
+        if (!response.ok) return;
         
         const data = await response.json();
-        if (!data.battle) {
-          console.log('[POLL] No battle data');
-          return;
-        }
+        if (!data.battle) return;
         
-        console.log('[POLL] Got status:', data.battle.status, 'pulls:', data.battle.pulls?.length || 0);
-        
-        // Update UI state
-        setBattle(data.battle);
-        
-        // Check if battle has pulls
         const hasPulls = data.battle.pulls?.length > 0;
         const isStartedOrFinished = data.battle.status === 'IN_PROGRESS' || data.battle.status === 'FINISHED';
         
+        console.log('[POLL] Status:', data.battle.status, 'Pulls:', data.battle.pulls?.length || 0);
+        
+        // Update UI with latest participant info
+        setBattle(data.battle);
+        
+        // START ANIMATION if battle has pulls and we haven't started yet
         if (isStartedOrFinished && hasPulls && !animationStartedRef.current) {
-          console.log('[POLL] Battle has pulls! Starting animation...');
-          tryStartAnimation(data.battle);
+          console.log('[POLL] ========================================');
+          console.log('[POLL] BATTLE HAS PULLS - STARTING ANIMATION!');
+          console.log('[POLL] ========================================');
+          
+          // Check sessionStorage first
+          if (hasSeenAnimation(data.battle.id)) {
+            console.log('[POLL] Already seen in session, showing final state');
+            animationStartedRef.current = true;
+            setAnimationTriggered(true);
+            setWinner(data.battle.winnerId);
+            setBattleComplete(true);
+            
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+            return;
+          }
+          
+          // Mark animation as started FIRST
+          animationStartedRef.current = true;
+          setAnimationTriggered(true);
+          markAnimationSeen(data.battle.id);
+          
+          // Stop polling
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          
+          // Play animation using the ref (always has latest version)
+          console.log('[POLL] Calling playAnimationRef.current...');
+          if (playAnimationRef.current) {
+            playAnimationRef.current(data.battle);
+          } else {
+            console.error('[POLL] playAnimationRef.current is null!');
+          }
         }
       } catch (error) {
         console.error('[POLL] Error:', error);
@@ -241,7 +254,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       clearInterval(pollingRef.current);
     }
     
-    // Start polling immediately and then every 500ms
+    // Start polling immediately and every 500ms
     poll();
     pollingRef.current = setInterval(poll, POLLING_INTERVAL);
     
