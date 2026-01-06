@@ -83,8 +83,11 @@ export async function POST(
       return NextResponse.json({ error: 'Only the battle creator or admin can start the battle' }, { status: 403 });
     }
 
-    // Check battle status
-    if (battle.status !== 'WAITING') {
+    // Check battle status - must be in COUNTDOWN phase (started via /countdown endpoint)
+    if (battle.status !== 'COUNTDOWN') {
+      if (battle.status === 'WAITING') {
+        return NextResponse.json({ error: 'Please use the countdown endpoint first' }, { status: 400 });
+      }
       return NextResponse.json({ error: 'Battle has already started or finished' }, { status: 400 });
     }
 

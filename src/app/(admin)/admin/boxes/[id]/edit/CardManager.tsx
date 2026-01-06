@@ -84,39 +84,82 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const saveBulkChanges = async () => {
     setSavingBulk(true);
     try {
-      const updates = Object.entries(bulkEditValues).map(([cardId, values]) => 
-        fetch(`/api/admin/boxes/${boxId}/cards/${cardId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pullRate: values.pullRate,
-            coinValue: values.coinValue,
-          }),
-        })
-      );
+      // Validate all values before saving
+      const entries = Object.entries(bulkEditValues);
+      for (const [cardId, values] of entries) {
+        if (values.pullRate < 0.001) {
+          const card = existingCards.find(c => c.id === cardId);
+          addToast({
+            title: 'Validation Error',
+            description: `Pull rate for "${card?.name || 'Unknown'}" must be at least 0.001%`,
+            variant: 'destructive',
+          });
+          setSavingBulk(false);
+          return;
+        }
+        if (values.coinValue < 1) {
+          const card = existingCards.find(c => c.id === cardId);
+          addToast({
+            title: 'Validation Error',
+            description: `Coin value for "${card?.name || 'Unknown'}" must be at least 1`,
+            variant: 'destructive',
+          });
+          setSavingBulk(false);
+          return;
+        }
+      }
 
-      const results = await Promise.all(updates);
-      const failed = results.filter(r => !r.ok);
+      let successCount = 0;
+      let failCount = 0;
+      const errors: string[] = [];
+
+      // Process updates sequentially to avoid overwhelming the server
+      for (const [cardId, values] of entries) {
+        try {
+          const res = await fetch(`/api/admin/boxes/${boxId}/cards/${cardId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pullRate: Math.max(0.001, values.pullRate),
+              coinValue: Math.max(1, values.coinValue),
+            }),
+          });
+
+          if (res.ok) {
+            successCount++;
+          } else {
+            failCount++;
+            const data = await res.json().catch(() => ({}));
+            const card = existingCards.find(c => c.id === cardId);
+            errors.push(`${card?.name || cardId}: ${data.error || 'Failed'}`);
+          }
+        } catch (err) {
+          failCount++;
+          const card = existingCards.find(c => c.id === cardId);
+          errors.push(`${card?.name || cardId}: Network error`);
+        }
+      }
       
-      if (failed.length > 0) {
+      if (failCount > 0) {
         addToast({
           title: 'Partial Success',
-          description: `${results.length - failed.length} cards updated, ${failed.length} failed`,
+          description: `${successCount} cards updated, ${failCount} failed. ${errors.slice(0, 3).join('; ')}`,
           variant: 'destructive',
         });
       } else {
         addToast({
           title: 'Success',
-          description: `All ${results.length} cards updated successfully`,
+          description: `All ${successCount} cards updated successfully!`,
         });
       }
 
       exitBulkEditMode();
       onCardsChange();
     } catch (error) {
+      console.error('Bulk save error:', error);
       addToast({
         title: 'Error',
-        description: 'Failed to save changes',
+        description: 'Failed to save changes: ' + (error as Error).message,
         variant: 'destructive',
       });
     } finally {
@@ -944,10 +987,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                     <input
                       type="number"
                       step="0.001"
-                      min="0"
+                      min="0.001"
                       max="100"
                       value={bulkEditValues[card.id]?.pullRate ?? card.pullRate}
-                      onChange={(e) => updateBulkValue(card.id, 'pullRate', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateBulkValue(card.id, 'pullRate', parseFloat(e.target.value) || 0.001)}
                       className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-600 text-white text-sm focus:border-blue-500 focus:outline-none"
                     />
                   </div>

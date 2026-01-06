@@ -226,6 +226,7 @@ model BattlePull {
 
 enum BattleStatus {
   WAITING
+  COUNTDOWN
   IN_PROGRESS
   FINISHED
   CANCELLED
