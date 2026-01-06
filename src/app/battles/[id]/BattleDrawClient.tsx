@@ -53,18 +53,13 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [readyLoading, setReadyLoading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [hasAnimated, setHasAnimated] = useState(false); // Track if we've played animation
-  const [countdownStartedAt, setCountdownStartedAt] = useState<Date | null>(null); // Server timestamp for sync
-  const [isCountingDown, setIsCountingDown] = useState(false); // Track if countdown is active
   
   const revealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownTickRef = useRef<NodeJS.Timeout | null>(null);
   const REVEAL_DURATION = 2000;
   const ROUND_WINNER_DURATION = 1500;
   const BETWEEN_PULLS_DELAY = 300;
-  const POLLING_INTERVAL = 500; // Poll every 500ms for faster sync during countdown
-  const COUNTDOWN_SECONDS = 3;
+  const POLLING_INTERVAL = 1000; // Poll every second
 
   const isCreator = currentUserId === battle.creatorId;
   const isParticipant = battle.participants.some((p: any) => p.userId === currentUserId);
@@ -112,29 +107,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     };
   }, [battle.participants]);
 
-  // Auto-start countdown or animation if user loads a page mid-battle
+  // Auto-start animation if user loads a page mid-battle
   // This ensures users who join late or refresh still see everything
   useEffect(() => {
-    // If battle is in COUNTDOWN and we have startedAt, start synchronized countdown
-    if (initialBattle.status === 'COUNTDOWN' && initialBattle.startedAt && !isCountingDown && !hasAnimated) {
-      const serverStartedAt = new Date(initialBattle.startedAt);
-      const elapsed = (Date.now() - serverStartedAt.getTime()) / 1000;
-      
-      // Only start countdown if there's still time remaining
-      if (elapsed < COUNTDOWN_SECONDS) {
-        console.log('Auto-starting synchronized countdown on page load');
-        const timer = setTimeout(() => {
-          startSyncedCountdown(serverStartedAt);
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-    }
-    
     // If battle has pulls already, start animation
     const battleHasPulls = initialBattle.pulls?.length > 0;
     const battleStartedOrFinished = initialBattle.status === 'IN_PROGRESS' || initialBattle.status === 'FINISHED';
     
-    if (battleStartedOrFinished && battleHasPulls && !hasAnimated && !isDrawing && !isCountingDown) {
+    if (battleStartedOrFinished && battleHasPulls && !hasAnimated && !isDrawing) {
       // Small delay to let the page render first
       const timer = setTimeout(() => {
         console.log('Auto-starting animation for late joiner/refresh');
@@ -145,35 +125,6 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     }
   }, []); // Only run on initial mount
 
-  // Start synchronized countdown for all users
-  const startSyncedCountdown = useCallback((serverStartedAt: Date) => {
-    if (isCountingDown) return; // Already counting down
-    
-    setIsCountingDown(true);
-    setCountdownStartedAt(serverStartedAt);
-    
-    // Calculate countdown based on server time
-    const updateCountdown = () => {
-      const elapsed = (Date.now() - serverStartedAt.getTime()) / 1000;
-      const remaining = Math.max(0, COUNTDOWN_SECONDS - elapsed);
-      
-      if (remaining > 0) {
-        setCountdown(Math.ceil(remaining));
-        countdownTickRef.current = setTimeout(updateCountdown, 100); // Update frequently for smooth countdown
-      } else {
-        setCountdown(0);
-        setIsCountingDown(false);
-        
-        // If we're the creator, execute the battle after countdown
-        if (isCreator || isAdmin) {
-          console.log('Creator: Countdown finished, executing battle...');
-          executeBattleAfterCountdown();
-        }
-      }
-    };
-    
-    updateCountdown();
-  }, [isCountingDown, isCreator, isAdmin]);
 
   // Polling for battle status updates
   const pollBattleStatus = useCallback(async () => {
@@ -187,20 +138,12 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       if (data.battle) {
         setBattle(data.battle);
         
-        // If battle is in COUNTDOWN status and we haven't started countdown yet
-        if (data.battle.status === 'COUNTDOWN' && data.countdownStartedAt && !isCountingDown && !hasAnimated) {
-          console.log('Detected countdown started by creator, syncing countdown...');
-          const serverStartedAt = new Date(data.countdownStartedAt);
-          startSyncedCountdown(serverStartedAt);
-          return; // Don't continue checking - countdown will handle the rest
-        }
-        
         // If battle has started/finished and we have pulls but haven't animated yet, play the animation
         // This ensures ALL participants see the animation, not just the creator
         const battleHasPulls = data.battle.pulls?.length > 0;
         const battleStartedOrFinished = data.battle.status === 'IN_PROGRESS' || data.battle.status === 'FINISHED';
         
-        if (battleStartedOrFinished && battleHasPulls && !isDrawing && !hasAnimated && !isCountingDown) {
+        if (battleStartedOrFinished && battleHasPulls && !isDrawing && !hasAnimated) {
           // Battle was started by someone else, play the animation for this participant
           console.log('Starting animation for participant - battle has pulls:', data.battle.pulls?.length);
           playBattleAnimation(data.battle);
@@ -209,14 +152,14 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     } catch (error) {
       console.error('Polling error:', error);
     }
-  }, [battle.id, battleComplete, isDrawing, hasAnimated, isCountingDown, startSyncedCountdown]);
+  }, [battle.id, battleComplete, isDrawing, hasAnimated]);
 
   // Start polling when waiting for battle or when battle might have started
   // Keep polling until we've animated or battle is complete
   useEffect(() => {
-    // Poll if we're waiting, countdown, or if battle started/finished but we haven't animated yet
+    // Poll if we're waiting, or if battle started/finished but we haven't animated yet
     const shouldPoll = !battleComplete && !isDrawing && !hasAnimated && 
-                       (battle.status === 'WAITING' || battle.status === 'COUNTDOWN' || 
+                       (battle.status === 'WAITING' || 
                         battle.status === 'IN_PROGRESS' || 
                         (battle.status === 'FINISHED' && battle.pulls?.length > 0));
     
@@ -236,23 +179,6 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     };
   }, [battle.status, battleComplete, isDrawing, hasAnimated, pollBattleStatus]);
 
-  // Cleanup countdown tick on unmount
-  useEffect(() => {
-    return () => {
-      if (countdownTickRef.current) {
-        clearTimeout(countdownTickRef.current);
-      }
-    };
-  }, []);
-
-  // Cleanup countdown on unmount
-  useEffect(() => {
-    return () => {
-      if (countdownRef.current) {
-        clearTimeout(countdownRef.current);
-      }
-    };
-  }, []);
 
   const toggleReady = async () => {
     if (!currentUserId || !isParticipant || readyLoading) return;
@@ -449,34 +375,24 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     
     setStarting(true);
     
-    try {
-      // Call the countdown endpoint - this will notify all participants
-      const response = await fetch(`/api/battles/${battle.id}/countdown`, {
-        method: 'POST',
+    // Show countdown before starting
+    setCountdown(3);
+    
+    // Countdown animation
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownInterval);
+          // After countdown, execute the battle
+          executeBattleAfterCountdown();
+          return null;
+        }
+        return prev - 1;
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start countdown');
-      }
-
-      // Start the synchronized countdown for the creator too
-      const serverStartedAt = new Date(data.countdownStartedAt);
-      console.log('Creator: Starting synchronized countdown from server time:', serverStartedAt);
-      startSyncedCountdown(serverStartedAt);
-      
-    } catch (error) {
-      setStarting(false);
-      addToast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to start countdown',
-        variant: 'destructive',
-      });
-    }
+    }, 1000);
   };
   
-  // Called after synchronized countdown finishes (only by creator/admin)
+  // Called after countdown finishes
   const executeBattleAfterCountdown = async () => {
     setIsDrawing(true);
     clearRevealTimeouts();
@@ -508,14 +424,12 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     } catch (error) {
       clearRevealTimeouts();
       setIsDrawing(false);
-      setIsCountingDown(false);
+      setStarting(false);
       addToast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to start battle',
         variant: 'destructive',
       });
-    } finally {
-      setStarting(false);
     }
   };
 
@@ -666,9 +580,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                 >
                   {countdown}
                 </motion.div>
-                <p className="text-2xl text-gray-400 mt-4">
-                  {isCreator ? 'Starting battle...' : 'Get ready!'}
-                </p>
+                <p className="text-2xl text-gray-400 mt-4">Get ready!</p>
                 <div className="flex items-center justify-center gap-2 mt-6">
                   <Swords className="w-6 h-6 text-purple-400 animate-pulse" />
                   <span className="text-lg text-purple-300">Battle begins soon</span>
