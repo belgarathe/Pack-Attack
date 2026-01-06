@@ -109,18 +109,19 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     }
   }, []);
 
-  // Initialize totals
+  // Initialize totals - only on mount, not on battle updates
   useEffect(() => {
     const initialTotals = new Map<string, number>();
-    battle.participants.forEach((p: any) => {
+    initialBattle.participants.forEach((p: any) => {
       initialTotals.set(p.userId, 0);
     });
     setParticipantTotals(initialTotals);
     
+    // Only clear timeouts on unmount, not on every participant change
     return () => {
       clearRevealTimeouts();
     };
-  }, [battle.participants, clearRevealTimeouts]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // THE ANIMATION FUNCTION - extracted and stable
   const runAnimation = useCallback((battleData: any) => {
@@ -343,16 +344,19 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
         
         console.log('[POLL] Got battle - status:', data.battle.status, 'pulls:', data.battle.pulls?.length || 0);
         
-        // Update UI with latest participant info (for ready states)
-        setBattle(data.battle);
+        // Check if we should trigger animation FIRST (before updating state)
+        const shouldAnimate = checkAndAnimate(data.battle, 'POLL');
         
-        // Check if we should trigger animation
-        if (checkAndAnimate(data.battle, 'POLL')) {
+        if (shouldAnimate) {
           // Animation triggered, stop polling
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
+          // Don't update battle state here - runAnimation will handle it at the end
+        } else {
+          // Only update battle state if not animating (for ready status updates etc)
+          setBattle(data.battle);
         }
       } catch (error) {
         console.error('[POLL] Error:', error);
