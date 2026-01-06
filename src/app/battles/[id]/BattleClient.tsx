@@ -191,7 +191,8 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
               <h2 className="text-xl font-bold text-white mb-6">Battle Results</h2>
               
               <div className="space-y-4">
-                {battle.participants.map((participant: any) => {
+                {/* Filter out bots for non-admin users */}
+                {(isAdmin ? battle.participants : battle.participants.filter((p: any) => !p.user?.isBot)).map((participant: any) => {
                   const totalValue = calculateTotalValue(participant.id);
                   const isWinner = participant.userId === battle.winnerId;
                   const pulls = battle.pulls?.filter((p: any) => p.participantId === participant.id) || [];

@@ -49,6 +49,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [winner, setWinner] = useState<string | null>(null);
   const [battleComplete, setBattleComplete] = useState(false);
   const [showingRoundWinner, setShowingRoundWinner] = useState<RoundResult | null>(null);
+  const [joining, setJoining] = useState(false);
   
   const revealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const REVEAL_DURATION = 2000;
@@ -56,9 +57,19 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const BETWEEN_PULLS_DELAY = 300;
 
   const isCreator = currentUserId === battle.creatorId;
+  const isParticipant = battle.participants.some((p: any) => p.userId === currentUserId);
+  const canJoinBattle = currentUserId && 
+                        !isParticipant && 
+                        battle.status === 'WAITING' && 
+                        battle.participants.length < battle.maxParticipants;
   const canStartBattle = (isCreator || isAdmin) && 
                         battle.status === 'WAITING' && 
                         battle.participants.length === battle.maxParticipants;
+  
+  // Filter out bots from participants for non-admin users
+  const visibleParticipants = isAdmin 
+    ? battle.participants 
+    : battle.participants.filter((p: any) => !p.user?.isBot);
 
   const clearRevealTimeouts = () => {
     revealTimeoutsRef.current.forEach(clearTimeout);
@@ -246,6 +257,40 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
     }
   };
 
+  const joinBattle = async () => {
+    if (!currentUserId || joining) return;
+    
+    setJoining(true);
+    try {
+      const response = await fetch(`/api/battles/${battle.id}/join`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to join battle');
+      }
+
+      setBattle(data.battle);
+      addToast({
+        title: 'Joined Battle! 🎮',
+        description: `${data.coinsDeducted} coins deducted. New balance: ${data.newBalance} coins`,
+      });
+      
+      // Refresh the page to update all state
+      router.refresh();
+    } catch (error) {
+      addToast({
+        title: 'Failed to Join',
+        description: error instanceof Error ? error.message : 'Could not join the battle',
+        variant: 'destructive',
+      });
+    } finally {
+      setJoining(false);
+    }
+  };
+
   const getBattleModeLabel = () => {
     if (battle.shareMode) return 'Share Mode';
     switch (battle.battleMode) {
@@ -274,6 +319,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   };
 
   const participants = battle.participants || [];
+  const displayParticipants = isAdmin ? participants : participants.filter((p: any) => !p.user?.isBot);
   const spotsLeft = Math.max(0, battle.maxParticipants - participants.length);
 
   // Group pulls by participant for display
@@ -358,6 +404,40 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                   className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold px-8"
                 >
                   {starting ? 'Starting...' : 'Start Battle'}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Join Battle Section - For users who haven't joined yet */}
+        {canJoinBattle && !battleComplete && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-900/30 to-pink-900/20 p-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-purple-400">Join this Battle!</h3>
+                    <p className="text-gray-400">
+                      {battle.participants.length}/{battle.maxParticipants} spots filled • 
+                      Cost: <span className="text-yellow-400 font-semibold">{battle.entryFee + (battle.box?.price || 0) * battle.rounds} coins</span>
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={joinBattle}
+                  disabled={joining}
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold px-8"
+                >
+                  {joining ? 'Joining...' : 'Join Battle'}
                 </Button>
               </div>
             </div>
@@ -514,7 +594,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
               )}
               
               <div className="space-y-4">
-                {participants.map((participant: any) => {
+                {displayParticipants.map((participant: any) => {
                   const pulls = pullsByParticipant[participant.userId] || [];
                   const total = participantTotals.get(participant.userId) || 0;
                   const isWinner = winner === participant.userId;

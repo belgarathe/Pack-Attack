@@ -10,7 +10,7 @@ async function getBattles() {
         creator: { select: { id: true, name: true, email: true } },
         box: true,
         participants: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: { user: { select: { id: true, name: true, email: true, isBot: true } } },
         },
         winner: { select: { id: true, name: true, email: true } },
       },
@@ -33,6 +33,7 @@ function getBattleModeLabel(mode: string, shareMode: boolean): string {
 export default async function BattlesPage() {
   const session = await getCurrentSession();
   const battles = await getBattles();
+  const isAdmin = session?.user?.role === 'ADMIN';
 
   const activeBattles = battles.filter(b => b.status === 'WAITING' || b.status === 'IN_PROGRESS');
   const completedBattles = battles.filter(b => b.status === 'FINISHED');
@@ -40,6 +41,12 @@ export default async function BattlesPage() {
   const totalCost = (battle: any) => {
     const packCost = battle.box.price * battle.rounds;
     return battle.entryFee + packCost;
+  };
+  
+  // Filter out bot participants for non-admin users
+  const getVisibleParticipants = (battle: any) => {
+    if (isAdmin) return battle.participants;
+    return battle.participants.filter((p: any) => !p.user?.isBot);
   };
 
   return (
@@ -160,7 +167,7 @@ export default async function BattlesPage() {
 
                         {/* Participants */}
                         <div className="flex items-center gap-2 mb-4">
-                          {battle.participants.slice(0, 4).map((p, i) => (
+                          {getVisibleParticipants(battle).slice(0, 4).map((p: any, i: number) => (
                             <div 
                               key={p.id}
                               className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold text-white"
@@ -171,6 +178,9 @@ export default async function BattlesPage() {
                           ))}
                           <span className="text-sm text-gray-400 ml-2">
                             {battle.participants.length}/{battle.maxParticipants}
+                            {battle.status === 'WAITING' && battle.participants.length < battle.maxParticipants && (
+                              <span className="ml-1 text-green-400">• Open</span>
+                            )}
                           </span>
                         </div>
 
@@ -235,7 +245,7 @@ export default async function BattlesPage() {
                         <div className="flex items-center justify-between pt-3 border-t border-gray-800">
                           <div className="flex items-center gap-1 text-gray-400">
                             <Users className="w-4 h-4" />
-                            <span>{battle.participants.length} players</span>
+                            <span>{getVisibleParticipants(battle).length} players</span>
                           </div>
                           <span className="text-gray-400 text-sm font-medium group-hover:text-purple-400 group-hover:translate-x-1 transition-all inline-flex items-center gap-1">
                             Results <ChevronRight className="w-4 h-4" />
