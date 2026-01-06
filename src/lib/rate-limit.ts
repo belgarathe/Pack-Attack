@@ -105,6 +105,12 @@ const rateLimiters = {
     uniqueTokenPerInterval: 5,
   }),
   
+  // Battle joining: 10 per minute
+  battleJoin: new RateLimiter({
+    interval: 60 * 1000, // 1 minute
+    uniqueTokenPerInterval: 10,
+  }),
+  
   // Payment endpoints: 3 per minute
   payment: new RateLimiter({
     interval: 60 * 1000, // 1 minute
