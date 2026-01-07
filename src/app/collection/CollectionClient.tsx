@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Coins, ShoppingCart, X } from 'lucide-react';
+import { Coins, ShoppingCart, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
@@ -27,6 +27,12 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [zoomedCard, setZoomedCard] = useState<Pull | null>(null);
+  const [showSellAllModal, setShowSellAllModal] = useState(false);
+  const [sellAllLoading, setSellAllLoading] = useState(false);
+
+  // Calculate totals for sell all
+  const sellableCards = pulls.filter(p => p.card && !p.cartItem);
+  const totalValue = sellableCards.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -138,6 +144,50 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
     }
   };
 
+  const handleSellAll = async () => {
+    setSellAllLoading(true);
+    try {
+      const res = await fetch('/api/cards/sell-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        addToast({
+          title: 'Error',
+          description: data.error || 'Failed to sell cards',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      addToast({
+        title: 'All Cards Sold!',
+        description: `Sold ${data.cardsSold} cards for ${data.coinsReceived.toLocaleString()} coins!`,
+      });
+
+      if (data.newBalance !== undefined) {
+        emitCoinBalanceUpdate({ balance: data.newBalance });
+      } else {
+        emitCoinBalanceUpdate();
+      }
+      
+      setShowSellAllModal(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Error selling all cards:', error);
+      addToast({
+        title: 'Error',
+        description: 'Failed to sell cards',
+        variant: 'destructive',
+      });
+    } finally {
+      setSellAllLoading(false);
+    }
+  };
+
   const getRarityColor = (rarity: string) => {
     switch (rarity?.toLowerCase()) {
       case 'mythic':
@@ -154,6 +204,19 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
 
   return (
     <>
+      {/* Sell All Button */}
+      {sellableCards.length > 0 && (
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={() => setShowSellAllModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/25 flex items-center gap-2"
+          >
+            <Coins className="h-5 w-5" />
+            Sell All Cards ({sellableCards.length})
+          </button>
+        </div>
+      )}
+
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {pulls.map((pull) => {
           if (!pull.card) return null;
@@ -263,6 +326,58 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell All Confirmation Modal */}
+      {showSellAllModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSellAllModal(false);
+          }}
+        >
+          <div className="glass-strong rounded-2xl p-8 max-w-md w-full text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-2xl bg-amber-500/20">
+              <AlertTriangle className="w-8 h-8 text-amber-400" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-3">Sell All Cards?</h2>
+            <p className="text-gray-400 mb-6">
+              You are about to sell <span className="text-white font-semibold">{sellableCards.length} cards</span> for a total of{' '}
+              <span className="text-amber-400 font-semibold">{totalValue.toLocaleString()} coins</span>.
+            </p>
+            <p className="text-red-400 text-sm mb-6">
+              This action cannot be undone!
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSellAllModal(false)}
+                disabled={sellAllLoading}
+                className="flex-1 px-4 py-3 rounded-xl font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSellAll}
+                disabled={sellAllLoading}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {sellAllLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Selling...
+                  </>
+                ) : (
+                  <>
+                    <Coins className="h-4 w-4" />
+                    Sell All
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
