@@ -34,6 +34,16 @@ async function getRandomCard(boxId: string) {
   return cards[cards.length - 1];
 }
 
+// Fisher-Yates shuffle algorithm for random distribution
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ battleId?: string }> }
@@ -126,21 +136,24 @@ export async function POST(
     });
 
     // Process pulls for each participant
-    const battlePulls = [];
+    // Initially create pulls WITHOUT assigning to user's collection (userId will be set later based on winner)
+    const allPullIds: string[] = [];
     const participantTotals = new Map<string, number>();
+    const participantPullIds = new Map<string, string[]>(); // Track which pulls belong to which participant for display
 
     for (const participant of battle.participants) {
       let participantTotal = 0;
+      const thisPullIds: string[] = [];
 
       // Pull cards for each round
       for (let round = 1; round <= battle.rounds; round++) {
-        // Pull cards per pack (usually multiple cards per round)
         const cardsPerRound = battle.box.cardsPerPack;
         
         for (let cardIndex = 0; cardIndex < cardsPerRound; cardIndex++) {
           const card = await getRandomCard(battle.box.id);
           
-          // Create pull record
+          // Create pull record - initially assigned to the participant who pulled it
+          // This will be reassigned after winner is determined
           const pull = await prisma.pull.create({
             data: {
               userId: participant.userId,
@@ -150,8 +163,8 @@ export async function POST(
             },
           });
 
-          // Create battle pull record
-          const battlePull = await prisma.battlePull.create({
+          // Create battle pull record (for display/animation purposes)
+          await prisma.battlePull.create({
             data: {
               battleId,
               participantId: participant.id,
@@ -162,14 +175,10 @@ export async function POST(
               itemImage: card.imageUrlGatherer,
               itemRarity: card.rarity,
             },
-            include: {
-              pull: {
-                include: { card: true },
-              },
-            },
           });
 
-          battlePulls.push(battlePull);
+          allPullIds.push(pull.id);
+          thisPullIds.push(pull.id);
           participantTotal += card.coinValue;
         }
       }
@@ -184,15 +193,19 @@ export async function POST(
       });
 
       participantTotals.set(participant.id, participantTotal);
+      participantPullIds.set(participant.userId, thisPullIds);
     }
 
-    // Determine winner (highest total value)
+    // Determine winner based on battle mode
     let winnerId: string | null = null;
-    let maxValue = 0;
     
-    // Handle different battle modes
-    if (battle.battleMode === 'UPSIDE_DOWN') {
-      // Lowest value wins
+    if (battle.shareMode) {
+      // SHARE MODE: No single winner - cards will be randomly distributed
+      // Pick a random "winner" just for display purposes
+      const randomIndex = Math.floor(Math.random() * battle.participants.length);
+      winnerId = battle.participants[randomIndex].userId;
+    } else if (battle.battleMode === 'UPSIDE_DOWN') {
+      // LOWEST WINS: Player with lowest total value wins ALL cards
       let minValue = Infinity;
       for (const [participantId, value] of participantTotals) {
         if (value < minValue) {
@@ -202,21 +215,12 @@ export async function POST(
         }
       }
     } else if (battle.battleMode === 'JACKPOT') {
-      // Weighted random selection based on total values
-      const totalPool = Array.from(participantTotals.values()).reduce((sum, val) => sum + val, 0);
-      const random = Math.random() * totalPool;
-      let accumulator = 0;
-      
-      for (const [participantId, value] of participantTotals) {
-        accumulator += value;
-        if (random <= accumulator) {
-          const participant = battle.participants.find(p => p.id === participantId);
-          winnerId = participant?.userId || null;
-          break;
-        }
-      }
+      // JACKPOT: Completely random winner (not weighted) wins ALL cards
+      const randomIndex = Math.floor(Math.random() * battle.participants.length);
+      winnerId = battle.participants[randomIndex].userId;
     } else {
-      // Normal mode - highest value wins
+      // NORMAL (HIGHEST WINS): Player with highest total value wins ALL cards
+      let maxValue = 0;
       for (const [participantId, value] of participantTotals) {
         if (value > maxValue) {
           maxValue = value;
@@ -226,10 +230,37 @@ export async function POST(
       }
     }
 
-    // Calculate total prize (if share mode is false, winner gets all)
-    const totalPrize = battle.shareMode 
-      ? 0 // In share mode, cards are distributed to all players
-      : battle.entryFee * battle.participants.length; // Winner takes all entry fees
+    // Now distribute cards based on battle mode
+    if (battle.shareMode) {
+      // SHARE MODE: Randomly distribute ALL cards among ALL participants
+      const shuffledPullIds = shuffleArray(allPullIds);
+      const participantUserIds = battle.participants.map(p => p.userId);
+      
+      // Distribute cards round-robin style after shuffle
+      for (let i = 0; i < shuffledPullIds.length; i++) {
+        const recipientUserId = participantUserIds[i % participantUserIds.length];
+        await prisma.pull.update({
+          where: { id: shuffledPullIds[i] },
+          data: { userId: recipientUserId },
+        });
+      }
+      
+      console.log(`Share mode: ${shuffledPullIds.length} cards randomly distributed among ${participantUserIds.length} participants`);
+    } else {
+      // WINNER TAKES ALL: Transfer ALL pulls to the winner
+      // Delete pulls from losers' collections and assign to winner
+      if (winnerId) {
+        await prisma.pull.updateMany({
+          where: { id: { in: allPullIds } },
+          data: { userId: winnerId },
+        });
+        
+        console.log(`${battle.battleMode} mode: ${allPullIds.length} cards transferred to winner ${winnerId}`);
+      }
+    }
+
+    // Calculate total prize (entry fees)
+    const totalPrize = battle.entryFee * battle.participants.length;
 
     // Update battle with winner and finish status
     const updatedBattle = await prisma.battle.update({
@@ -269,7 +300,7 @@ export async function POST(
       },
     });
 
-    // If not share mode, award prize to winner
+    // Award entry fee prize to winner (if not share mode)
     if (!battle.shareMode && winnerId && totalPrize > 0) {
       await prisma.user.update({
         where: { id: winnerId },
@@ -277,13 +308,6 @@ export async function POST(
           coins: { increment: totalPrize },
         },
       });
-    }
-
-    // If share mode, distribute cards to all participants
-    if (battle.shareMode) {
-      // This would require additional logic to fairly distribute the pulled cards
-      // For now, each participant keeps their own pulls
-      console.log('Share mode: Cards already assigned to participants');
     }
 
     return NextResponse.json({
