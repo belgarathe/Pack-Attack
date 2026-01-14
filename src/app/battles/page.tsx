@@ -2,6 +2,7 @@ import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Plus, Users, Trophy, Coins, Swords, Clock, ChevronRight } from 'lucide-react';
+import { CompletedBattleCard } from './CompletedBattleCard';
 
 async function getBattles() {
   try {
@@ -209,51 +210,14 @@ export default async function BattlesPage() {
                   <span className="text-sm text-gray-500">({completedBattles.length})</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {completedBattles.map((battle) => {
-                    const cost = totalCost(battle);
-                    const modeLabel = getBattleModeLabel(battle.battleMode, battle.shareMode);
-                    
-                    return (
-                      <Link 
-                        key={battle.id} 
-                        href={`/battles/${battle.id}`}
-                        className="group glass rounded-2xl p-5 opacity-80 hover:opacity-100 transition-opacity card-lift"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-sm font-medium text-gray-400">
-                            {battle.rounds} Round{battle.rounds !== 1 ? 's' : ''}
-                          </span>
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-700/50 text-gray-400">
-                            Finished
-                          </span>
-                        </div>
-                        
-                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-purple-400 transition-colors line-clamp-1">
-                          {battle.box.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-4">{modeLabel}</p>
-
-                        {battle.winner && (
-                          <div className="flex items-center gap-2 mb-4 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                            <Trophy className="w-4 h-4 text-amber-400" />
-                            <span className="text-sm text-amber-400 font-medium">
-                              {battle.winner.name || 'Winner'}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-                          <div className="flex items-center gap-1 text-gray-400">
-                            <Users className="w-4 h-4" />
-                            <span>{getVisibleParticipants(battle).length} players</span>
-                          </div>
-                          <span className="text-gray-400 text-sm font-medium group-hover:text-purple-400 group-hover:translate-x-1 transition-all inline-flex items-center gap-1">
-                            Results <ChevronRight className="w-4 h-4" />
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {completedBattles.map((battle) => (
+                    <CompletedBattleCard
+                      key={battle.id}
+                      battle={battle}
+                      isAdmin={isAdmin}
+                      visibleParticipants={getVisibleParticipants(battle)}
+                    />
+                  ))}
                 </div>
               </section>
             )}
