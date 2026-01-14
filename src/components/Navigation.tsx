@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 
@@ -106,6 +106,13 @@ export function Navigation() {
             >
               <Swords className="h-4 w-4" />
               <span>Battles</span>
+            </Link>
+            <Link 
+              href="/leaderboard" 
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Leaderboard</span>
             </Link>
             {session && (
               <>

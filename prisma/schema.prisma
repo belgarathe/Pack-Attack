@@ -38,6 +38,7 @@ model User {
   cart                Cart?
   orders              Order[]
   emailsSent          EmailLog[]
+  leaderboardEntries  BattleLeaderboard[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 }
@@ -324,4 +325,25 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+model BattleLeaderboard {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month           Int      // 1-12
+  year            Int      // e.g., 2026
+  points          Int      @default(0)
+  battlesWon      Int      @default(0)
+  battlesPlayed   Int      @default(0)
+  totalCoinsWon   Int      @default(0)
+  prizeAwarded    Boolean  @default(false)
+  prizeAmount     Int      @default(0)
+  rank            Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, month, year])
+  @@index([month, year])
+  @@index([points])
 }
