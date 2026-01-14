@@ -97,14 +97,14 @@ export function LeaderboardClient() {
   const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[#0a0a0f] w-full">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-4 py-12">
+      <div className="relative w-full max-w-5xl mx-auto px-4 py-12">
         {/* Header Section */}
         <div className="text-center mb-16">
           {/* Trophy Icon */}
@@ -201,7 +201,7 @@ export function LeaderboardClient() {
         ) : (
           <>
             {/* Podium Section - 3 Column Layout */}
-            <div className="flex flex-col md:flex-row items-end justify-center gap-4 mb-16 px-4">
+            <div className="flex flex-col md:flex-row items-end justify-center gap-4 md:gap-6 mb-16 w-full max-w-4xl mx-auto">
               {/* 2nd Place */}
               <div className="w-full md:w-72 order-2 md:order-1">
                 {top3[1] ? (
@@ -388,50 +388,52 @@ export function LeaderboardClient() {
 
             {/* Rest of Rankings */}
             {restOfLeaderboard.length > 0 && (
-              <div className="mb-16">
+              <div className="mb-16 w-full max-w-3xl mx-auto">
                 <h2 className="text-center text-xl font-bold text-white mb-6">
                   Full Rankings
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-3 w-full">
                   {restOfLeaderboard.map((entry) => (
                     <div
                       key={entry.userId}
-                      className="flex items-center gap-4 p-4 bg-gray-900/50 backdrop-blur rounded-2xl border border-gray-800 hover:border-gray-700 transition-colors"
+                      className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 p-4 bg-gray-900/50 backdrop-blur rounded-2xl border border-gray-800 hover:border-gray-700 transition-colors"
                     >
-                      {/* Rank */}
-                      <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0">
-                        <span className="text-lg font-black text-gray-400">#{entry.rank}</span>
-                      </div>
+                      {/* Rank & Avatar Row */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0">
+                          <span className="text-base sm:text-lg font-black text-gray-400">#{entry.rank}</span>
+                        </div>
 
-                      {/* Avatar */}
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-0.5 flex-shrink-0">
-                        <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center overflow-hidden">
-                          {entry.userAvatar ? (
-                            <img src={entry.userAvatar} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-bold text-blue-400">{getInitials(entry.userName)}</span>
-                          )}
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-0.5 flex-shrink-0">
+                          <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center overflow-hidden">
+                            {entry.userAvatar ? (
+                              <img src={entry.userAvatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs sm:text-sm font-bold text-blue-400">{getInitials(entry.userName)}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0 text-center md:text-left">
+                      {/* Name & Stats - Centered */}
+                      <div className="flex-1 text-center">
                         <h3 className="font-bold text-white truncate">{entry.userName}</h3>
                         <p className="text-xs text-gray-500">
                           {entry.battlesWon} wins • {entry.battlesPlayed} battles
                         </p>
                       </div>
 
-                      {/* Points */}
-                      <div className="text-center flex-shrink-0">
-                        <span className="text-xl font-black text-white">{formatNumber(entry.points)}</span>
-                        <span className="text-xs text-gray-500 ml-1">PTS</span>
-                      </div>
+                      {/* Points & Prize Row */}
+                      <div className="flex items-center gap-4">
+                        <div className="text-center flex-shrink-0">
+                          <span className="text-lg sm:text-xl font-black text-white">{formatNumber(entry.points)}</span>
+                          <span className="text-xs text-gray-500 ml-1">PTS</span>
+                        </div>
 
-                      {/* Prize */}
-                      <div className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 rounded-xl flex-shrink-0">
-                        <Coins className="w-4 h-4 text-amber-400" />
-                        <span className="font-bold text-amber-400">{entry.prize.toLocaleString()}</span>
+                        <div className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-amber-500/10 rounded-xl flex-shrink-0">
+                          <Coins className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold text-amber-400">{entry.prize.toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -440,8 +442,8 @@ export function LeaderboardClient() {
             )}
 
             {/* CTA */}
-            <div className="text-center">
-              <div className="inline-block p-8 bg-gradient-to-b from-gray-800/50 to-gray-900/50 backdrop-blur rounded-3xl border border-gray-800">
+            <div className="flex justify-center w-full">
+              <div className="p-8 bg-gradient-to-b from-gray-800/50 to-gray-900/50 backdrop-blur rounded-3xl border border-gray-800 text-center">
                 <div className="flex justify-center mb-4">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
                     <Swords className="w-8 h-8 text-white" />
