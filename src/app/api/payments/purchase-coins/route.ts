@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       coinsAdded: coinsToAdd,
-      newBalance: user.coins + coinsToAdd,
+      newBalance: Number(user.coins) + coinsToAdd,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
