@@ -44,13 +44,14 @@ export async function POST(request: NextRequest) {
     const saleHistoryData = pulls
       .filter(pull => pull.card)
       .map(pull => {
-        totalCoins += pull.card!.coinValue;
+        const coinValue = Number(pull.card!.coinValue);
+        totalCoins += coinValue;
         return {
           userId: user.id,
           cardId: pull.card!.id,
           cardName: pull.card!.name,
           cardImage: pull.card!.imageUrlGatherer || pull.card!.imageUrlScryfall || null,
-          coinsReceived: pull.card!.coinValue,
+          coinsReceived: Math.round(coinValue),
         };
       });
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       // Add coins to user
       prisma.user.update({
         where: { id: user.id },
-        data: { coins: { increment: totalCoins } },
+        data: { coins: { increment: Math.round(totalCoins) } },
         select: { coins: true },
       }),
       // Create sale history entries for all cards

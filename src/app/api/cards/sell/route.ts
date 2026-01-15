@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 });
     }
 
-    const coinValue = pull.card.coinValue;
+    const coinValue = Number(pull.card.coinValue);
+    const coinValueInt = Math.round(coinValue);
     const cardName = pull.card.name;
     const cardImage = pull.card.imageUrlGatherer || pull.card.imageUrlScryfall || null;
     const cardId = pull.card.id;
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.user.update({
         where: { id: user.id },
-        data: { coins: { increment: coinValue } },
+        data: { coins: { increment: coinValueInt } },
         select: { coins: true },
       }),
       prisma.saleHistory.create({
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
           cardId: cardId,
           cardName: cardName,
           cardImage: cardImage,
-          coinsReceived: coinValue,
+          coinsReceived: coinValueInt,
         },
       }),
     ]);
