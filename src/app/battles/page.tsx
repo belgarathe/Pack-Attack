@@ -6,7 +6,7 @@ import { CompletedBattleCard } from './CompletedBattleCard';
 
 async function getBattles() {
   try {
-    return await prisma.battle.findMany({
+    const battles = await prisma.battle.findMany({
       include: {
         creator: { select: { id: true, name: true, email: true } },
         box: true,
@@ -18,6 +18,15 @@ async function getBattles() {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+    
+    // Convert Decimal values to numbers
+    return battles.map(battle => ({
+      ...battle,
+      box: {
+        ...battle.box,
+        price: Number(battle.box.price),
+      },
+    }));
   } catch {
     return [];
   }

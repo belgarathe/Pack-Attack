@@ -10,9 +10,15 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getBoxes() {
-  return await prisma.box.findMany({
+  const boxes = await prisma.box.findMany({
     orderBy: { createdAt: 'desc' },
   });
+  
+  // Convert Decimal to Number for client component
+  return boxes.map(box => ({
+    ...box,
+    price: Number(box.price),
+  }));
 }
 
 export default async function AdminBoxesPage() {
