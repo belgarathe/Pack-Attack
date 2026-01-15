@@ -122,7 +122,7 @@ export default function OpenBoxPage() {
     if (userCoins !== null && userCoins < totalCost) {
       addToast({
         title: 'Insufficient Coins',
-        description: `You need ${totalCost} coins but only have ${userCoins}`,
+        description: `You need ${totalCost.toFixed(2)} coins but only have ${userCoins.toFixed(2)}`,
         variant: 'destructive',
       });
       return;
@@ -293,7 +293,7 @@ export default function OpenBoxPage() {
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2">
                     <Coins className="w-5 h-5 text-amber-400" />
-                    <span className="text-white font-semibold">{box.price} coins/box</span>
+                    <span className="text-white font-semibold">{box.price.toFixed(2)} coins/box</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Layers className="w-5 h-5 text-gray-400" />
@@ -339,14 +339,14 @@ export default function OpenBoxPage() {
                   <span className="text-gray-400">Total Cost:</span>
                   <div className="flex items-center gap-2">
                     <Coins className="w-5 h-5 text-amber-400" />
-                    <span className="text-2xl font-bold text-white">{totalCost}</span>
+                    <span className="text-2xl font-bold text-white">{totalCost.toFixed(2)}</span>
                   </div>
                 </div>
                 {userCoins !== null && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-400">Your Balance:</span>
                     <span className={userCoins >= totalCost ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'}>
-                      {userCoins} coins
+                      {userCoins.toFixed(2)} coins
                     </span>
                   </div>
                 )}
@@ -423,7 +423,7 @@ export default function OpenBoxPage() {
                         )}
                         <div className="absolute top-2 left-2 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
                           <Coins className="h-3 w-3 text-amber-400" />
-                          <span className="text-xs font-bold text-amber-400">{card.coinValue.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-amber-400">{card.coinValue.toFixed(2)}</span>
                         </div>
                         <div className="absolute top-2 right-2 bg-black/80 rounded-lg px-2 py-1">
                           <span className="text-xs font-bold text-white">{card.pullRate.toFixed(3)}%</span>
@@ -473,7 +473,7 @@ export default function OpenBoxPage() {
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
                         <p className="text-xs text-white truncate">{pull.card?.name}</p>
-                        <p className="text-xs text-amber-400">{pull.card?.coinValue} coins</p>
+                        <p className="text-xs text-amber-400">{pull.card?.coinValue?.toFixed(2)} coins</p>
                       </div>
                     </div>
                   );
@@ -528,7 +528,7 @@ export default function OpenBoxPage() {
             <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
             <div className="flex items-center justify-center gap-2 text-amber-400">
               <Coins className="h-5 w-5" />
-              <span className="text-xl font-semibold">{currentReveal.card.coinValue} coins</span>
+              <span className="text-xl font-semibold">{currentReveal.card.coinValue?.toFixed(2)} coins</span>
             </div>
           </div>
         </div>

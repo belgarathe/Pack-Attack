@@ -93,7 +93,7 @@ export async function POST(request: Request) {
           success: true,
           status: 'completed',
           coinsAdded: coins,
-          newBalance: updatedUser?.coins || 0,
+          newBalance: Number(updatedUser?.coins || 0),
         });
       }
 
@@ -101,8 +101,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         status: 'already_completed',
-        coinsAdded: transaction.coins,
-        newBalance: user.coins,
+        coinsAdded: Number(transaction.coins),
+        newBalance: Number(user.coins),
       });
     }
 

@@ -61,15 +61,17 @@ export async function POST(
     }
 
     // Calculate total cost (entry fee + pack costs for all rounds)
-    const packCost = battle.box.price * battle.rounds;
+    const boxPrice = Number(battle.box.price);
+    const userCoins = Number(user.coins);
+    const packCost = boxPrice * battle.rounds;
     const totalCost = battle.entryFee + packCost;
 
     // Check if user has enough coins
-    if (user.coins < totalCost) {
+    if (userCoins < totalCost) {
       return NextResponse.json({ 
-        error: `Not enough coins. You need ${totalCost} coins (${battle.entryFee} entry fee + ${packCost} for packs)`,
+        error: `Not enough coins. You need ${totalCost.toFixed(2)} coins (${battle.entryFee} entry fee + ${packCost.toFixed(2)} for packs)`,
         required: totalCost,
-        current: user.coins,
+        current: userCoins,
       }, { status: 400 });
     }
 
@@ -107,7 +109,7 @@ export async function POST(
       message: 'Successfully joined the battle!',
       battle: updatedBattle,
       coinsDeducted: totalCost,
-      newBalance: updatedUser.coins,
+      newBalance: Number(updatedUser.coins),
     });
   } catch (error) {
     console.error('Error joining battle:', error);

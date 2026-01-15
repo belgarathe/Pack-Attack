@@ -71,10 +71,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Box has no cards' }, { status: 400 });
     }
 
-    const totalCost = box.price * quantity;
-    if (user.coins < totalCost) {
+    const boxPrice = Number(box.price);
+    const userCoins = Number(user.coins);
+    const totalCost = boxPrice * quantity;
+    if (userCoins < totalCost) {
       return NextResponse.json(
-        { error: `Insufficient coins. Need ${totalCost}, have ${user.coins}` },
+        { error: `Insufficient coins. Need ${totalCost.toFixed(2)}, have ${userCoins.toFixed(2)}` },
         { status: 400 }
       );
     }
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
       success: true,
       pulls,
       totalCost,
-      remainingCoins: user.coins - totalCost,
+      remainingCoins: userCoins - totalCost,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

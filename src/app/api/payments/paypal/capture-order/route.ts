@@ -62,8 +62,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         message: 'Payment already processed',
-        coinsAdded: transaction.coins,
-        newBalance: user.coins,
+        coinsAdded: Number(transaction.coins),
+        newBalance: Number(user.coins),
       });
     }
 
@@ -103,8 +103,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      coinsAdded: transaction.coins,
-      newBalance: updatedUser.coins,
+      coinsAdded: Number(transaction.coins),
+      newBalance: Number(updatedUser.coins),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

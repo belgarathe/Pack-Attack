@@ -152,7 +152,7 @@ export function Navigation() {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/50 hover:bg-yellow-500/30 cursor-pointer transition-colors">
                   <Coins className="h-4 w-4 text-yellow-500" />
                   <span className="text-sm font-semibold text-yellow-500">
-                    {userCoins !== null ? userCoins.toLocaleString() : '...'}
+                    {userCoins !== null ? userCoins.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '...'}
                   </span>
                 </div>
               </Link>

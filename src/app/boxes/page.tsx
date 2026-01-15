@@ -42,6 +42,7 @@ export default async function BoxesPage() {
   // Convert Decimal to Number for client component
   const boxes = rawBoxes.map(box => ({
     ...box,
+    price: Number(box.price),
     cards: box.cards.map(card => ({
       ...card,
       coinValue: Number(card.coinValue),

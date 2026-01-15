@@ -217,7 +217,7 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                             {index === 1 && (
                               <div className="absolute bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-black/80 flex items-center gap-0.5">
                                 <Coins className="w-2 h-2 text-amber-400" />
-                                <span className="text-[8px] font-bold text-amber-400">{card.coinValue}</span>
+                                <span className="text-[8px] font-bold text-amber-400">{card.coinValue.toFixed(2)}</span>
                               </div>
                             )}
                           </div>
@@ -252,7 +252,7 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <Coins className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-bold text-amber-400">{box.price.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-amber-400">{box.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     <span className="text-xs text-gray-500">coins</span>
                   </div>
                   <div className="flex items-center gap-0.5 text-blue-400 text-xs font-medium group-hover:translate-x-0.5 transition-transform">

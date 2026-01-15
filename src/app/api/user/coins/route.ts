@@ -18,7 +18,7 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ coins: user.coins });
+    return NextResponse.json({ coins: Number(user.coins) });
   } catch (error) {
     console.error('Error fetching coins:', error);
     return NextResponse.json({ error: 'Failed to fetch coins' }, { status: 500 });
