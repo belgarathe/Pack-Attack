@@ -33,7 +33,13 @@ export default async function SalesHistoryPage() {
     redirect('/login');
   }
 
-  const sales = await getSalesHistory();
+  const rawSales = await getSalesHistory();
+
+  // Convert Decimal to Number for client
+  const sales = rawSales.map(sale => ({
+    ...sale,
+    coinsReceived: Number(sale.coinsReceived),
+  }));
 
   // Calculate stats
   const totalSales = sales.length;

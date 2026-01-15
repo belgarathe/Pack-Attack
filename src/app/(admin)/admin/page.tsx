@@ -78,7 +78,7 @@ export default async function AdminDashboard() {
           </div>
           <div className="glass rounded-xl p-4 text-center">
             <Coins className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{(totalCoins._sum.coins || 0).toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{Number(totalCoins._sum.coins || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div className="text-xs text-gray-400">Total Coins</div>
           </div>
         </div>

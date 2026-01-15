@@ -18,13 +18,15 @@ async function getOrders() {
     },
   });
 
-  // Serialize dates to strings
+  // Serialize dates to strings and convert Decimals to numbers
   return orders.map(order => ({
     ...order,
+    totalCoins: Number(order.totalCoins),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map(item => ({
       ...item,
+      coinValue: Number(item.coinValue),
       createdAt: item.createdAt.toISOString(),
     })),
   }));
