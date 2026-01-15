@@ -62,7 +62,7 @@ async function runSimulation() {
   console.log('-'.repeat(60));
   box.cards.forEach(card => {
     const rate = Number(card.pullRate);
-    console.log(`  ${card.name.padEnd(35)} ${rate.toFixed(3).padStart(7)}% | ${card.coinValue} coins`);
+    console.log(`  ${card.name.padEnd(35)} ${rate.toFixed(3).padStart(7)}% | ${Number(card.coinValue)} coins`);
   });
   
   // Run simulation

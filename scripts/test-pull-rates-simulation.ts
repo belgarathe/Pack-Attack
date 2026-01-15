@@ -71,7 +71,7 @@ async function runSimulation(boxNameFilter: string, iterations: number) {
     id: card.id,
     name: card.name,
     pullRate: Number(card.pullRate),
-    coinValue: card.coinValue,
+    coinValue: Number(card.coinValue),
     rarity: card.rarity || 'Unknown',
   }));
 
