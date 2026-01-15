@@ -86,8 +86,14 @@ export async function GET(request: Request) {
       prisma.user.count({ where }),
     ]);
 
+    // Convert Decimal to Number for client
+    const usersWithNumbers = users.map(u => ({
+      ...u,
+      coins: Number(u.coins),
+    }));
+
     return NextResponse.json({
-      users,
+      users: usersWithNumbers,
       pagination: {
         page,
         limit,
@@ -151,7 +157,13 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, user });
+    return NextResponse.json({ 
+      success: true, 
+      user: {
+        ...user,
+        coins: Number(user.coins),
+      }
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });

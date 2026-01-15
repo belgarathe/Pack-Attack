@@ -20,7 +20,7 @@ export default async function AdminUsersPage() {
   }
 
   // Get initial users for SSR
-  const initialUsers = await prisma.user.findMany({
+  const rawUsers = await prisma.user.findMany({
     where: { isBot: false },
     select: {
       id: true,
@@ -42,6 +42,12 @@ export default async function AdminUsersPage() {
     orderBy: { createdAt: 'desc' },
     take: 20,
   });
+  
+  // Convert Decimal to Number for client
+  const initialUsers = rawUsers.map(u => ({
+    ...u,
+    coins: Number(u.coins),
+  }));
 
   const totalUsers = await prisma.user.count({ where: { isBot: false } });
 
