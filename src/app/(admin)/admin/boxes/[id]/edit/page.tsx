@@ -25,6 +25,7 @@ async function getBox(boxId: string) {
     cards: box.cards.map(card => ({
       ...card,
       pullRate: Number(card.pullRate),
+      coinValue: Number(card.coinValue),
     })),
   };
 }

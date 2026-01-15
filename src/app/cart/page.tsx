@@ -46,6 +46,7 @@ async function getCart() {
       card: item.pull.card ? {
         ...item.pull.card,
         pullRate: Number(item.pull.card.pullRate),
+        coinValue: Number(item.pull.card.coinValue),
       } : null,
     },
   }));

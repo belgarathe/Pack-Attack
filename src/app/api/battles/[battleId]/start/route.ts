@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
 
 async function getRandomCard(boxId: string) {
   // Get all cards for this box
@@ -154,12 +153,13 @@ export async function POST(
           
           // Create pull record - initially assigned to the participant who pulled it
           // This will be reassigned after winner is determined
+          const cardCoinValue = Number(card.coinValue);
           const pull = await prisma.pull.create({
             data: {
               userId: participant.userId,
               boxId: battle.box.id,
               cardId: card.id,
-              cardValue: new Decimal(card.coinValue),
+              cardValue: card.coinValue,
             },
           });
 
@@ -170,7 +170,7 @@ export async function POST(
               participantId: participant.id,
               pullId: pull.id,
               roundNumber: round,
-              coinValue: card.coinValue,
+              coinValue: Math.round(cardCoinValue),
               itemName: card.name,
               itemImage: card.imageUrlGatherer,
               itemRarity: card.rarity,
@@ -179,7 +179,7 @@ export async function POST(
 
           allPullIds.push(pull.id);
           thisPullIds.push(pull.id);
-          participantTotal += card.coinValue;
+          participantTotal += cardCoinValue;
         }
       }
 

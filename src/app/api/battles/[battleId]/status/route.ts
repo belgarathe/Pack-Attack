@@ -72,6 +72,7 @@ export async function GET(
           card: pull.pull.card ? {
             ...pull.pull.card,
             pullRate: Number(pull.pull.card.pullRate),
+            coinValue: Number(pull.pull.card.coinValue),
           } : null,
         } : null,
       })),

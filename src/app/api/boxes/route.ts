@@ -29,12 +29,13 @@ export async function GET(request: Request) {
         box.imageUrl = box.cards[0].imageUrlGatherer;
       }
 
-      // Convert Decimal to number for pullRate
+      // Convert Decimal to number for pullRate and coinValue
       const boxWithNumbers = {
         ...box,
         cards: box.cards.map(card => ({
           ...card,
           pullRate: Number(card.pullRate),
+          coinValue: Number(card.coinValue),
         })),
       };
 
