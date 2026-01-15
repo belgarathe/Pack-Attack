@@ -94,8 +94,9 @@ async function runSimulation(iterations: number) {
 }
 
 async function runSimulationWithBox(box: Box, iterations: number) {
+  const boxPrice = Number(box.price);
   console.log(`\n📦 Box: ${box.name}`);
-  console.log(`💰 Box Price: ${box.price} coins`);
+  console.log(`💰 Box Price: ${boxPrice.toFixed(2)} coins`);
   console.log(`📊 Cards in box: ${box.cards.length}`);
   
   const cards = box.cards.map(card => ({
@@ -106,7 +107,7 @@ async function runSimulationWithBox(box: Box, iterations: number) {
     rarity: card.rarity || 'Unknown',
   }));
 
-  await runSimulationWithCards(cards, iterations, box.price);
+  await runSimulationWithCards(cards, iterations, boxPrice);
 }
 
 async function runSimulationWithCards(cards: Card[], iterations: number, boxPrice: number = 0) {

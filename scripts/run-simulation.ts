@@ -48,7 +48,7 @@ async function main() {
 
   console.log('\n🎴 PULL RATE SIMULATION - ' + box.name);
   console.log('═'.repeat(60));
-  console.log('Box Price: ' + box.price + ' coins');
+  console.log('Box Price: ' + Number(box.price).toFixed(2) + ' coins');
   console.log('Cards: ' + cards.length);
   console.log('Iterations: ' + iterations.toLocaleString());
 
@@ -151,10 +151,11 @@ async function main() {
   console.log('Difference:                 ' + (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' coins (' + ((avg / theoretical - 1) * 100).toFixed(2) + '%)');
   
   console.log('─'.repeat(60));
-  console.log('Box Price:                  ' + box.price + ' coins');
-  console.log('Expected Return/Pull:       ' + ((theoretical / box.price) * 100).toFixed(2) + '%');
-  console.log('Actual Return/Pull:         ' + ((avg / box.price) * 100).toFixed(2) + '%');
-  const profitLoss = avg - box.price;
+  const boxPrice = Number(box.price);
+  console.log('Box Price:                  ' + boxPrice.toFixed(2) + ' coins');
+  console.log('Expected Return/Pull:       ' + ((theoretical / boxPrice) * 100).toFixed(2) + '%');
+  console.log('Actual Return/Pull:         ' + ((avg / boxPrice) * 100).toFixed(2) + '%');
+  const profitLoss = avg - boxPrice;
   console.log('Avg Profit/Loss per Pull:   ' + (profitLoss >= 0 ? '+' : '') + profitLoss.toFixed(2) + ' coins');
 
   // Pull rate analysis
