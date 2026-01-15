@@ -12,7 +12,7 @@ model User {
   email               String              @unique
   name                String?
   passwordHash        String
-  coins               Int                 @default(0)
+  coins               Decimal             @db.Decimal(12, 2) @default(0)
   role                Role                @default(USER)
   isBot               Boolean             @default(false)
   emailVerified       Boolean             @default(false)
@@ -48,7 +48,7 @@ model Box {
   name            String
   description     String          @db.Text
   imageUrl        String
-  price           Int
+  price           Decimal         @db.Decimal(10, 2)
   cardsPerPack    Int
   games           CardGame[]      @default([MAGIC_THE_GATHERING])
   isActive        Boolean         @default(true)
@@ -129,7 +129,7 @@ model Transaction {
   userId          String
   user            User          @relation(fields: [userId], references: [id])
   amount          Decimal       @db.Decimal(10, 2)
-  coins           Int
+  coins           Decimal       @db.Decimal(12, 2)
   paypalOrderId   String?       @unique
   paypalPayerId   String?
   stripePaymentId String?       @unique
@@ -214,7 +214,7 @@ model BattlePull {
   pullId        String?           @unique
   pull          Pull?             @relation(fields: [pullId], references: [id])
   roundNumber   Int
-  coinValue     Int
+  coinValue     Decimal           @db.Decimal(10, 2)
   pulledAt      DateTime          @default(now())
   itemName      String?
   itemImage     String?
@@ -246,7 +246,7 @@ model SaleHistory {
   cardId        String?
   cardName      String
   cardImage     String?
-  coinsReceived Int
+  coinsReceived Decimal       @db.Decimal(10, 2)
   timestamp     DateTime @default(now())
 
   @@index([userId])
@@ -291,7 +291,7 @@ model Order {
   userId          String
   user            User        @relation(fields: [userId], references: [id])
   status          OrderStatus @default(PENDING)
-  totalCoins      Int
+  totalCoins      Decimal     @db.Decimal(10, 2)
   shippingName    String
   shippingEmail   String
   shippingAddress String
@@ -313,7 +313,7 @@ model OrderItem {
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   cardName  String
   cardImage String?
-  coinValue Int
+  coinValue Decimal  @db.Decimal(10, 2)
   createdAt DateTime @default(now())
 
   @@index([orderId])
@@ -336,9 +336,9 @@ model BattleLeaderboard {
   points          Int      @default(0)
   battlesWon      Int      @default(0)
   battlesPlayed   Int      @default(0)
-  totalCoinsWon   Int      @default(0)
+  totalCoinsWon   Decimal  @db.Decimal(12, 2) @default(0)
   prizeAwarded    Boolean  @default(false)
-  prizeAmount     Int      @default(0)
+  prizeAmount     Decimal  @db.Decimal(10, 2) @default(0)
   rank            Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

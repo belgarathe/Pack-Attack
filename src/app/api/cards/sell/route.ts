@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
     }
 
     const coinValue = Number(pull.card.coinValue);
-    const coinValueInt = Math.round(coinValue);
     const cardName = pull.card.name;
     const cardImage = pull.card.imageUrlGatherer || pull.card.imageUrlScryfall || null;
     const cardId = pull.card.id;
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.user.update({
         where: { id: user.id },
-        data: { coins: { increment: coinValueInt } },
+        data: { coins: { increment: coinValue } },
         select: { coins: true },
       }),
       prisma.saleHistory.create({
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
           cardId: cardId,
           cardName: cardName,
           cardImage: cardImage,
-          coinsReceived: coinValueInt,
+          coinsReceived: coinValue,
         },
       }),
     ]);
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       coinsReceived: coinValue,
-      newBalance: updatedUser.coins,
+      newBalance: Number(updatedUser.coins),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           cardId: pull.card!.id,
           cardName: pull.card!.name,
           cardImage: pull.card!.imageUrlGatherer || pull.card!.imageUrlScryfall || null,
-          coinsReceived: Math.round(coinValue),
+          coinsReceived: coinValue,
         };
       });
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       // Add coins to user
       prisma.user.update({
         where: { id: user.id },
-        data: { coins: { increment: Math.round(totalCoins) } },
+        data: { coins: { increment: totalCoins } },
         select: { coins: true },
       }),
       // Create sale history entries for all cards
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       success: true,
       cardsSold: pulls.length,
       coinsReceived: totalCoins,
-      newBalance: updatedUser.coins,
+      newBalance: Number(updatedUser.coins),
     });
   } catch (error) {
     console.error('Error selling all cards:', error);

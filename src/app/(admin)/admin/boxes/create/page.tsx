@@ -244,7 +244,7 @@ export default function CreateBoxPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          price: parseInt(formData.price),
+          price: parseFloat(formData.price),
           cardsPerPack: parseInt(formData.cardsPerPack),
           games: games,
           imageUrl: getHighestValueCard()?.imageUrl || '',
@@ -363,8 +363,9 @@ export default function CreateBoxPage() {
                   <label className="block text-sm font-medium mb-2 text-white">Price (coins)</label>
                   <input
                     type="number"
+                    step="0.01"
                     required
-                    min="1"
+                    min="0.01"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"

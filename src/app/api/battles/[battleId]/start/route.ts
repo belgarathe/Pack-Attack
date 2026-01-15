@@ -170,7 +170,7 @@ export async function POST(
               participantId: participant.id,
               pullId: pull.id,
               roundNumber: round,
-              coinValue: Math.round(cardCoinValue),
+              coinValue: cardCoinValue,
               itemName: card.name,
               itemImage: card.imageUrlGatherer,
               itemRarity: card.rarity,

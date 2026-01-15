@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       const newOrder = await tx.order.create({
         data: {
           userId: user.id,
-          totalCoins: Math.round(totalCoins),
+          totalCoins: totalCoins,
           shippingName,
           shippingEmail,
           shippingAddress,
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
             create: cart.items.map((item) => ({
               cardName: item.pull.card?.name || 'Unknown Card',
               cardImage: item.pull.card?.imageUrlGatherer || null,
-              coinValue: item.pull.card ? Math.round(Number(item.pull.card.coinValue)) : 0,
+              coinValue: item.pull.card ? Number(item.pull.card.coinValue) : 0,
             })),
           },
         },
