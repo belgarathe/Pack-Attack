@@ -122,9 +122,20 @@ export async function POST(request: NextRequest) {
       data: { popularity: { increment: quantity } },
     });
 
+    // Convert Decimal values to numbers for client
+    const pullsForClient = pulls.map(pull => ({
+      ...pull,
+      cardValue: pull.cardValue ? Number(pull.cardValue) : null,
+      card: pull.card ? {
+        ...pull.card,
+        coinValue: Number(pull.card.coinValue),
+        pullRate: Number(pull.card.pullRate),
+      } : null,
+    }));
+
     return NextResponse.json({
       success: true,
-      pulls,
+      pulls: pullsForClient,
       totalCost,
       remainingCoins: userCoins - totalCost,
     });
