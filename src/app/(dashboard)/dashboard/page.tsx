@@ -68,6 +68,7 @@ export default async function UserDashboard() {
   // Format user for client
   const userForClient = {
     ...user,
+    coins: Number(user.coins),
     createdAt: user.createdAt.toISOString(),
   };
 
