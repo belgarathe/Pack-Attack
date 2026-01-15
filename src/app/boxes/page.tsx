@@ -37,7 +37,16 @@ async function getBoxes() {
 }
 
 export default async function BoxesPage() {
-  const boxes = await getBoxes();
+  const rawBoxes = await getBoxes();
+
+  // Convert Decimal to Number for client component
+  const boxes = rawBoxes.map(box => ({
+    ...box,
+    cards: box.cards.map(card => ({
+      ...card,
+      coinValue: Number(card.coinValue),
+    })),
+  }));
 
   // Extract unique games from all boxes
   const availableGames = [...new Set(
