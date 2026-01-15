@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const updateCardSchema = z.object({
   pullRate: z.number().min(0.001).max(100).optional(),
-  coinValue: z.number().int().min(1).optional(),
+  coinValue: z.number().min(0.01).optional(),
 });
 
 // PATCH /api/admin/boxes/[id]/cards/[cardId] - Update card values

@@ -74,7 +74,7 @@ model Card {
   colors           String[]
   type             String
   pullRate         Decimal  @db.Decimal(6, 3)
-  coinValue        Int      @default(1)
+  coinValue        Decimal  @db.Decimal(10, 2) @default(1)
   sourceGame       CardGame @default(MAGIC_THE_GATHERING)
   boxId            String
   box              Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)

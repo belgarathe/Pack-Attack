@@ -846,9 +846,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                           <label className="text-xs text-gray-400">Coin Value</label>
                           <input
                             type="number"
-                            min="1"
+                            step="0.01"
+                            min="0.01"
                             value={card.coinValue}
-                            onChange={(e) => updateNewCard(index, 'coinValue', parseInt(e.target.value) || 1)}
+                            onChange={(e) => updateNewCard(index, 'coinValue', parseFloat(e.target.value) || 0.01)}
                             className="w-full px-2 py-1 rounded bg-gray-900 border border-gray-700 text-white text-sm"
                           />
                         </div>
@@ -997,9 +998,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                   <div className="col-span-3">
                     <input
                       type="number"
-                      min="1"
+                      step="0.01"
+                      min="0.01"
                       value={bulkEditValues[card.id]?.coinValue ?? card.coinValue}
-                      onChange={(e) => updateBulkValue(card.id, 'coinValue', parseInt(e.target.value) || 1)}
+                      onChange={(e) => updateBulkValue(card.id, 'coinValue', parseFloat(e.target.value) || 0.01)}
                       className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-600 text-white text-sm focus:border-blue-500 focus:outline-none"
                     />
                   </div>
@@ -1078,9 +1080,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                           <label className="text-xs text-gray-300">Coin Value</label>
                           <input
                             type="number"
-                            min="1"
+                            step="0.01"
+                            min="0.01"
                             value={editValues.coinValue}
-                            onChange={(e) => setEditValues({ ...editValues, coinValue: parseInt(e.target.value) || 1 })}
+                            onChange={(e) => setEditValues({ ...editValues, coinValue: parseFloat(e.target.value) || 0.01 })}
                             className="w-full px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm"
                           />
                         </div>

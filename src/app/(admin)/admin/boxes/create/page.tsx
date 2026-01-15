@@ -555,9 +555,10 @@ export default function CreateBoxPage() {
                               <label className="text-xs text-gray-400">Coin Value</label>
                               <input
                                 type="number"
-                                min="1"
+                                step="0.01"
+                                min="0.01"
                                 value={card.coinValue}
-                                onChange={(e) => updateCard(index, 'coinValue', parseInt(e.target.value) || 1)}
+                                onChange={(e) => updateCard(index, 'coinValue', parseFloat(e.target.value) || 0.01)}
                                 className="w-24 px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:border-primary focus:outline-none"
                               />
                             </div>
