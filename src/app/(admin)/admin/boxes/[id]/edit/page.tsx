@@ -22,6 +22,7 @@ async function getBox(boxId: string) {
 
   return {
     ...box,
+    price: Number(box.price),
     cards: box.cards.map(card => ({
       ...card,
       pullRate: Number(card.pullRate),

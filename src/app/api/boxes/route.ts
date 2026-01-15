@@ -29,9 +29,10 @@ export async function GET(request: Request) {
         box.imageUrl = box.cards[0].imageUrlGatherer;
       }
 
-      // Convert Decimal to number for pullRate and coinValue
+      // Convert Decimal to number for pullRate, coinValue, and price
       const boxWithNumbers = {
         ...box,
+        price: Number(box.price),
         cards: box.cards.map(card => ({
           ...card,
           pullRate: Number(card.pullRate),
@@ -79,7 +80,17 @@ export async function GET(request: Request) {
       })
     ).catch(console.error);
 
-    return NextResponse.json({ success: true, boxes });
+    // Convert Decimal values to numbers for JSON response
+    const boxesWithNumbers = boxes.map(box => ({
+      ...box,
+      price: Number(box.price),
+      cards: box.cards.map(card => ({
+        ...card,
+        coinValue: Number(card.coinValue),
+      })),
+    }));
+
+    return NextResponse.json({ success: true, boxes: boxesWithNumbers });
   } catch (error) {
     console.error('Error fetching boxes:', error);
     return NextResponse.json({ error: 'Failed to fetch boxes' }, { status: 500 });
