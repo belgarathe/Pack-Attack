@@ -34,7 +34,11 @@ async function getFeaturedBoxes() {
         }
       }
     });
-    return boxes;
+    // Convert Decimal to Number
+    return boxes.map(box => ({
+      ...box,
+      price: Number(box.price),
+    }));
   } catch {
     return [];
   }
@@ -67,7 +71,14 @@ async function getActiveBattles() {
         },
       },
     });
-    return battles;
+    // Convert Decimal to Number
+    return battles.map(battle => ({
+      ...battle,
+      box: {
+        ...battle.box,
+        price: Number(battle.box.price),
+      },
+    }));
   } catch {
     return [];
   }
