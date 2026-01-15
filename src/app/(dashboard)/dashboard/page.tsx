@@ -75,6 +75,11 @@ export default async function UserDashboard() {
   const pullsForClient = pulls.map(pull => ({
     ...pull,
     timestamp: pull.timestamp.toISOString(),
+    cardValue: pull.cardValue ? Number(pull.cardValue) : null,
+    card: pull.card ? {
+      ...pull.card,
+      coinValue: Number(pull.card.coinValue),
+    } : null,
   }));
 
   return (
