@@ -52,7 +52,7 @@ async function getCart() {
   }));
 
   const total = cart.items.reduce((sum, item) => {
-    return sum + (item.pull.card?.coinValue || 0);
+    return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
   }, 0);
 
   return { items: serializedItems, total };
