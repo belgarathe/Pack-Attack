@@ -66,7 +66,7 @@ async function getCollection() {
           id: pull.card.id,
           name: pull.card.name,
           imageUrlGatherer: pull.card.imageUrlGatherer,
-          coinValue: pull.card.coinValue,
+          coinValue: Number(pull.card.coinValue),
           rarity: pull.card.rarity,
         }
       : null,
