@@ -28,7 +28,22 @@ export async function GET() {
       take: 50,
     });
 
-    return NextResponse.json({ success: true, battles });
+    // Convert Decimal values to numbers
+    const serializedBattles = battles.map(battle => ({
+      ...battle,
+      entryFee: Number(battle.entryFee),
+      totalPrize: Number(battle.totalPrize),
+      box: battle.box ? {
+        ...battle.box,
+        price: Number(battle.box.price),
+      } : null,
+      participants: battle.participants.map(p => ({
+        ...p,
+        totalValue: Number(p.totalValue),
+      })),
+    }));
+
+    return NextResponse.json({ success: true, battles: serializedBattles });
   } catch (error) {
     console.error('Error fetching battles:', error);
     return NextResponse.json({ error: 'Failed to fetch battles' }, { status: 500 });
@@ -91,7 +106,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, battle });
+    // Convert Decimal values to numbers
+    const serializedBattle = {
+      ...battle,
+      entryFee: Number(battle.entryFee),
+      totalPrize: Number(battle.totalPrize),
+      box: battle.box ? {
+        ...battle.box,
+        price: Number(battle.box.price),
+      } : null,
+      participants: battle.participants.map(p => ({
+        ...p,
+        totalValue: Number(p.totalValue),
+      })),
+    };
+
+    return NextResponse.json({ success: true, battle: serializedBattle });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });

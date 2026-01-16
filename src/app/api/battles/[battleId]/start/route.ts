@@ -310,9 +310,37 @@ export async function POST(
       });
     }
 
+    // Serialize battle data - convert all Decimal values to numbers
+    const serializedBattle = {
+      ...updatedBattle,
+      entryFee: Number(updatedBattle.entryFee),
+      totalPrize: Number(updatedBattle.totalPrize),
+      box: updatedBattle.box ? {
+        ...updatedBattle.box,
+        price: Number(updatedBattle.box.price),
+      } : null,
+      pulls: updatedBattle.pulls?.map(pull => ({
+        ...pull,
+        coinValue: Number(pull.coinValue),
+        pull: pull.pull ? {
+          ...pull.pull,
+          cardValue: pull.pull.cardValue ? Number(pull.pull.cardValue) : null,
+          card: pull.pull.card ? {
+            ...pull.pull.card,
+            pullRate: Number(pull.pull.card.pullRate),
+            coinValue: Number(pull.pull.card.coinValue),
+          } : null,
+        } : null,
+      })),
+      participants: updatedBattle.participants.map(p => ({
+        ...p,
+        totalValue: Number(p.totalValue),
+      })),
+    };
+
     return NextResponse.json({
       success: true,
-      battle: updatedBattle,
+      battle: serializedBattle,
       message: 'Battle completed successfully!',
     });
 

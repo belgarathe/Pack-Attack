@@ -104,10 +104,25 @@ export async function POST(
       },
     });
 
+    // Serialize the battle data
+    const serializedBattle = updatedBattle ? {
+      ...updatedBattle,
+      entryFee: Number(updatedBattle.entryFee),
+      totalPrize: Number(updatedBattle.totalPrize),
+      box: updatedBattle.box ? {
+        ...updatedBattle.box,
+        price: Number(updatedBattle.box.price),
+      } : null,
+      participants: updatedBattle.participants.map(p => ({
+        ...p,
+        totalValue: Number(p.totalValue),
+      })),
+    } : null;
+
     return NextResponse.json({ 
       success: true, 
       message: 'Successfully joined the battle!',
-      battle: updatedBattle,
+      battle: serializedBattle,
       coinsDeducted: totalCost,
       newBalance: Number(updatedUser.coins),
     });

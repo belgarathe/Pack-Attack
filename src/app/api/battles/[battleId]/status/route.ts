@@ -61,11 +61,22 @@ export async function GET(
     const allReady = battle.participants.length === battle.maxParticipants && 
                      battle.participants.every(p => p.isReady);
 
-    // Serialize the battle data
+    // Serialize the battle data - convert all Decimal values to numbers
     const serializedBattle = {
       ...battle,
+      entryFee: Number(battle.entryFee),
+      totalPrize: Number(battle.totalPrize),
+      box: battle.box ? {
+        ...battle.box,
+        price: Number(battle.box.price),
+        cards: battle.box.cards?.map(card => ({
+          ...card,
+          coinValue: Number(card.coinValue),
+        })),
+      } : null,
       pulls: battle.pulls?.map(pull => ({
         ...pull,
+        coinValue: Number(pull.coinValue), // BattlePull.coinValue
         pull: pull.pull ? {
           ...pull.pull,
           cardValue: pull.pull.cardValue ? Number(pull.pull.cardValue) : null,
@@ -79,6 +90,7 @@ export async function GET(
       // Filter out bot info for non-admins
       participants: battle.participants.map(p => ({
         ...p,
+        totalValue: Number(p.totalValue),
         user: {
           ...p.user,
           isBot: isAdmin ? p.user.isBot : false,
