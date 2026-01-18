@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Package, Truck, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, MapPin, Mail, User } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, MapPin, Mail, User, Coins, Euro } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 type OrderItem = {
@@ -23,6 +23,8 @@ type Order = {
   shippingCity: string;
   shippingZip: string;
   shippingCountry: string;
+  shippingMethod: 'COINS' | 'EUROS';
+  shippingCost: number;
   notes: string | null;
   createdAt: string;
   user: {
@@ -234,6 +236,22 @@ export function OrdersClient({ orders: initialOrders }: { orders: Order[] }) {
                             <Mail className="w-3 h-3" />
                             {order.shippingEmail}
                           </p>
+                          {/* Shipping Payment */}
+                          <div className={`flex items-center gap-2 mt-3 pt-3 border-t border-gray-700 ${
+                            order.shippingMethod === 'COINS' ? 'text-amber-400' : 'text-green-400'
+                          }`}>
+                            {order.shippingMethod === 'COINS' ? (
+                              <>
+                                <Coins className="w-4 h-4" />
+                                <span className="font-medium">Paid: {order.shippingCost?.toFixed(2) || '5.00'} coins</span>
+                              </>
+                            ) : (
+                              <>
+                                <Euro className="w-4 h-4" />
+                                <span className="font-medium">Paid: {order.shippingCost?.toFixed(2) || '5.00'} €</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

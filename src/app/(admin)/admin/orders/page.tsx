@@ -22,6 +22,7 @@ async function getOrders() {
   return orders.map(order => ({
     ...order,
     totalCoins: Number(order.totalCoins),
+    shippingCost: Number(order.shippingCost),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map(item => ({

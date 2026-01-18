@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Coins, Package, Truck, CheckCircle, ArrowLeft, MapPin } from 'lucide-react';
+import { Coins, Package, Truck, CheckCircle, ArrowLeft, MapPin, Euro, Wallet } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 
@@ -27,12 +27,33 @@ type CheckoutClientProps = {
   userName: string;
 };
 
+const SHIPPING_COST_EUROS = 5.00;
+const SHIPPING_COST_COINS = 5.00;
+
 export function CheckoutClient({ items, total, userEmail, userName }: CheckoutClientProps) {
   const router = useRouter();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [shippingMethod, setShippingMethod] = useState<'COINS' | 'EUROS'>('COINS');
+  const [userCoins, setUserCoins] = useState<number | null>(null);
+
+  // Fetch user's coin balance
+  useEffect(() => {
+    async function fetchCoins() {
+      try {
+        const res = await fetch('/api/user/coins');
+        const data = await res.json();
+        if (data.coins !== undefined) {
+          setUserCoins(Number(data.coins));
+        }
+      } catch (error) {
+        console.error('Failed to fetch coins:', error);
+      }
+    }
+    fetchCoins();
+  }, []);
 
   const [formData, setFormData] = useState({
     shippingName: userName || '',
@@ -51,13 +72,28 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if user has enough coins for shipping with coins
+    if (shippingMethod === 'COINS' && userCoins !== null && userCoins < SHIPPING_COST_COINS) {
+      addToast({
+        title: 'Insufficient Coins',
+        description: `You need ${SHIPPING_COST_COINS.toFixed(2)} coins for shipping but only have ${userCoins.toFixed(2)}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch('/api/cart/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          shippingMethod,
+          shippingCost: shippingMethod === 'COINS' ? SHIPPING_COST_COINS : SHIPPING_COST_EUROS,
+        }),
       });
 
       const data = await res.json();
@@ -71,11 +107,19 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
         return;
       }
 
+      // If paying with Euros, redirect to payment
+      if (shippingMethod === 'EUROS' && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+
       setOrderId(data.order.id);
       setOrderComplete(true);
       addToast({
         title: 'Order Placed!',
-        description: 'Your order has been submitted successfully.',
+        description: shippingMethod === 'COINS' 
+          ? `Your order has been submitted. ${SHIPPING_COST_COINS.toFixed(2)} coins deducted for shipping.`
+          : 'Your order has been submitted successfully.',
       });
     } catch (error) {
       console.error('Checkout error:', error);
@@ -266,6 +310,76 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
               </div>
             </div>
 
+            {/* Shipping Payment Method */}
+            <div className="glass-strong rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Truck className="w-5 h-5 text-green-400" />
+                Shipping Payment
+              </h2>
+              <p className="text-gray-400 text-sm mb-4">Choose how you want to pay for shipping</p>
+              
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Pay with Coins */}
+                <button
+                  type="button"
+                  onClick={() => setShippingMethod('COINS')}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                    shippingMethod === 'COINS'
+                      ? 'border-amber-500 bg-amber-500/10'
+                      : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
+                  }`}
+                >
+                  {shippingMethod === 'COINS' && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-amber-400" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${shippingMethod === 'COINS' ? 'bg-amber-500/20' : 'bg-gray-700/50'}`}>
+                      <Coins className={`w-6 h-6 ${shippingMethod === 'COINS' ? 'text-amber-400' : 'text-gray-400'}`} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">Pay with Coins</p>
+                      <p className="text-2xl font-bold text-amber-400">{SHIPPING_COST_COINS.toFixed(2)} <span className="text-sm font-normal">coins</span></p>
+                    </div>
+                  </div>
+                  {userCoins !== null && (
+                    <p className={`text-sm ${userCoins >= SHIPPING_COST_COINS ? 'text-gray-400' : 'text-red-400'}`}>
+                      Your balance: {userCoins.toFixed(2)} coins
+                      {userCoins < SHIPPING_COST_COINS && ' (insufficient)'}
+                    </p>
+                  )}
+                </button>
+
+                {/* Pay with Euros */}
+                <button
+                  type="button"
+                  onClick={() => setShippingMethod('EUROS')}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                    shippingMethod === 'EUROS'
+                      ? 'border-green-500 bg-green-500/10'
+                      : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
+                  }`}
+                >
+                  {shippingMethod === 'EUROS' && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${shippingMethod === 'EUROS' ? 'bg-green-500/20' : 'bg-gray-700/50'}`}>
+                      <Euro className={`w-6 h-6 ${shippingMethod === 'EUROS' ? 'text-green-400' : 'text-gray-400'}`} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">Pay with Euros</p>
+                      <p className="text-2xl font-bold text-green-400">{SHIPPING_COST_EUROS.toFixed(2)} <span className="text-sm font-normal">€</span></p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-400">Pay via PayPal or Credit Card</p>
+                </button>
+              </div>
+            </div>
+
             {/* Items Preview */}
             <div className="glass-strong rounded-2xl p-6">
               <h2 className="text-xl font-bold text-white mb-4">Order Items ({items.length})</h2>
@@ -299,37 +413,64 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
                   <span className="text-white">{items.length} cards</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Total Value</span>
+                  <span className="text-gray-400">Card Value</span>
                   <div className="flex items-center gap-1">
                     <Coins className="h-4 w-4 text-amber-400" />
-                    <span className="text-white">{total}</span>
+                    <span className="text-white">{total.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">Shipping</span>
-                  <span className="text-white">5,00 €</span>
+                  <div className="flex items-center gap-1">
+                    {shippingMethod === 'COINS' ? (
+                      <>
+                        <Coins className="h-4 w-4 text-amber-400" />
+                        <span className="text-amber-400 font-medium">{SHIPPING_COST_COINS.toFixed(2)} coins</span>
+                      </>
+                    ) : (
+                      <>
+                        <Euro className="h-4 w-4 text-green-400" />
+                        <span className="text-green-400 font-medium">{SHIPPING_COST_EUROS.toFixed(2)} €</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="h-px bg-gray-700" />
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-white">Total</span>
                   <span className="text-xl font-bold text-white">{items.length} Cards</span>
                 </div>
+                {shippingMethod === 'COINS' && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">Coins to deduct</span>
+                    <span className="text-amber-400 font-semibold">{SHIPPING_COST_COINS.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                disabled={loading || (shippingMethod === 'COINS' && userCoins !== null && userCoins < SHIPPING_COST_COINS)}
+                className={`w-full py-4 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 ${
+                  shippingMethod === 'COINS'
+                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500'
+                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500'
+                }`}
               >
                 {loading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Processing...
                   </>
+                ) : shippingMethod === 'COINS' ? (
+                  <>
+                    <Coins className="h-5 w-5" />
+                    Place Order ({SHIPPING_COST_COINS.toFixed(2)} coins)
+                  </>
                 ) : (
                   <>
-                    <CheckCircle className="h-5 w-5" />
-                    Place Order
+                    <Euro className="h-5 w-5" />
+                    Pay {SHIPPING_COST_EUROS.toFixed(2)} € & Place Order
                   </>
                 )}
               </button>
