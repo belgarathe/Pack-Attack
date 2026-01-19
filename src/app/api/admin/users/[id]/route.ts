@@ -8,7 +8,7 @@ import { resendVerificationEmail } from '@/lib/email';
 // Schema for updating a user
 const updateUserSchema = z.object({
   name: z.string().optional(),
-  role: z.enum(['USER', 'ADMIN']).optional(),
+  role: z.enum(['USER', 'ADMIN', 'SHOP_OWNER']).optional(),
   coins: z.number().int().min(0).optional(),
   emailVerified: z.boolean().optional(),
   password: z.string().min(6).optional(),

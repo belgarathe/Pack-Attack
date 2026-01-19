@@ -39,6 +39,10 @@ model User {
   orders              Order[]
   emailsSent          EmailLog[]
   leaderboardEntries  BattleLeaderboard[]
+  // Shop relations
+  shop                Shop?
+  shopOrders          ShopOrder[]
+  shopCart            ShopCart?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 }
@@ -143,6 +147,7 @@ model Transaction {
 enum Role {
   USER
   ADMIN
+  SHOP_OWNER
 }
 
 enum CardGame {
@@ -353,4 +358,163 @@ model BattleLeaderboard {
   @@unique([userId, month, year])
   @@index([month, year])
   @@index([points])
+}
+
+// ============================================
+// WEBSHOP MODELS
+// ============================================
+
+model Shop {
+  id          String        @id @default(cuid())
+  ownerId     String        @unique
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  description String?       @db.Text
+  logo        String?
+  banner      String?
+  isActive    Boolean       @default(true)
+  products    ShopProduct[]
+  orders      ShopOrder[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([isActive])
+}
+
+model ShopProduct {
+  id            String          @id @default(cuid())
+  shopId        String
+  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?         @db.Text
+  price         Decimal         @db.Decimal(10, 2)
+  comparePrice  Decimal?        @db.Decimal(10, 2) // Original price for showing discounts
+  images        String[]        // Array of image URLs
+  category      ProductCategory
+  game          CardGame?       // Which TCG this product belongs to
+  condition     CardCondition   @default(NEAR_MINT)
+  stock         Int             @default(0)
+  sku           String?
+  isActive      Boolean         @default(true)
+  featured      Boolean         @default(false)
+  cartItems     ShopCartItem[]
+  orderItems    ShopOrderItem[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([shopId])
+  @@index([category])
+  @@index([game])
+  @@index([isActive])
+  @@index([featured])
+}
+
+enum ProductCategory {
+  SINGLE_CARD
+  BOOSTER_BOX
+  BOOSTER_PACK
+  STARTER_DECK
+  STRUCTURE_DECK
+  ACCESSORIES
+  SLEEVES
+  PLAYMAT
+  BINDER
+  DECK_BOX
+  OTHER
+}
+
+enum CardCondition {
+  MINT
+  NEAR_MINT
+  EXCELLENT
+  GOOD
+  LIGHT_PLAYED
+  PLAYED
+  POOR
+}
+
+model ShopCart {
+  id        String         @id @default(cuid())
+  userId    String         @unique
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ShopCartItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model ShopCartItem {
+  id        String      @id @default(cuid())
+  cartId    String
+  cart      ShopCart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int         @default(1)
+  createdAt DateTime    @default(now())
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+model ShopOrder {
+  id              String          @id @default(cuid())
+  orderNumber     String          @unique @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  shopId          String
+  shop            Shop            @relation(fields: [shopId], references: [id])
+  status          ShopOrderStatus @default(PENDING)
+  subtotal        Decimal         @db.Decimal(10, 2)
+  shippingCost    Decimal         @db.Decimal(10, 2) @default(0)
+  total           Decimal         @db.Decimal(10, 2)
+  // Shipping info
+  shippingName    String
+  shippingEmail   String
+  shippingAddress String
+  shippingCity    String
+  shippingZip     String
+  shippingCountry String
+  shippingPhone   String?
+  // Payment info
+  paymentMethod   String?
+  paymentId       String?
+  paidAt          DateTime?
+  // Tracking
+  trackingNumber  String?
+  trackingUrl     String?
+  notes           String?
+  items           ShopOrderItem[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model ShopOrderItem {
+  id          String      @id @default(cuid())
+  orderId     String
+  order       ShopOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     ShopProduct @relation(fields: [productId], references: [id])
+  productName String      // Snapshot of product name at time of order
+  productImage String?    // Snapshot of product image
+  price       Decimal     @db.Decimal(10, 2) // Price at time of order
+  quantity    Int
+  createdAt   DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum ShopOrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Store } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 
@@ -114,6 +114,13 @@ export function Navigation() {
               <Trophy className="h-4 w-4" />
               <span>Leaderboard</span>
             </Link>
+            <Link 
+              href="/shop" 
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <Store className="h-4 w-4" />
+              <span>Shop</span>
+            </Link>
             {session && (
               <>
                 <Link 
@@ -131,6 +138,15 @@ export function Navigation() {
                   <span>Sales History</span>
                 </Link>
               </>
+            )}
+            {(session?.user?.role === 'SHOP_OWNER' || session?.user?.role === 'ADMIN') && (
+              <Link 
+                href="/shop/manage" 
+                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <Store className="h-4 w-4" />
+                <span>My Shop</span>
+              </Link>
             )}
             {session?.user?.role === 'ADMIN' && (
               <Link 
