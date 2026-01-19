@@ -180,7 +180,7 @@ export default function OpenBoxPage() {
       }
 
       const numCards = pullsData.length;
-      const REVEAL_DURATION = 1500;
+      const REVEAL_DURATION = 3000; // Duration each card popup stays on screen (doubled from 1500ms)
       const SPINNER_BURST_DURATION = 900;
 
       scheduleTimeout(() => {
