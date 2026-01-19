@@ -24,7 +24,7 @@ type User = {
   id: string;
   email: string;
   name: string | null;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'SHOP_OWNER';
   coins: number;
   emailVerified: boolean;
   createdAt: string | Date;
@@ -62,7 +62,7 @@ export function UsersClient({ initialUsers, totalUsers }: Props) {
     name: '',
     email: '',
     password: '',
-    role: 'USER' as 'USER' | 'ADMIN',
+    role: 'USER' as 'USER' | 'ADMIN' | 'SHOP_OWNER',
     coins: 1000,
     emailVerified: true,
   });
@@ -280,6 +280,7 @@ export function UsersClient({ initialUsers, totalUsers }: Props) {
             <option value="">All Roles</option>
             <option value="USER">Users</option>
             <option value="ADMIN">Admins</option>
+            <option value="SHOP_OWNER">Shop Owners</option>
           </select>
           <select
             value={verifiedFilter}
@@ -335,6 +336,11 @@ export function UsersClient({ initialUsers, totalUsers }: Props) {
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-medium">
                         <ShieldCheck className="w-3 h-3" />
                         Admin
+                      </span>
+                    ) : user.role === 'SHOP_OWNER' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
+                        <Shield className="w-3 h-3" />
+                        Shop Owner
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-500/20 text-gray-400 text-xs font-medium">
@@ -466,11 +472,12 @@ export function UsersClient({ initialUsers, totalUsers }: Props) {
                   <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'USER' | 'ADMIN' })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'USER' | 'ADMIN' | 'SHOP_OWNER' })}
                     className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white"
                   >
                     <option value="USER">User</option>
                     <option value="ADMIN">Admin</option>
+                    <option value="SHOP_OWNER">Shop Owner</option>
                   </select>
                 </div>
                 <div>
@@ -558,11 +565,12 @@ export function UsersClient({ initialUsers, totalUsers }: Props) {
                   <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'USER' | 'ADMIN' })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'USER' | 'ADMIN' | 'SHOP_OWNER' })}
                     className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white"
                   >
                     <option value="USER">User</option>
                     <option value="ADMIN">Admin</option>
+                    <option value="SHOP_OWNER">Shop Owner</option>
                   </select>
                 </div>
                 <div>
