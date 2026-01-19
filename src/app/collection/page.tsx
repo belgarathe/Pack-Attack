@@ -8,7 +8,7 @@ import { Layers, Package, Sparkles } from 'lucide-react';
 async function getCollection() {
   const session = await getCurrentSession();
   if (!session?.user?.email) {
-    return [];
+    return { pullsData: [], availableGames: [] };
   }
 
   const user = await prisma.user.findUnique({
@@ -16,7 +16,7 @@ async function getCollection() {
   });
 
   if (!user) {
-    return [];
+    return { pullsData: [], availableGames: [] };
   }
 
   const pulls = await prisma.pull.findMany({
@@ -37,6 +37,7 @@ async function getCollection() {
       box: {
         select: {
           name: true,
+          games: true,
         },
       },
     },
@@ -59,7 +60,16 @@ async function getCollection() {
 
   const cartPullIds = new Set(cart?.items.map(item => item.pullId) || []);
   
-  return pulls.map(pull => ({
+  // Get unique games from all boxes
+  const allGames = new Set<string>();
+  pulls.forEach(pull => {
+    if (pull.box.games) {
+      pull.box.games.forEach(game => allGames.add(game));
+    }
+  });
+  const availableGames = Array.from(allGames).sort();
+
+  const pullsData = pulls.map(pull => ({
     id: pull.id,
     card: pull.card
       ? {
@@ -70,9 +80,14 @@ async function getCollection() {
           rarity: pull.card.rarity,
         }
       : null,
-    box: pull.box,
+    box: {
+      name: pull.box.name,
+      games: pull.box.games,
+    },
     cartItem: cartPullIds.has(pull.id) ? { id: 'temp' } : null,
   }));
+
+  return { pullsData, availableGames };
 }
 
 export default async function CollectionPage() {
@@ -81,7 +96,7 @@ export default async function CollectionPage() {
     redirect('/login');
   }
 
-  const pullsWithCart = await getCollection();
+  const { pullsData: pullsWithCart, availableGames } = await getCollection();
 
   // Calculate stats
   const totalCards = pullsWithCart.length;
@@ -152,7 +167,7 @@ export default async function CollectionPage() {
             </Link>
           </div>
         ) : (
-          <CollectionClient pulls={pullsWithCart} />
+          <CollectionClient pulls={pullsWithCart} availableGames={availableGames} />
         )}
       </div>
     </div>

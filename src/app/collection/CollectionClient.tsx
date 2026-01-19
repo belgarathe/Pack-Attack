@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { Coins, ShoppingCart, X, AlertTriangle } from 'lucide-react';
+import { Coins, ShoppingCart, X, AlertTriangle, Filter, ChevronDown, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
@@ -18,20 +18,79 @@ type Pull = {
   } | null;
   box: {
     name: string;
+    games: string[];
   };
   cartItem: { id: string } | null;
 };
 
-export function CollectionClient({ pulls }: { pulls: Pull[] }) {
+interface CollectionClientProps {
+  pulls: Pull[];
+  availableGames: string[];
+}
+
+const gameDisplayNames: Record<string, string> = {
+  'all': 'All Games',
+  'pokemon': 'Pokémon',
+  'POKEMON': 'Pokémon',
+  'magic': 'Magic: The Gathering',
+  'MAGIC_THE_GATHERING': 'Magic: The Gathering',
+  'magic_the_gathering': 'Magic: The Gathering',
+  'yugioh': 'Yu-Gi-Oh!',
+  'YUGIOH': 'Yu-Gi-Oh!',
+  'onepiece': 'One Piece',
+  'ONE_PIECE': 'One Piece',
+  'one_piece': 'One Piece',
+  'lorcana': 'Disney Lorcana',
+  'LORCANA': 'Disney Lorcana',
+  'digimon': 'Digimon',
+  'DIGIMON': 'Digimon',
+  'sports': 'Sports Cards',
+  'SPORTS': 'Sports Cards',
+  'flesh_and_blood': 'Flesh & Blood',
+  'FLESH_AND_BLOOD': 'Flesh & Blood',
+  'fleshblood': 'Flesh & Blood',
+};
+
+function getGameDisplayName(game: string) {
+  return gameDisplayNames[game] || game.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function getGameBadgeColor(game: string): string {
+  const normalized = game.toLowerCase().replace(/-/g, '_');
+  const colors: Record<string, string> = {
+    pokemon: 'bg-yellow-400',
+    magic: 'bg-purple-500',
+    magic_the_gathering: 'bg-purple-500',
+    yugioh: 'bg-orange-500',
+    onepiece: 'bg-red-500',
+    one_piece: 'bg-red-500',
+    lorcana: 'bg-blue-500',
+    digimon: 'bg-cyan-400',
+    sports: 'bg-green-500',
+    flesh_and_blood: 'bg-rose-500',
+    fleshblood: 'bg-rose-500',
+  };
+  return colors[normalized] || 'bg-gray-400';
+}
+
+export function CollectionClient({ pulls, availableGames }: CollectionClientProps) {
   const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [zoomedCard, setZoomedCard] = useState<Pull | null>(null);
   const [showSellAllModal, setShowSellAllModal] = useState(false);
   const [sellAllLoading, setSellAllLoading] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<string>('all');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Calculate totals for sell all
-  const sellableCards = pulls.filter(p => p.card && !p.cartItem);
+  // Filter pulls based on selected game
+  const filteredPulls = useMemo(() => {
+    if (selectedGame === 'all') return pulls;
+    return pulls.filter(pull => pull.box.games?.includes(selectedGame));
+  }, [pulls, selectedGame]);
+
+  // Calculate totals for sell all (only for filtered cards)
+  const sellableCards = filteredPulls.filter(p => p.card && !p.cartItem);
   const totalValue = sellableCards.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0);
 
   useEffect(() => {
@@ -204,58 +263,165 @@ export function CollectionClient({ pulls }: { pulls: Pull[] }) {
 
   return (
     <>
-      {/* Sell All Button */}
-      {sellableCards.length > 0 && (
-        <div className="mb-6 flex justify-end">
+      {/* Filter Bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="relative">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 px-4 py-3 glass-strong rounded-xl text-white font-medium hover:bg-white/10 transition-all min-w-[220px]"
+          >
+            <Filter className="w-4 h-4 text-emerald-400" />
+            <span className="flex-1 text-left">
+              {selectedGame === 'all' ? 'All Games' : getGameDisplayName(selectedGame)}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setIsDropdownOpen(false)} 
+              />
+              
+              {/* Dropdown */}
+              <div className="absolute top-full left-0 mt-2 w-full min-w-[260px] rounded-xl overflow-hidden z-50 border border-gray-700 shadow-2xl bg-gray-900">
+                <div className="max-h-[400px] overflow-y-auto py-2 bg-gray-900">
+                  {/* All Games option */}
+                  <button
+                    onClick={() => {
+                      setSelectedGame('all');
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                      selectedGame === 'all' 
+                        ? 'bg-emerald-600/30 text-emerald-400' 
+                        : 'text-gray-300 hover:bg-gray-800'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    <span className="font-medium">All Games</span>
+                    <span className="ml-auto text-xs text-gray-500">{pulls.length} cards</span>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="my-2 border-t border-gray-700" />
+
+                  {/* Game options */}
+                  {availableGames.map(game => {
+                    const gameCardCount = pulls.filter(p => p.box.games?.includes(game)).length;
+                    return (
+                      <button
+                        key={game}
+                        onClick={() => {
+                          setSelectedGame(game);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                          selectedGame === game 
+                            ? 'bg-emerald-600/30 text-emerald-400' 
+                            : 'text-gray-300 hover:bg-gray-800'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${getGameBadgeColor(game)}`} />
+                        <span className="font-medium">{getGameDisplayName(game)}</span>
+                        <span className="ml-auto text-xs text-gray-500">{gameCardCount} cards</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Active filter pill */}
+        {selectedGame !== 'all' && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 text-sm">
+            <span>{getGameDisplayName(selectedGame)}</span>
+            <button 
+              onClick={() => setSelectedGame('all')}
+              className="ml-1 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Results count */}
+        <span className="text-gray-400 text-sm">
+          Showing {filteredPulls.length} of {pulls.length} cards
+        </span>
+
+        {/* Sell All Button - moved to the right */}
+        {sellableCards.length > 0 && (
           <button
             onClick={() => setShowSellAllModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/25 flex items-center gap-2"
+            className="ml-auto px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/25 flex items-center gap-2"
           >
             <Coins className="h-5 w-5" />
-            Sell All Cards ({sellableCards.length})
+            Sell All ({sellableCards.length})
+          </button>
+        )}
+      </div>
+
+      {filteredPulls.length === 0 ? (
+        <div className="glass-strong rounded-2xl p-12 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20">
+            <Package className="w-10 h-10 text-emerald-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">No Cards Found</h2>
+          <p className="text-gray-400 mb-6">No cards in your collection for {getGameDisplayName(selectedGame)}</p>
+          <button 
+            onClick={() => setSelectedGame('all')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-semibold rounded-xl transition-all hover:scale-105"
+          >
+            Show All Cards
           </button>
         </div>
-      )}
+      ) : (
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {filteredPulls.map((pull) => {
+            if (!pull.card) return null;
 
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {pulls.map((pull) => {
-          if (!pull.card) return null;
-
-          return (
-            <div
-              key={pull.id}
-              className="group glass rounded-xl overflow-hidden hover:ring-2 hover:ring-emerald-500/50 transition-all cursor-pointer"
-              onClick={() => setZoomedCard(pull)}
-            >
-              <div className="relative aspect-[63/88] w-full">
-                <Image
-                  src={pull.card.imageUrlGatherer}
-                  alt={pull.card.name}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  unoptimized
-                />
-                {pull.cartItem && (
-                  <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
-                    In Cart
+            return (
+              <div
+                key={pull.id}
+                className="group glass rounded-xl overflow-hidden hover:ring-2 hover:ring-emerald-500/50 transition-all cursor-pointer"
+                onClick={() => setZoomedCard(pull)}
+              >
+                <div className="relative aspect-[63/88] w-full">
+                  <Image
+                    src={pull.card.imageUrlGatherer}
+                    alt={pull.card.name}
+                    fill
+                    className="object-cover transition-transform group-hover:scale-105"
+                    unoptimized
+                  />
+                  {pull.cartItem && (
+                    <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
+                      In Cart
+                    </div>
+                  )}
+                  <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold ${getRarityColor(pull.card.rarity)}`}>
+                    {pull.card.rarity}
                   </div>
-                )}
-                <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold ${getRarityColor(pull.card.rarity)}`}>
-                  {pull.card.rarity}
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold text-white text-sm truncate mb-1">{pull.card.name}</h3>
+                  <p className="text-xs text-gray-500 truncate mb-2">{pull.box.name}</p>
+                  <div className="flex items-center gap-1">
+                    <Coins className="h-3 w-3 text-amber-400" />
+                    <span className="text-sm font-semibold text-amber-400">{pull.card.coinValue}</span>
+                  </div>
                 </div>
               </div>
-              <div className="p-3">
-                <h3 className="font-semibold text-white text-sm truncate mb-1">{pull.card.name}</h3>
-                <p className="text-xs text-gray-500 truncate mb-2">{pull.box.name}</p>
-                <div className="flex items-center gap-1">
-                  <Coins className="h-3 w-3 text-amber-400" />
-                  <span className="text-sm font-semibold text-amber-400">{pull.card.coinValue}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Zoom Modal */}
       {zoomedCard && zoomedCard.card && (
