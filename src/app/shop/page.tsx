@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { ShopClient } from './ShopClient';
 
+// Force dynamic rendering so products are fetched fresh on each request
+export const dynamic = 'force-dynamic';
+
 async function getProducts() {
   const products = await prisma.shopProduct.findMany({
     where: {
