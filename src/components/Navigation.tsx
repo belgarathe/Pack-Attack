@@ -128,8 +128,8 @@ export function Navigation() {
           Pack Attack
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-6">
+        {/* Desktop Navigation - hidden on mobile/tablet, visible on large screens */}
+        <div className="desktop-nav items-center gap-6">
           {filteredLinks.map((link) => (
             <Link
               key={link.href}
@@ -144,8 +144,8 @@ export function Navigation() {
           ))}
         </div>
 
-        {/* Desktop Right Side */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Desktop Right Side - hidden on mobile */}
+        <div className="desktop-right items-center gap-3">
           {status === 'loading' ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-gray-700" />
           ) : session ? (
@@ -197,7 +197,7 @@ export function Navigation() {
         </div>
 
         {/* Mobile Right Side */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="mobile-right items-center gap-2">
           {session && (
             <>
               <Link href="/purchase-coins">
@@ -237,7 +237,7 @@ export function Navigation() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-x-0 top-[57px] bottom-0 z-40 bg-gray-900/98 backdrop-blur-lg transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`mobile-menu-container fixed inset-x-0 top-[57px] bottom-0 z-40 bg-gray-900/98 backdrop-blur-lg transform transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -311,7 +311,7 @@ export function Navigation() {
       {/* Backdrop */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="mobile-backdrop fixed inset-0 bg-black/50 z-30"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />

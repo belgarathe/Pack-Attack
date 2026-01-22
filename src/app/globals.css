@@ -641,6 +641,65 @@ img {
   }
 }
 
+/* ============================================
+   NAVIGATION RESPONSIVE STYLES
+   ============================================ */
+
+/* Desktop navigation - hidden on mobile, visible on large screens (1024px+) */
+.desktop-nav {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .desktop-nav {
+    display: flex;
+  }
+}
+
+/* Desktop right side - hidden on mobile, visible on tablet+ (768px+) */
+.desktop-right {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-right {
+    display: flex;
+  }
+}
+
+/* Mobile right side - visible on mobile, hidden on tablet+ */
+.mobile-right {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .mobile-right {
+    display: none;
+  }
+}
+
+/* Mobile menu container - visible on mobile, hidden on tablet+ */
+.mobile-menu-container {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .mobile-menu-container {
+    display: none;
+  }
+}
+
+/* Mobile backdrop - visible on mobile, hidden on tablet+ */
+.mobile-backdrop {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .mobile-backdrop {
+    display: none;
+  }
+}
+
 /* Truncate text with ellipsis */
 .truncate-text {
   overflow: hidden;
