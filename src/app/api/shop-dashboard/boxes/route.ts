@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    let boxes;
+    let boxes: any[];
     if (user.role === 'ADMIN') {
       // Admin can see all shop-created boxes
       boxes = await prisma.box.findMany({

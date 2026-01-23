@@ -37,7 +37,18 @@ export default async function ShopDashboard() {
   const isAdmin = user.role === 'ADMIN';
 
   // Get statistics based on role
-  let stats;
+  let stats: {
+    totalBoxes: number;
+    activeBoxes: number;
+    totalOrders: number;
+    pendingOrders: number;
+    processingOrders: number;
+    shippedOrders: number;
+    deliveredOrders: number;
+    totalRevenue: number;
+    uniqueCustomers: number;
+    recentOrders: any[];
+  };
   if (isAdmin) {
     // Admin sees all shop-created boxes and orders
     const [
