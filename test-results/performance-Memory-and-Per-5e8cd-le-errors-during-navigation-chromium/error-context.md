@@ -1,0 +1,115 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "Pack Attack" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e5]:
+        - link "Boxes" [ref=e6] [cursor=pointer]:
+          - /url: /boxes
+          - img [ref=e7]
+          - generic [ref=e11]: Boxes
+        - link "Battles" [ref=e12] [cursor=pointer]:
+          - /url: /battles
+          - img [ref=e13]
+          - generic [ref=e22]: Battles
+        - link "Leaderboard" [ref=e23] [cursor=pointer]:
+          - /url: /leaderboard
+          - img [ref=e24]
+          - generic [ref=e30]: Leaderboard
+      - generic [ref=e32]:
+        - link "Sign In" [ref=e33] [cursor=pointer]:
+          - /url: /login
+          - img [ref=e34]
+          - text: Sign In
+        - link "Get Started" [ref=e37] [cursor=pointer]:
+          - /url: /register
+  - main [ref=e38]:
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - img [ref=e46]
+          - generic [ref=e52]: Battle Rankings
+        - heading "Battle Leaderboard" [level=1] [ref=e53]
+        - paragraph [ref=e54]: Top 10 players each month win coin prizes!
+        - generic [ref=e55]:
+          - button "This Month" [ref=e56] [cursor=pointer]
+          - button "Last Month" [ref=e57] [cursor=pointer]
+        - generic [ref=e58]:
+          - img [ref=e59]
+          - generic [ref=e62]: "Resets in:"
+          - generic [ref=e63]: 8d 1h 38m 3s
+      - generic [ref=e64]:
+        - generic [ref=e66]:
+          - generic [ref=e68]: "2"
+          - generic [ref=e71]: AU
+          - heading "Admin User" [level=3] [ref=e72]
+          - generic [ref=e73]: 2.9K PTS
+          - generic [ref=e74]: 2 wins / 3 battles
+          - generic [ref=e75]:
+            - img [ref=e76]
+            - generic [ref=e81]: 2,500
+        - generic [ref=e85]:
+          - img [ref=e86]
+          - generic [ref=e88]: CHAMPION
+          - generic [ref=e91]: L
+          - heading "Lorilord" [level=3] [ref=e92]
+          - generic [ref=e93]: 4.1K PTS
+          - generic [ref=e94]: 2 wins / 4 battles
+          - generic [ref=e95]:
+            - img [ref=e96]
+            - generic [ref=e101]: 5,000
+        - generic [ref=e103]:
+          - generic [ref=e105]: "3"
+          - generic [ref=e108]: S
+          - heading "StephanW" [level=3] [ref=e109]
+          - generic [ref=e110]: 6.5K PTS
+          - generic [ref=e111]: 6 wins / 14 battles
+          - generic [ref=e112]:
+            - img [ref=e113]
+            - generic [ref=e118]: 1,000
+      - generic [ref=e119]:
+        - heading "Full Rankings" [level=2] [ref=e121]
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e125]: "#4"
+            - generic [ref=e128]: L
+            - generic [ref=e129]:
+              - heading "lootal" [level=3] [ref=e130]
+              - paragraph [ref=e131]: 2 wins • 3 battles
+            - generic [ref=e132]: 2.3KPTS
+            - generic [ref=e133]:
+              - img [ref=e134]
+              - generic [ref=e139]: "500"
+          - generic [ref=e140]:
+            - generic [ref=e142]: "#5"
+            - generic [ref=e145]: E
+            - generic [ref=e146]:
+              - heading "Enza" [level=3] [ref=e147]
+              - paragraph [ref=e148]: 0 wins • 1 battles
+            - generic [ref=e149]: 0PTS
+            - generic [ref=e150]:
+              - img [ref=e151]
+              - generic [ref=e156]: "500"
+          - generic [ref=e157]:
+            - generic [ref=e159]: "#6"
+            - generic [ref=e162]: MH
+            - generic [ref=e163]:
+              - heading "Mr. Hellywood" [level=3] [ref=e164]
+              - paragraph [ref=e165]: 0 wins • 1 battles
+            - generic [ref=e166]: 0PTS
+            - generic [ref=e167]:
+              - img [ref=e168]
+              - generic [ref=e173]: "250"
+      - generic [ref=e174]:
+        - img [ref=e176]
+        - heading "Ready to Compete?" [level=2] [ref=e185]
+        - paragraph [ref=e186]: Join battles to earn points and climb the leaderboard!
+        - link "Enter Battle Arena" [ref=e187] [cursor=pointer]:
+          - /url: /battles
+          - img [ref=e188]
+          - text: Enter Battle Arena
+  - alert [ref=e197]
+```

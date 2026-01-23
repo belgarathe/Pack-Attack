@@ -15,7 +15,14 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "create-bots": "tsx scripts/create-bots.ts",
     "build:prod": "npm ci && prisma generate && prisma migrate deploy && next build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "test:api": "playwright test tests/api/",
+    "test:e2e": "playwright test tests/e2e/",
+    "test:report": "playwright show-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
