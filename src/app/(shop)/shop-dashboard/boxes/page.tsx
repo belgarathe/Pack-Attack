@@ -49,10 +49,10 @@ export default async function ShopBoxesPage() {
   }
 
   // Convert Decimal fields to numbers for JSON serialization
-  const serializedBoxes = boxes.map(box => ({
+  const serializedBoxes = boxes.map((box: any) => ({
     ...box,
     price: Number(box.price),
-    cards: box.cards.map(card => ({
+    cards: box.cards.map((card: any) => ({
       ...card,
       coinValue: Number(card.coinValue),
     })),
