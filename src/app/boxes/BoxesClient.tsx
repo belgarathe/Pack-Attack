@@ -23,6 +23,10 @@ interface Box {
   _count: {
     cards: number;
   };
+  createdByShop?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface BoxesClientProps {
@@ -235,6 +239,11 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                 {box.featured && (
                   <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold text-white z-10">
                     ⭐ Featured
+                  </div>
+                )}
+                {box.createdByShop && (
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-[10px] font-bold text-white z-10" title={`By ${box.createdByShop.name}`}>
+                    🏪 Partner Shop
                   </div>
                 )}
                 {box.games && box.games[0] && (

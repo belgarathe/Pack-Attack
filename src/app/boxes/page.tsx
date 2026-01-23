@@ -28,6 +28,12 @@ async function getBoxes() {
             imageUrlGatherer: true,
             coinValue: true,
           }
+        },
+        createdByShop: {
+          select: {
+            id: true,
+            name: true,
+          }
         }
       }
     });

@@ -43,6 +43,7 @@ model User {
   shop                Shop?
   shopOrders          ShopOrder[]
   shopCart            ShopCart?
+  shopBoxOrders       ShopBoxOrder[]      // Orders from shop-created boxes
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 }
@@ -58,11 +59,17 @@ model Box {
   isActive        Boolean         @default(true)
   featured        Boolean         @default(false)
   popularity      Int             @default(0)
+  // Shop owner who created this box (null = admin-created)
+  createdByShopId String?
+  createdByShop   Shop?           @relation(fields: [createdByShopId], references: [id], onDelete: SetNull)
   cards           Card[]
   pulls           Pull[]
   battles         Battle[]
+  shopBoxOrders   ShopBoxOrder[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+
+  @@index([createdByShopId])
 }
 
 model Card {
@@ -375,6 +382,8 @@ model Shop {
   isActive    Boolean       @default(true)
   products    ShopProduct[]
   orders      ShopOrder[]
+  boxes       Box[]
+  boxOrders   ShopBoxOrder[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -517,4 +526,60 @@ enum ShopOrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+}
+
+// ============================================
+// SHOP BOX ORDERS - Orders from shop-created boxes
+// ============================================
+
+model ShopBoxOrder {
+  id              String              @id @default(cuid())
+  orderNumber     String              @unique @default(cuid())
+  // The shop that created the box (fulfills the order)
+  shopId          String
+  shop            Shop                @relation(fields: [shopId], references: [id])
+  // The box that was opened
+  boxId           String
+  box             Box                 @relation(fields: [boxId], references: [id])
+  // The user who placed the order
+  userId          String
+  user            User                @relation(fields: [userId], references: [id])
+  status          ShopBoxOrderStatus  @default(PENDING)
+  // Card details (snapshot at order time)
+  cardName        String
+  cardImage       String?
+  cardValue       Decimal             @db.Decimal(10, 2)
+  cardRarity      String?
+  // Shipping info
+  shippingName    String
+  shippingEmail   String
+  shippingAddress String
+  shippingCity    String
+  shippingZip     String
+  shippingCountry String
+  shippingPhone   String?
+  shippingMethod  ShippingPaymentMethod @default(COINS)
+  shippingCost    Decimal             @db.Decimal(10, 2) @default(5.00)
+  // Tracking
+  trackingNumber  String?
+  trackingUrl     String?
+  notes           String?
+  shopNotes       String?             // Internal notes from shop
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([shopId])
+  @@index([userId])
+  @@index([boxId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+enum ShopBoxOrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }

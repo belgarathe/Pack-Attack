@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Menu, X } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Menu, X, Store } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 import { usePathname } from 'next/navigation';
@@ -105,17 +105,26 @@ export function Navigation() {
     return () => clearInterval(interval);
   }, [session, fetchCoins]);
 
-  const navLinks = [
+  const navLinks: Array<{
+    href: string;
+    icon: React.ElementType;
+    label: string;
+    requiresAuth: boolean;
+    adminOnly?: boolean;
+    shopOrAdmin?: boolean;
+  }> = [
     { href: '/boxes', icon: Package, label: 'Boxes', requiresAuth: false },
     { href: '/battles', icon: Swords, label: 'Battles', requiresAuth: false },
     { href: '/leaderboard', icon: Trophy, label: 'Leaderboard', requiresAuth: false },
     { href: '/collection', icon: Package, label: 'Collection', requiresAuth: true },
     { href: '/sales-history', icon: History, label: 'Sales History', requiresAuth: true },
+    { href: '/shop-dashboard', icon: Store, label: 'Shop Dashboard', requiresAuth: true, shopOrAdmin: true },
     { href: '/admin', icon: Settings, label: 'Admin', requiresAuth: true, adminOnly: true },
   ];
 
   const filteredLinks = navLinks.filter(link => {
     if (link.adminOnly && session?.user?.role !== 'ADMIN') return false;
+    if (link.shopOrAdmin && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SHOP_OWNER') return false;
     if (link.requiresAuth && !session) return false;
     return true;
   });

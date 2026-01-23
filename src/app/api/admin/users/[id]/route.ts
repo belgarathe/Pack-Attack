@@ -133,6 +133,23 @@ export async function PATCH(
       },
     });
 
+    // If promoting to SHOP_OWNER, create a shop if they don't have one
+    if (data.role === 'SHOP_OWNER') {
+      const existingShop = await prisma.shop.findUnique({
+        where: { ownerId: id },
+      });
+
+      if (!existingShop) {
+        await prisma.shop.create({
+          data: {
+            ownerId: id,
+            name: user.name ? `${user.name}'s Shop` : 'My Shop',
+            description: 'Welcome to my card shop!',
+          },
+        });
+      }
+    }
+
     return NextResponse.json({ success: true, user });
   } catch (error) {
     if (error instanceof z.ZodError) {

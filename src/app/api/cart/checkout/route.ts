@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Get user's cart with items
+    // Get user's cart with items, including box info for shop orders
     const cart = await prisma.cart.findUnique({
       where: { userId: user.id },
       include: {
@@ -57,6 +57,13 @@ export async function POST(request: Request) {
             pull: {
               include: {
                 card: true,
+                box: {
+                  select: {
+                    id: true,
+                    name: true,
+                    createdByShopId: true,
+                  },
+                },
               },
             },
           },
@@ -73,8 +80,12 @@ export async function POST(request: Request) {
       return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
     }, 0);
 
-    // Create order with items in a transaction
-    const order = await prisma.$transaction(async (tx) => {
+    // Separate items from shop-created boxes vs regular admin boxes
+    const shopBoxItems = cart.items.filter(item => item.pull.box?.createdByShopId);
+    const regularItems = cart.items.filter(item => !item.pull.box?.createdByShopId);
+
+    // Create orders in a transaction
+    const result = await prisma.$transaction(async (tx) => {
       // If paying with coins, deduct shipping cost
       if (shippingMethod === 'COINS') {
         await tx.user.update({
@@ -83,32 +94,70 @@ export async function POST(request: Request) {
         });
       }
 
-      // Create the order
-      const newOrder = await tx.order.create({
-        data: {
-          userId: user.id,
-          totalCoins: totalCoins,
-          shippingName,
-          shippingEmail,
-          shippingAddress,
-          shippingCity,
-          shippingZip,
-          shippingCountry,
-          shippingMethod: shippingMethod as 'COINS' | 'EUROS',
-          shippingCost: new Decimal(shippingCost),
-          notes: notes || null,
-          items: {
-            create: cart.items.map((item) => ({
-              cardName: item.pull.card?.name || 'Unknown Card',
-              cardImage: item.pull.card?.imageUrlGatherer || null,
-              coinValue: item.pull.card ? Number(item.pull.card.coinValue) : 0,
-            })),
+      let newOrder = null;
+      const shopOrders = [];
+
+      // Create regular order for admin-created box items
+      if (regularItems.length > 0) {
+        const regularTotalCoins = regularItems.reduce((sum, item) => {
+          return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
+        }, 0);
+
+        newOrder = await tx.order.create({
+          data: {
+            userId: user.id,
+            totalCoins: regularTotalCoins,
+            shippingName,
+            shippingEmail,
+            shippingAddress,
+            shippingCity,
+            shippingZip,
+            shippingCountry,
+            shippingMethod: shippingMethod as 'COINS' | 'EUROS',
+            shippingCost: new Decimal(shippingCost),
+            notes: notes || null,
+            items: {
+              create: regularItems.map((item) => ({
+                cardName: item.pull.card?.name || 'Unknown Card',
+                cardImage: item.pull.card?.imageUrlGatherer || null,
+                coinValue: item.pull.card ? Number(item.pull.card.coinValue) : 0,
+              })),
+            },
           },
-        },
-        include: {
-          items: true,
-        },
-      });
+          include: {
+            items: true,
+          },
+        });
+      }
+
+      // Create individual shop box orders for each shop item
+      // Each card from a shop box gets its own order to the shop
+      for (const item of shopBoxItems) {
+        if (!item.pull.box?.createdByShopId) continue;
+
+        const shopOrder = await tx.shopBoxOrder.create({
+          data: {
+            shopId: item.pull.box.createdByShopId,
+            boxId: item.pull.box.id,
+            userId: user.id,
+            cardName: item.pull.card?.name || 'Unknown Card',
+            cardImage: item.pull.card?.imageUrlGatherer || null,
+            cardValue: item.pull.card ? Number(item.pull.card.coinValue) : 0,
+            cardRarity: item.pull.card?.rarity || null,
+            shippingName,
+            shippingEmail,
+            shippingAddress,
+            shippingCity,
+            shippingZip,
+            shippingCountry,
+            shippingMethod: shippingMethod as 'COINS' | 'EUROS',
+            shippingCost: new Decimal(shippingCost / Math.max(shopBoxItems.length, 1)), // Split shipping among shop orders
+            notes: notes || null,
+            status: 'PENDING',
+          },
+        });
+        shopOrders.push(shopOrder);
+      }
 
       // Delete the pulls (cards are being shipped, so remove from user's collection)
       const pullIds = cart.items.map((item) => item.pull.id);
@@ -121,8 +170,10 @@ export async function POST(request: Request) {
         where: { cartId: cart.id },
       });
 
-      return newOrder;
+      return { order: newOrder, shopOrders };
     });
+
+    const order = result.order;
 
     // Get updated user balance
     const updatedUser = await prisma.user.findUnique({
@@ -132,14 +183,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      order: {
+      order: order ? {
         id: order.id,
         totalCoins: Number(order.totalCoins),
         itemCount: order.items.length,
         status: order.status,
         shippingMethod: order.shippingMethod,
         shippingCost: Number(order.shippingCost),
-      },
+      } : null,
+      shopOrders: result.shopOrders.length,
+      totalItemCount: cart.items.length,
       coinsDeducted: shippingMethod === 'COINS' ? SHIPPING_COST_COINS : 0,
       newBalance: updatedUser ? Number(updatedUser.coins) : null,
     });
