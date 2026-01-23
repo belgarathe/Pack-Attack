@@ -24,7 +24,7 @@ export default async function ShopBoxesPage() {
   const shop = user.shop;
 
   // Fetch boxes based on role
-  let boxes;
+  let boxes: any[];
   if (isAdmin) {
     boxes = await prisma.box.findMany({
       where: { createdByShopId: { not: null } },
