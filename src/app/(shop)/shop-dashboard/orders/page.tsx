@@ -24,8 +24,8 @@ export default async function ShopOrdersPage() {
   const shop = user.shop;
 
   // Fetch orders based on role
-  let orders;
-  let stats;
+  let orders: any[];
+  let stats: { total: number; pending: number; confirmed: number; processing: number; shipped: number; delivered: number };
   
   if (isAdmin) {
     // Admin sees all shop box orders
@@ -40,11 +40,11 @@ export default async function ShopOrdersPage() {
     
     stats = {
       total: orders.length,
-      pending: orders.filter(o => o.status === 'PENDING').length,
-      confirmed: orders.filter(o => o.status === 'CONFIRMED').length,
-      processing: orders.filter(o => o.status === 'PROCESSING').length,
-      shipped: orders.filter(o => o.status === 'SHIPPED').length,
-      delivered: orders.filter(o => o.status === 'DELIVERED').length,
+      pending: orders.filter((o: any) => o.status === 'PENDING').length,
+      confirmed: orders.filter((o: any) => o.status === 'CONFIRMED').length,
+      processing: orders.filter((o: any) => o.status === 'PROCESSING').length,
+      shipped: orders.filter((o: any) => o.status === 'SHIPPED').length,
+      delivered: orders.filter((o: any) => o.status === 'DELIVERED').length,
     };
   } else if (shop) {
     orders = await prisma.shopBoxOrder.findMany({
@@ -59,11 +59,11 @@ export default async function ShopOrdersPage() {
     
     stats = {
       total: orders.length,
-      pending: orders.filter(o => o.status === 'PENDING').length,
-      confirmed: orders.filter(o => o.status === 'CONFIRMED').length,
-      processing: orders.filter(o => o.status === 'PROCESSING').length,
-      shipped: orders.filter(o => o.status === 'SHIPPED').length,
-      delivered: orders.filter(o => o.status === 'DELIVERED').length,
+      pending: orders.filter((o: any) => o.status === 'PENDING').length,
+      confirmed: orders.filter((o: any) => o.status === 'CONFIRMED').length,
+      processing: orders.filter((o: any) => o.status === 'PROCESSING').length,
+      shipped: orders.filter((o: any) => o.status === 'SHIPPED').length,
+      delivered: orders.filter((o: any) => o.status === 'DELIVERED').length,
     };
   } else {
     orders = [];
@@ -71,7 +71,7 @@ export default async function ShopOrdersPage() {
   }
 
   // Convert Decimal fields for JSON serialization
-  const serializedOrders = orders.map(order => ({
+  const serializedOrders = orders.map((order: any) => ({
     ...order,
     cardValue: Number(order.cardValue),
     shippingCost: Number(order.shippingCost),
