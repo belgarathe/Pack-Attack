@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// GET single order
+// GET - Fetch single assigned order
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const session = await getCurrentSession();
@@ -15,16 +15,19 @@ export async function GET(
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: { shop: true },
     });
 
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SHOP_OWNER')) {
+      return NextResponse.json({ error: 'Shop owner access required' }, { status: 403 });
     }
 
-    const { id } = await params;
+    const { orderId } = await params;
+    const isAdmin = user.role === 'ADMIN';
+    const shop = user.shop;
 
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: orderId },
       include: {
         user: {
           select: {
@@ -34,6 +37,12 @@ export async function GET(
           },
         },
         items: true,
+        assignedShop: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -41,17 +50,33 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, order });
+    // Verify shop owner can access this order
+    if (!isAdmin && order.assignedShopId !== shop?.id) {
+      return NextResponse.json({ error: 'Order not assigned to your shop' }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      order: {
+        ...order,
+        totalCoins: Number(order.totalCoins),
+        shippingCost: Number(order.shippingCost),
+        items: order.items.map(item => ({
+          ...item,
+          coinValue: Number(item.coinValue),
+        })),
+      },
+    });
   } catch (error) {
     console.error('Error fetching order:', error);
     return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
   }
 }
 
-// PATCH update order status or assign to shop
+// PATCH - Update assigned order (status, tracking, notes)
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const session = await getCurrentSession();
@@ -61,15 +86,33 @@ export async function PATCH(
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: { shop: true },
     });
 
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SHOP_OWNER')) {
+      return NextResponse.json({ error: 'Shop owner access required' }, { status: 403 });
     }
 
-    const { id } = await params;
+    const { orderId } = await params;
     const body = await request.json();
-    const { status, assignedShopId, trackingNumber, trackingUrl, notes } = body;
+    const { status, trackingNumber, trackingUrl, shopNotes } = body;
+
+    const isAdmin = user.role === 'ADMIN';
+    const shop = user.shop;
+
+    // First fetch the order to verify ownership
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    // Verify shop owner can update this order
+    if (!isAdmin && existingOrder.assignedShopId !== shop?.id) {
+      return NextResponse.json({ error: 'Order not assigned to your shop' }, { status: 403 });
+    }
 
     // Build update data
     const updateData: any = {};
@@ -83,25 +126,6 @@ export async function PATCH(
       updateData.status = status;
     }
 
-    // Handle shop assignment
-    if (assignedShopId !== undefined) {
-      if (assignedShopId === null || assignedShopId === '') {
-        // Unassign from shop
-        updateData.assignedShopId = null;
-        updateData.assignedAt = null;
-      } else {
-        // Verify shop exists
-        const shop = await prisma.shop.findUnique({
-          where: { id: assignedShopId },
-        });
-        if (!shop) {
-          return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
-        }
-        updateData.assignedShopId = assignedShopId;
-        updateData.assignedAt = new Date();
-      }
-    }
-
     // Handle tracking info
     if (trackingNumber !== undefined) {
       updateData.trackingNumber = trackingNumber || null;
@@ -109,12 +133,12 @@ export async function PATCH(
     if (trackingUrl !== undefined) {
       updateData.trackingUrl = trackingUrl || null;
     }
-    if (notes !== undefined) {
-      updateData.notes = notes || null;
+    if (shopNotes !== undefined) {
+      updateData.shopNotes = shopNotes || null;
     }
 
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: orderId },
       data: updateData,
       include: {
         user: {
@@ -129,32 +153,25 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
-            owner: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-              },
-            },
           },
         },
       },
     });
 
-    return NextResponse.json({ success: true, order });
+    return NextResponse.json({
+      success: true,
+      order: {
+        ...order,
+        totalCoins: Number(order.totalCoins),
+        shippingCost: Number(order.shippingCost),
+        items: order.items.map(item => ({
+          ...item,
+          coinValue: Number(item.coinValue),
+        })),
+      },
+    });
   } catch (error) {
     console.error('Error updating order:', error);
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-
-

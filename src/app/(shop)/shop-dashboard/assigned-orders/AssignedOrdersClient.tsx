@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Package, Truck, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, MapPin, Mail, User, Coins, Euro, Store, Link2, Save } from 'lucide-react';
+import { 
+  Package, Truck, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp, 
+  MapPin, Mail, User, Coins, Euro, Link2, Save, AlertCircle 
+} from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 type OrderItem = {
@@ -11,16 +14,6 @@ type OrderItem = {
   cardName: string;
   cardImage: string | null;
   coinValue: number;
-};
-
-type Shop = {
-  id: string;
-  name: string;
-  owner: {
-    id: string;
-    email: string;
-    name: string | null;
-  };
 };
 
 type Order = {
@@ -39,9 +32,7 @@ type Order = {
   trackingNumber: string | null;
   trackingUrl: string | null;
   shopNotes: string | null;
-  assignedShopId: string | null;
   assignedAt: string | null;
-  assignedShop: Shop | null;
   createdAt: string;
   user: {
     id: string;
@@ -49,6 +40,14 @@ type Order = {
     name: string | null;
   };
   items: OrderItem[];
+};
+
+type Stats = {
+  total: number;
+  pending: number;
+  processing: number;
+  shipped: number;
+  delivered: number;
 };
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType; label: string }> = {
@@ -59,19 +58,19 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType; lab
   CANCELLED: { color: 'text-red-400 bg-red-400/10', icon: XCircle, label: 'Cancelled' },
 };
 
-export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]; shops: Shop[] }) {
+export function AssignedOrdersClient({ orders: initialOrders, stats }: { orders: Order[]; stats: Stats }) {
   const router = useRouter();
   const { addToast } = useToast();
   const [orders, setOrders] = useState(initialOrders);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [trackingInputs, setTrackingInputs] = useState<Record<string, { number: string; url: string }>>({});
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, { number: string; url: string; notes: string }>>({});
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     setUpdatingOrder(orderId);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
+      const res = await fetch(`/api/shop-dashboard/assigned-orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -106,56 +105,19 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
     }
   };
 
-  const handleShopAssignment = async (orderId: string, shopId: string | null) => {
-    setUpdatingOrder(orderId);
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedShopId: shopId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        addToast({
-          title: 'Error',
-          description: data.error || 'Failed to assign order',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setOrders(orders.map(o => o.id === orderId ? { ...o, ...data.order } : o));
-      addToast({
-        title: 'Success',
-        description: shopId ? 'Order assigned to shop' : 'Order unassigned from shop',
-      });
-      router.refresh();
-    } catch (error) {
-      console.error('Error assigning order:', error);
-      addToast({
-        title: 'Error',
-        description: 'Failed to assign order',
-        variant: 'destructive',
-      });
-    } finally {
-      setUpdatingOrder(null);
-    }
-  };
-
   const handleTrackingUpdate = async (orderId: string) => {
     const tracking = trackingInputs[orderId];
     if (!tracking) return;
 
     setUpdatingOrder(orderId);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
+      const res = await fetch(`/api/shop-dashboard/assigned-orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           trackingNumber: tracking.number || null,
           trackingUrl: tracking.url || null,
+          shopNotes: tracking.notes || null,
         }),
       });
 
@@ -173,14 +135,14 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
       setOrders(orders.map(o => o.id === orderId ? { ...o, ...data.order } : o));
       addToast({
         title: 'Success',
-        description: 'Tracking information updated',
+        description: 'Order information updated',
       });
       router.refresh();
     } catch (error) {
       console.error('Error updating tracking:', error);
       addToast({
         title: 'Error',
-        description: 'Failed to update tracking',
+        description: 'Failed to update order',
         variant: 'destructive',
       });
     } finally {
@@ -192,37 +154,40 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
     ? orders 
     : orders.filter(o => o.status === filterStatus);
 
-  const orderStats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === 'PENDING').length,
-    processing: orders.filter(o => o.status === 'PROCESSING').length,
-    shipped: orders.filter(o => o.status === 'SHIPPED').length,
-    delivered: orders.filter(o => o.status === 'DELIVERED').length,
-  };
-
   return (
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass rounded-xl p-4">
-          <p className="text-sm text-gray-400">Total Orders</p>
-          <p className="text-2xl font-bold text-white">{orderStats.total}</p>
+          <p className="text-sm text-gray-400">Total Assigned</p>
+          <p className="text-2xl font-bold text-white">{stats.total}</p>
         </div>
         <div className="glass rounded-xl p-4">
           <p className="text-sm text-yellow-400">Pending</p>
-          <p className="text-2xl font-bold text-white">{orderStats.pending}</p>
+          <p className="text-2xl font-bold text-white">{stats.pending}</p>
         </div>
         <div className="glass rounded-xl p-4">
           <p className="text-sm text-blue-400">Processing</p>
-          <p className="text-2xl font-bold text-white">{orderStats.processing}</p>
+          <p className="text-2xl font-bold text-white">{stats.processing}</p>
         </div>
         <div className="glass rounded-xl p-4">
           <p className="text-sm text-purple-400">Shipped</p>
-          <p className="text-2xl font-bold text-white">{orderStats.shipped}</p>
+          <p className="text-2xl font-bold text-white">{stats.shipped}</p>
         </div>
         <div className="glass rounded-xl p-4">
           <p className="text-sm text-green-400">Delivered</p>
-          <p className="text-2xl font-bold text-white">{orderStats.delivered}</p>
+          <p className="text-2xl font-bold text-white">{stats.delivered}</p>
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="glass rounded-xl p-4 border border-purple-500/30 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-white font-medium">These orders have been assigned to you by an admin</p>
+          <p className="text-sm text-gray-400 mt-1">
+            You are responsible for processing and shipping these orders. Update the status and add tracking information as you fulfill each order.
+          </p>
         </div>
       </div>
 
@@ -234,7 +199,7 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
             onClick={() => setFilterStatus(status)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filterStatus === status
-                ? 'bg-blue-500 text-white'
+                ? 'bg-purple-500 text-white'
                 : 'glass text-gray-400 hover:text-white'
             }`}
           >
@@ -247,7 +212,8 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
       {filteredOrders.length === 0 ? (
         <div className="glass-strong rounded-2xl p-12 text-center">
           <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No orders found</p>
+          <p className="text-gray-400">No assigned orders found</p>
+          <p className="text-sm text-gray-500 mt-2">Orders assigned to you by admins will appear here</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -286,12 +252,6 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                         <p className="text-sm text-gray-400">{order.items.length} items</p>
                         <p className="font-semibold text-white">{order.shippingName}</p>
                       </div>
-                      {order.assignedShop && (
-                        <div className="px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 flex items-center gap-1">
-                          <Store className="w-3 h-3" />
-                          {order.assignedShop.name}
-                        </div>
-                      )}
                       <div className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>
                         {status.label}
                       </div>
@@ -333,7 +293,7 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                           Shipping Address
                         </h4>
                         <div className="space-y-1 text-sm text-gray-400">
-                          <p>{order.shippingName}</p>
+                          <p className="font-medium text-white">{order.shippingName}</p>
                           <p>{order.shippingAddress}</p>
                           <p>{order.shippingZip} {order.shippingCity}</p>
                           <p>{order.shippingCountry}</p>
@@ -348,12 +308,12 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                             {order.shippingMethod === 'COINS' ? (
                               <>
                                 <Coins className="w-4 h-4" />
-                                <span className="font-medium">Paid: {order.shippingCost?.toFixed(2) || '5.00'} coins</span>
+                                <span className="font-medium">Shipping: {order.shippingCost?.toFixed(2) || '5.00'} coins</span>
                               </>
                             ) : (
                               <>
                                 <Euro className="w-4 h-4" />
-                                <span className="font-medium">Paid: {order.shippingCost?.toFixed(2) || '5.00'} €</span>
+                                <span className="font-medium">Shipping: {order.shippingCost?.toFixed(2) || '5.00'} €</span>
                               </>
                             )}
                           </div>
@@ -361,45 +321,11 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                       </div>
                     </div>
 
-                    {/* Shop Assignment */}
-                    <div className="glass rounded-xl p-4">
-                      <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                        <Store className="w-4 h-4 text-purple-400" />
-                        Shop Assignment
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                        <select
-                          value={order.assignedShopId || ''}
-                          onChange={(e) => handleShopAssignment(order.id, e.target.value || null)}
-                          disabled={updatingOrder === order.id}
-                          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full sm:w-auto"
-                        >
-                          <option value="">-- Not Assigned --</option>
-                          {shops.map((shop) => (
-                            <option key={shop.id} value={shop.id}>
-                              {shop.name} ({shop.owner.email})
-                            </option>
-                          ))}
-                        </select>
-                        {order.assignedShop && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-gray-400">Assigned to:</span>
-                            <span className="text-purple-400 font-medium">{order.assignedShop.name}</span>
-                            {order.assignedAt && (
-                              <span className="text-gray-500 text-xs">
-                                on {new Date(order.assignedAt).toLocaleDateString('de-DE')}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
                     {/* Tracking Information */}
                     <div className="glass rounded-xl p-4">
                       <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
                         <Link2 className="w-4 h-4 text-green-400" />
-                        Tracking Information
+                        Tracking & Notes
                       </h4>
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div>
@@ -412,7 +338,8 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                               ...prev,
                               [order.id]: { 
                                 number: e.target.value, 
-                                url: prev[order.id]?.url ?? order.trackingUrl ?? '' 
+                                url: prev[order.id]?.url ?? order.trackingUrl ?? '',
+                                notes: prev[order.id]?.notes ?? order.shopNotes ?? ''
                               }
                             }))}
                             className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -428,12 +355,30 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                               ...prev,
                               [order.id]: { 
                                 number: prev[order.id]?.number ?? order.trackingNumber ?? '', 
-                                url: e.target.value 
+                                url: e.target.value,
+                                notes: prev[order.id]?.notes ?? order.shopNotes ?? ''
                               }
                             }))}
                             className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
                           />
                         </div>
+                      </div>
+                      <div className="mt-3">
+                        <label className="text-xs text-gray-400 mb-1 block">Shop Notes (internal)</label>
+                        <textarea
+                          placeholder="Add notes about this order..."
+                          rows={2}
+                          value={trackingInputs[order.id]?.notes ?? order.shopNotes ?? ''}
+                          onChange={(e) => setTrackingInputs(prev => ({
+                            ...prev,
+                            [order.id]: { 
+                              number: prev[order.id]?.number ?? order.trackingNumber ?? '', 
+                              url: prev[order.id]?.url ?? order.trackingUrl ?? '',
+                              notes: e.target.value
+                            }
+                          }))}
+                          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                        />
                       </div>
                       <button
                         onClick={() => handleTrackingUpdate(order.id)}
@@ -441,34 +386,15 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                         className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                       >
                         <Save className="w-4 h-4" />
-                        Save Tracking Info
+                        Save Changes
                       </button>
-                      {order.trackingUrl && (
-                        <a 
-                          href={order.trackingUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="mt-2 text-sm text-green-400 hover:text-green-300 inline-flex items-center gap-1"
-                        >
-                          <Link2 className="w-3 h-3" />
-                          View Tracking
-                        </a>
-                      )}
                     </div>
 
-                    {/* Order Notes */}
+                    {/* Customer Notes */}
                     {order.notes && (
                       <div className="glass rounded-xl p-4">
                         <h4 className="font-semibold text-white mb-2">Customer Notes</h4>
                         <p className="text-sm text-gray-400">{order.notes}</p>
-                      </div>
-                    )}
-
-                    {/* Shop Notes */}
-                    {order.shopNotes && (
-                      <div className="glass rounded-xl p-4 border border-purple-500/30">
-                        <h4 className="font-semibold text-purple-400 mb-2">Shop Notes</h4>
-                        <p className="text-sm text-gray-400">{order.shopNotes}</p>
                       </div>
                     )}
 
@@ -534,14 +460,3 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

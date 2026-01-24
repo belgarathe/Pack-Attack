@@ -313,12 +313,21 @@ model Order {
   shippingMethod  ShippingPaymentMethod @default(COINS)
   shippingCost    Decimal             @db.Decimal(10, 2) @default(5.00)
   notes           String?
+  // Shop assignment - admin can assign order to a shop for fulfillment
+  assignedShopId  String?
+  assignedShop    Shop?               @relation(fields: [assignedShopId], references: [id], onDelete: SetNull)
+  assignedAt      DateTime?
+  // Tracking info (can be filled by shop or admin)
+  trackingNumber  String?
+  trackingUrl     String?
+  shopNotes       String?             // Notes from the assigned shop
   items           OrderItem[]
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
   @@index([userId])
   @@index([status])
+  @@index([assignedShopId])
 }
 
 enum ShippingPaymentMethod {
@@ -372,20 +381,21 @@ model BattleLeaderboard {
 // ============================================
 
 model Shop {
-  id          String        @id @default(cuid())
-  ownerId     String        @unique
-  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name        String
-  description String?       @db.Text
-  logo        String?
-  banner      String?
-  isActive    Boolean       @default(true)
-  products    ShopProduct[]
-  orders      ShopOrder[]
-  boxes       Box[]
-  boxOrders   ShopBoxOrder[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  ownerId         String        @unique
+  owner           User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?       @db.Text
+  logo            String?
+  banner          String?
+  isActive        Boolean       @default(true)
+  products        ShopProduct[]
+  orders          ShopOrder[]
+  boxes           Box[]
+  boxOrders       ShopBoxOrder[]
+  assignedOrders  Order[]       // Regular orders assigned to this shop by admin
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([isActive])
 }

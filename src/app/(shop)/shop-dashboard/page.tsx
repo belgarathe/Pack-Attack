@@ -14,7 +14,8 @@ import {
   Store,
   Plus,
   BarChart3,
-  Sparkles
+  Sparkles,
+  ClipboardList
 } from 'lucide-react';
 
 export default async function ShopDashboard() {
@@ -48,6 +49,8 @@ export default async function ShopDashboard() {
     totalRevenue: number;
     uniqueCustomers: number;
     recentOrders: any[];
+    assignedOrders: number;
+    assignedPending: number;
   };
   if (isAdmin) {
     // Admin sees all shop-created boxes and orders
@@ -62,6 +65,8 @@ export default async function ShopDashboard() {
       totalRevenue,
       uniqueCustomers,
       recentOrders,
+      assignedOrders,
+      assignedPending,
     ] = await Promise.all([
       prisma.box.count({ where: { createdByShopId: { not: null } } }),
       prisma.box.count({ where: { createdByShopId: { not: null }, isActive: true } }),
@@ -77,6 +82,8 @@ export default async function ShopDashboard() {
         orderBy: { createdAt: 'desc' },
         include: { user: true, box: true },
       }),
+      prisma.order.count({ where: { assignedShopId: { not: null } } }),
+      prisma.order.count({ where: { assignedShopId: { not: null }, status: 'PENDING' } }),
     ]);
 
     stats = {
@@ -90,6 +97,8 @@ export default async function ShopDashboard() {
       totalRevenue: Number(totalRevenue._sum.cardValue || 0),
       uniqueCustomers,
       recentOrders,
+      assignedOrders,
+      assignedPending,
     };
   } else if (shop) {
     // Shop owner sees only their data
@@ -104,6 +113,8 @@ export default async function ShopDashboard() {
       totalRevenue,
       uniqueCustomers,
       recentOrders,
+      assignedOrders,
+      assignedPending,
     ] = await Promise.all([
       prisma.box.count({ where: { createdByShopId: shop.id } }),
       prisma.box.count({ where: { createdByShopId: shop.id, isActive: true } }),
@@ -120,6 +131,8 @@ export default async function ShopDashboard() {
         orderBy: { createdAt: 'desc' },
         include: { user: true, box: true },
       }),
+      prisma.order.count({ where: { assignedShopId: shop.id } }),
+      prisma.order.count({ where: { assignedShopId: shop.id, status: 'PENDING' } }),
     ]);
 
     stats = {
@@ -133,6 +146,8 @@ export default async function ShopDashboard() {
       totalRevenue: Number(totalRevenue._sum.cardValue || 0),
       uniqueCustomers,
       recentOrders,
+      assignedOrders,
+      assignedPending,
     };
   } else {
     stats = {
@@ -146,6 +161,8 @@ export default async function ShopDashboard() {
       totalRevenue: 0,
       uniqueCustomers: 0,
       recentOrders: [],
+      assignedOrders: 0,
+      assignedPending: 0,
     };
   }
 
@@ -269,7 +286,7 @@ export default async function ShopDashboard() {
         </div>
 
         {/* Main Action Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-10">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-10">
           {/* Orders Management */}
           <Link 
             href="/shop-dashboard/orders" 
@@ -285,12 +302,40 @@ export default async function ShopDashboard() {
               <div className="inline-flex items-center justify-center w-14 h-14 mb-5 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/30">
                 <ShoppingCart className="w-7 h-7 text-emerald-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Order Management</h3>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Box Orders</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                View and manage incoming orders. Process shipments and track deliveries.
+                Orders from your custom boxes. Process and ship cards.
               </p>
               <div className="mt-4 flex items-center text-emerald-400 text-sm font-medium">
                 <span>Manage Orders</span>
+                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Link>
+
+          {/* Assigned Orders */}
+          <Link 
+            href="/shop-dashboard/assigned-orders" 
+            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-purple-500/50 transition-all group relative overflow-hidden"
+          >
+            {stats.assignedPending > 0 && (
+              <div className="absolute -top-1 -right-1 w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg animate-pulse">
+                {stats.assignedPending}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative">
+              <div className="inline-flex items-center justify-center w-14 h-14 mb-5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 ring-1 ring-purple-500/30">
+                <ClipboardList className="w-7 h-7 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Assigned Orders</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Orders assigned by admin for fulfillment. {stats.assignedOrders} total.
+              </p>
+              <div className="mt-4 flex items-center text-purple-400 text-sm font-medium">
+                <span>View Assigned</span>
                 <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

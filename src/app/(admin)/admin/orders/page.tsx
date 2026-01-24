@@ -15,6 +15,19 @@ async function getOrders() {
         },
       },
       items: true,
+      assignedShop: {
+        select: {
+          id: true,
+          name: true,
+          owner: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -25,12 +38,32 @@ async function getOrders() {
     shippingCost: Number(order.shippingCost),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    assignedAt: order.assignedAt?.toISOString() || null,
     items: order.items.map(item => ({
       ...item,
       coinValue: Number(item.coinValue),
       createdAt: item.createdAt.toISOString(),
     })),
   }));
+}
+
+async function getShops() {
+  const shops = await prisma.shop.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      owner: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+  return shops;
 }
 
 export default async function AdminOrdersPage() {
@@ -48,16 +81,16 @@ export default async function AdminOrdersPage() {
     redirect('/');
   }
 
-  const orders = await getOrders();
+  const [orders, shops] = await Promise.all([getOrders(), getShops()]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Order Management</h1>
-        <p className="text-gray-400 mt-1">View and manage all customer orders</p>
+        <p className="text-gray-400 mt-1">View and manage all customer orders. Assign orders to shop owners for fulfillment.</p>
       </div>
 
-      <OrdersClient orders={orders} />
+      <OrdersClient orders={orders} shops={shops} />
     </div>
   );
 }

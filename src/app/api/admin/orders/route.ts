@@ -17,6 +17,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // Fetch orders with assigned shop info
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -28,10 +29,40 @@ export async function GET() {
           },
         },
         items: true,
+        assignedShop: {
+          select: {
+            id: true,
+            name: true,
+            owner: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    return NextResponse.json({ success: true, orders });
+    // Also fetch available shops for assignment dropdown
+    const shops = await prisma.shop.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        owner: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return NextResponse.json({ success: true, orders, shops });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
