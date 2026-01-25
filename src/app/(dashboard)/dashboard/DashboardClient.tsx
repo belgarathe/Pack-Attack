@@ -42,6 +42,23 @@ import {
   ArrowUpRight,
   TrendingDown,
   Activity,
+  Lock,
+  Shield,
+  Medal,
+  Diamond,
+  Layers,
+  Library,
+  BadgeDollarSign,
+  Wallet,
+  Banknote,
+  Heart,
+  Clover,
+  Moon,
+  Sunrise,
+  CircleDollarSign,
+  Rocket,
+  Users,
+  type LucideIcon,
 } from 'lucide-react';
 
 type UserProfile = {
@@ -107,6 +124,36 @@ type Stats = {
   currentCoins: number;
 };
 
+type Achievement = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: 'PULLS' | 'BATTLES' | 'COLLECTION' | 'ECONOMY' | 'SOCIAL' | 'SPECIAL';
+  icon: string;
+  rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  requirement: number;
+  coinReward: number;
+  isSecret: boolean;
+  progress: number;
+  isUnlocked: boolean;
+  unlockedAt: string | null;
+  rewardClaimed: boolean;
+};
+
+type AchievementSummary = {
+  total: number;
+  unlocked: number;
+  progress: number;
+  unclaimedRewards: number;
+};
+
+type AchievementsData = {
+  achievements: Achievement[];
+  byCategory: Record<string, Achievement[]>;
+  summary: AchievementSummary;
+};
+
 type DashboardProps = {
   initialUser: UserProfile;
   initialPulls: Pull[];
@@ -119,6 +166,7 @@ type DashboardProps = {
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, gradient: 'from-blue-500 to-cyan-500' },
+  { id: 'achievements', label: 'Achievements', icon: Award, gradient: 'from-amber-500 to-yellow-500' },
   { id: 'collection', label: 'Collection', icon: Package, gradient: 'from-purple-500 to-pink-500' },
   { id: 'orders', label: 'Orders', icon: ShoppingBag, gradient: 'from-emerald-500 to-teal-500' },
   { id: 'statistics', label: 'Statistics', icon: BarChart3, gradient: 'from-orange-500 to-red-500' },
@@ -134,9 +182,12 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
   const [pulls, setPulls] = useState(initialPulls);
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [achievements, setAchievements] = useState<AchievementsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [achievementCategoryFilter, setAchievementCategoryFilter] = useState<string>('ALL');
+  const [claimingReward, setClaimingReward] = useState<string | null>(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,6 +229,13 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     }
   }, [activeTab, orders.length]);
 
+  // Fetch achievements when achievements tab is opened
+  useEffect(() => {
+    if (activeTab === 'achievements' && !achievements) {
+      fetchAchievements();
+    }
+  }, [activeTab, achievements]);
+
   const fetchStats = async () => {
     setLoading(true);
     try {
@@ -208,6 +266,118 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       console.error('Failed to fetch orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAchievements = async () => {
+    setLoading(true);
+    try {
+      // First check/update achievements progress
+      await fetch('/api/user/achievements/check', { method: 'POST' });
+      
+      // Then fetch achievements with updated progress
+      const res = await fetch('/api/user/achievements');
+      const data = await res.json();
+      if (res.ok) {
+        setAchievements(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch achievements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClaimReward = async (achievementId: string) => {
+    setClaimingReward(achievementId);
+    try {
+      const res = await fetch('/api/user/achievements/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ achievementId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        addToast({
+          title: 'Error',
+          description: data.error || 'Failed to claim reward',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      addToast({
+        title: 'Reward Claimed!',
+        description: `You received ${data.coinsAwarded} coins for "${data.achievementName}"!`,
+      });
+
+      // Update user coins
+      if (data.newBalance !== undefined) {
+        emitCoinBalanceUpdate({ balance: data.newBalance });
+        setUser(prev => ({ ...prev, coins: data.newBalance }));
+      }
+
+      // Refresh achievements
+      fetchAchievements();
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to claim reward',
+        variant: 'destructive',
+      });
+    } finally {
+      setClaimingReward(null);
+    }
+  };
+
+  const handleClaimAllRewards = async () => {
+    setClaimingReward('all');
+    try {
+      const res = await fetch('/api/user/achievements/claim', {
+        method: 'PUT',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        addToast({
+          title: 'Error',
+          description: data.error || 'Failed to claim rewards',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data.coinsAwarded > 0) {
+        addToast({
+          title: 'All Rewards Claimed!',
+          description: `You received ${data.coinsAwarded} coins from ${data.achievementsClaimed} achievements!`,
+        });
+
+        // Update user coins
+        if (data.newBalance !== undefined) {
+          emitCoinBalanceUpdate({ balance: data.newBalance });
+          setUser(prev => ({ ...prev, coins: data.newBalance }));
+        }
+
+        // Refresh achievements
+        fetchAchievements();
+      } else {
+        addToast({
+          title: 'No Rewards',
+          description: 'No unclaimed rewards available',
+        });
+      }
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to claim rewards',
+        variant: 'destructive',
+      });
+    } finally {
+      setClaimingReward(null);
     }
   };
 
@@ -433,6 +603,59 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       day: 'numeric',
     });
   };
+
+  // Icon mapping for achievements
+  const getAchievementIcon = (iconName: string): LucideIcon => {
+    const iconMap: Record<string, LucideIcon> = {
+      Sparkles, Package, Flame, Zap, Crown, Star, Swords, Trophy, Shield, Medal, Award,
+      Gem, Diamond, Layers, Library, Coins, TrendingUp, BadgeDollarSign, Wallet, Banknote,
+      ShoppingBag, Heart, Clover, Moon, Sunrise, CircleDollarSign, Rocket, Lock, Users,
+    };
+    return iconMap[iconName] || Sparkles;
+  };
+
+  // Rarity configuration
+  const getRarityStyles = (rarity: string) => {
+    switch (rarity) {
+      case 'COMMON':
+        return { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/30', gradient: 'from-gray-500 to-slate-500' };
+      case 'UNCOMMON':
+        return { color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30', gradient: 'from-green-500 to-emerald-500' };
+      case 'RARE':
+        return { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', gradient: 'from-blue-500 to-cyan-500' };
+      case 'EPIC':
+        return { color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', gradient: 'from-purple-500 to-pink-500' };
+      case 'LEGENDARY':
+        return { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', gradient: 'from-amber-500 to-orange-500' };
+      default:
+        return { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/30', gradient: 'from-gray-500 to-slate-500' };
+    }
+  };
+
+  // Category configuration
+  const getCategoryConfig = (category: string) => {
+    switch (category) {
+      case 'PULLS':
+        return { label: 'Pack Opening', icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' };
+      case 'BATTLES':
+        return { label: 'Battles', icon: Swords, color: 'text-purple-400', bg: 'bg-purple-500/10' };
+      case 'COLLECTION':
+        return { label: 'Collection', icon: Gem, color: 'text-pink-400', bg: 'bg-pink-500/10' };
+      case 'ECONOMY':
+        return { label: 'Economy', icon: Coins, color: 'text-amber-400', bg: 'bg-amber-500/10' };
+      case 'SOCIAL':
+        return { label: 'Community', icon: Users, color: 'text-green-400', bg: 'bg-green-500/10' };
+      case 'SPECIAL':
+        return { label: 'Special', icon: Sparkles, color: 'text-orange-400', bg: 'bg-orange-500/10' };
+      default:
+        return { label: category, icon: Star, color: 'text-gray-400', bg: 'bg-gray-500/10' };
+    }
+  };
+
+  // Filter achievements by category
+  const filteredAchievements = achievements?.achievements.filter(a => 
+    achievementCategoryFilter === 'ALL' || a.category === achievementCategoryFilter
+  ) || [];
 
   const currentTabConfig = tabs.find(t => t.id === activeTab);
 
@@ -666,6 +889,312 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Achievements Tab */}
+      {activeTab === 'achievements' && (
+        <div className="space-y-8">
+          {loading ? (
+            <div className="glass-strong rounded-2xl p-16 text-center">
+              <div className="relative w-16 h-16 mx-auto mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-amber-500/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-amber-500 border-t-transparent animate-spin" />
+              </div>
+              <p className="text-gray-400">Loading your achievements...</p>
+            </div>
+          ) : achievements ? (
+            <>
+              {/* Achievement Summary Hero */}
+              <div 
+                className="relative overflow-hidden rounded-3xl"
+                style={{ 
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                  transition: 'opacity 0.5s ease, transform 0.5s ease'
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-500/10 to-orange-500/20" />
+                <div className="absolute inset-0 bg-grid opacity-30" />
+                <div className="relative glass-strong p-8 md:p-10">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-sm font-medium mb-4">
+                        <Trophy className="w-4 h-4" />
+                        Achievement Progress
+                      </div>
+                      <div className="flex items-baseline gap-4">
+                        <span className="text-5xl md:text-7xl font-bold text-white tracking-tight">
+                          {achievements.summary.unlocked}
+                        </span>
+                        <span className="text-2xl text-gray-400 font-medium">/ {achievements.summary.total}</span>
+                      </div>
+                      <div className="mt-4 w-full max-w-md">
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-gray-400">Overall Progress</span>
+                          <span className="text-amber-400 font-semibold">{achievements.summary.progress}%</span>
+                        </div>
+                        <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 transition-all duration-1000"
+                            style={{ width: `${achievements.summary.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {achievements.summary.unclaimedRewards > 0 && (
+                      <button
+                        onClick={handleClaimAllRewards}
+                        disabled={claimingReward === 'all'}
+                        className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-2xl transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/25 disabled:opacity-50 disabled:hover:scale-100"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {claimingReward === 'all' ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
+                            <span className="relative z-10">Claiming...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Gift className="w-5 h-5 relative z-10" />
+                            <span className="relative z-10">Claim All ({achievements.summary.unclaimedRewards} coins)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rarity Stats */}
+              <div 
+                className="grid gap-4 grid-cols-2 md:grid-cols-5"
+                style={{ 
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                  transition: 'opacity 0.4s ease 100ms, transform 0.4s ease 100ms'
+                }}
+              >
+                {['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'].map((rarity, index) => {
+                  const rarityStyle = getRarityStyles(rarity);
+                  const count = achievements.achievements.filter(a => a.rarity === rarity && a.isUnlocked).length;
+                  const total = achievements.achievements.filter(a => a.rarity === rarity).length;
+                  return (
+                    <div 
+                      key={rarity}
+                      className={`relative overflow-hidden rounded-xl transition-all hover:scale-[1.02]`}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-br ${rarityStyle.gradient} opacity-10`} />
+                      <div className="relative glass-strong p-4 text-center">
+                        <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${rarityStyle.gradient} mb-2`}>
+                          <Star className="w-5 h-5 text-white" />
+                        </div>
+                        <p className={`text-xl font-bold ${rarityStyle.color}`}>{count}/{total}</p>
+                        <p className="text-xs text-gray-500 capitalize">{rarity.toLowerCase()}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Category Filter Pills */}
+              <div 
+                className="flex flex-wrap gap-2"
+                style={{ 
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                  transition: 'opacity 0.4s ease 150ms, transform 0.4s ease 150ms'
+                }}
+              >
+                <button
+                  onClick={() => setAchievementCategoryFilter('ALL')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    achievementCategoryFilter === 'ALL'
+                      ? 'bg-white/10 text-white border border-white/20'
+                      : 'bg-white/[0.03] text-gray-400 border border-white/[0.05] hover:bg-white/[0.06] hover:text-white'
+                  }`}
+                >
+                  <Star className="w-4 h-4" />
+                  All
+                </button>
+                {['PULLS', 'BATTLES', 'COLLECTION', 'ECONOMY', 'SOCIAL', 'SPECIAL'].map((category) => {
+                  const config = getCategoryConfig(category);
+                  const Icon = config.icon;
+                  const isActive = achievementCategoryFilter === category;
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => setAchievementCategoryFilter(category)}
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? `${config.bg} ${config.color} border border-current/30`
+                          : 'bg-white/[0.03] text-gray-400 border border-white/[0.05] hover:bg-white/[0.06] hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Achievement Grid */}
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {filteredAchievements.map((achievement, index) => {
+                  const rarityStyle = getRarityStyles(achievement.rarity);
+                  const categoryConfig = getCategoryConfig(achievement.category);
+                  const Icon = getAchievementIcon(achievement.icon);
+                  const progress = Math.min((achievement.progress / achievement.requirement) * 100, 100);
+                  const canClaim = achievement.isUnlocked && !achievement.rewardClaimed;
+                  
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`group relative rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
+                        achievement.isUnlocked ? '' : 'opacity-70'
+                      }`}
+                      style={{ 
+                        opacity: mounted ? 1 : 0,
+                        transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+                        transition: `opacity 0.3s ease ${Math.min(index * 50, 500)}ms, transform 0.3s ease ${Math.min(index * 50, 500)}ms`
+                      }}
+                    >
+                      {/* Glow effect for unlocked */}
+                      {achievement.isUnlocked && (
+                        <div className={`absolute inset-0 bg-gradient-to-br ${rarityStyle.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                      )}
+                      
+                      <div className={`relative glass-strong p-5 border ${achievement.isUnlocked ? rarityStyle.border : 'border-gray-700/50'}`}>
+                        {/* Header with icon and rarity */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className={`relative p-3 rounded-xl ${
+                            achievement.isUnlocked 
+                              ? `bg-gradient-to-br ${rarityStyle.gradient} shadow-lg` 
+                              : 'bg-gray-800'
+                          }`}>
+                            <Icon className={`w-6 h-6 ${achievement.isUnlocked ? 'text-white' : 'text-gray-500'}`} />
+                            {achievement.isUnlocked && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${rarityStyle.bg} ${rarityStyle.color} border ${rarityStyle.border}`}>
+                              {achievement.rarity}
+                            </span>
+                            {achievement.coinReward > 0 && (
+                              <div className="flex items-center gap-1 text-amber-400 text-sm">
+                                <Coins className="w-3.5 h-3.5" />
+                                <span className="font-semibold">{achievement.coinReward}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Title and description */}
+                        <h3 className={`font-bold text-lg mb-1 ${achievement.isUnlocked ? 'text-white' : 'text-gray-400'}`}>
+                          {achievement.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                          {achievement.description}
+                        </p>
+
+                        {/* Progress bar */}
+                        <div className="mb-4">
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-gray-500">Progress</span>
+                            <span className={achievement.isUnlocked ? rarityStyle.color : 'text-gray-400'}>
+                              {achievement.progress}/{achievement.requirement}
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                achievement.isUnlocked 
+                                  ? `bg-gradient-to-r ${rarityStyle.gradient}` 
+                                  : 'bg-gray-600'
+                              }`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Category badge and claim button */}
+                        <div className="flex items-center justify-between">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${categoryConfig.bg} ${categoryConfig.color}`}>
+                            <categoryConfig.icon className="w-3 h-3" />
+                            {categoryConfig.label}
+                          </span>
+                          
+                          {canClaim ? (
+                            <button
+                              onClick={() => handleClaimReward(achievement.id)}
+                              disabled={claimingReward === achievement.id}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold rounded-lg transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                            >
+                              {claimingReward === achievement.id ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  Claiming...
+                                </>
+                              ) : (
+                                <>
+                                  <Gift className="w-3.5 h-3.5" />
+                                  Claim
+                                </>
+                              )}
+                            </button>
+                          ) : achievement.rewardClaimed ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Claimed
+                            </span>
+                          ) : achievement.isUnlocked ? null : (
+                            <span className="text-xs text-gray-500">
+                              {achievement.unlockedAt ? formatDate(achievement.unlockedAt) : 'Locked'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Empty state */}
+              {filteredAchievements.length === 0 && (
+                <div className="glass-strong rounded-2xl p-16 text-center">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 mb-6">
+                    <Trophy className="w-10 h-10 text-amber-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3">No achievements found</h3>
+                  <p className="text-gray-400 mb-6">
+                    Try selecting a different category
+                  </p>
+                  <button
+                    onClick={() => setAchievementCategoryFilter('ALL')}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-all"
+                  >
+                    <Star className="w-5 h-5" />
+                    Show All Achievements
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="glass-strong rounded-2xl p-16 text-center">
+              <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">Unable to load achievements</p>
+              <button
+                onClick={fetchAchievements}
+                className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-medium rounded-xl transition-all"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
       )}
 

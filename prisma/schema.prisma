@@ -44,6 +44,8 @@ model User {
   shopOrders          ShopOrder[]
   shopCart            ShopCart?
   shopBoxOrders       ShopBoxOrder[]      // Orders from shop-created boxes
+  // Achievement relations
+  achievements        UserAchievement[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 }
@@ -594,7 +596,6 @@ enum ShopBoxOrderStatus {
   CANCELLED
 }
 
-// ============================================
 // BOX PRESETS - Templates for quick box creation
 // ============================================
 
@@ -628,4 +629,65 @@ model BoxPreset {
 
   @@index([name])
   @@index([createdAt])
+}
+
+// ============================================
+// ACHIEVEMENT SYSTEM
+// ============================================
+
+model Achievement {
+  id              String            @id @default(cuid())
+  code            String            @unique // Unique identifier like "FIRST_PULL", "BATTLE_MASTER"
+  name            String
+  description     String
+  category        AchievementCategory
+  icon            String            // Icon name from lucide-react
+  rarity          AchievementRarity @default(COMMON)
+  requirement     Int               // Number needed to unlock (e.g., 10 pulls)
+  coinReward      Decimal           @db.Decimal(10, 2) @default(0)
+  isSecret        Boolean           @default(false) // Hidden until unlocked
+  sortOrder       Int               @default(0)
+  isActive        Boolean           @default(true)
+  userAchievements UserAchievement[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([category])
+  @@index([rarity])
+  @@index([isActive])
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  progress      Int         @default(0) // Current progress towards requirement
+  unlockedAt    DateTime?   // Null if not yet unlocked
+  rewardClaimed Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+  @@index([unlockedAt])
+}
+
+enum AchievementCategory {
+  PULLS       // Pack opening achievements
+  BATTLES     // Battle-related achievements
+  COLLECTION  // Collection milestones
+  ECONOMY     // Coins/sales achievements
+  SOCIAL      // Community achievements
+  SPECIAL     // Limited/event achievements
+}
+
+enum AchievementRarity {
+  COMMON      // Easy to get
+  UNCOMMON    // Moderate effort
+  RARE        // Significant effort
+  EPIC        // Hard to achieve
+  LEGENDARY   // Extremely difficult
 }
