@@ -6,8 +6,10 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X, Check, Loader2 } from 'lucide-react';
+import { Search, Plus, Trash2, X, Check, Loader2, FolderOpen, Save, Sparkles } from 'lucide-react';
 import Image from 'next/image';
+import { PresetGallery } from '@/components/admin/PresetGallery';
+import { SavePresetModal } from '@/components/admin/SavePresetModal';
 
 type CardData = {
   id: string;
@@ -78,6 +80,10 @@ export default function CreateBoxPage() {
     price: '',
     cardsPerPack: '',
   });
+  
+  // Preset state
+  const [showPresetGallery, setShowPresetGallery] = useState(false);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
 
   const gameOptions = [
     { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering', defaultApi: 'Scryfall' },
@@ -199,6 +205,41 @@ export default function CreateBoxPage() {
     // Round to 3 decimal places
     const roundedRate = parseFloat(equalRate.toFixed(3));
     setBoxCards(boxCards.map(card => ({ ...card, pullRate: roundedRate })));
+  };
+
+  // Load preset into form
+  const loadPreset = (preset: any) => {
+    // Set form data
+    setFormData({
+      name: preset.boxName || '',
+      description: preset.boxDescription || '',
+      price: String(preset.price) || '',
+      cardsPerPack: String(preset.cardsPerPack) || '',
+    });
+
+    // Set game from preset
+    if (preset.games && preset.games.length > 0) {
+      setSelectedGame(preset.games[0]);
+    }
+
+    // Load cards from preset
+    const cards: CardData[] = (preset.cardsConfig || []).map((card: any) => ({
+      id: card.scryfallId,
+      name: card.name,
+      setName: card.setName,
+      setCode: card.setCode,
+      collectorNumber: card.collectorNumber,
+      rarity: card.rarity,
+      imageUrl: card.imageUrl,
+      pullRate: card.pullRate,
+      coinValue: card.coinValue,
+      sourceGame: card.sourceGame,
+      scryfallId: card.scryfallId,
+    }));
+
+    setBoxCards(cards);
+    setSearchResults([]);
+    setSearchQuery('');
   };
 
   const getHighestValueCard = () => {
@@ -343,7 +384,31 @@ export default function CreateBoxPage() {
       <div className="container py-12">
         <Card className="max-w-6xl mx-auto border-gray-800 bg-gray-900/50">
           <CardHeader>
-            <CardTitle className="text-white">Create New Box</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white">Create New Box</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowPresetGallery(true)}
+                  className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Load Preset
+                </Button>
+                {boxCards.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowSavePresetModal(true)}
+                    className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save as Preset
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -608,11 +673,37 @@ export default function CreateBoxPage() {
                 <Button type="button" variant="outline" onClick={() => router.back()}>
                   Cancel
                 </Button>
+                {boxCards.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowSavePresetModal(true)}
+                    className="ml-auto text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Save as Preset
+                  </Button>
+                )}
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
+
+      {/* Preset Gallery Modal */}
+      <PresetGallery
+        isOpen={showPresetGallery}
+        onClose={() => setShowPresetGallery(false)}
+        onSelectPreset={loadPreset}
+      />
+
+      {/* Save Preset Modal */}
+      <SavePresetModal
+        isOpen={showSavePresetModal}
+        onClose={() => setShowSavePresetModal(false)}
+        boxData={formData}
+        boxCards={boxCards}
+      />
     </div>
   );
 }

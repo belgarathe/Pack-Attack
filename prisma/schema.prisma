@@ -593,3 +593,39 @@ enum ShopBoxOrderStatus {
   DELIVERED
   CANCELLED
 }
+
+// ============================================
+// BOX PRESETS - Templates for quick box creation
+// ============================================
+
+model BoxPreset {
+  id              String     @id @default(cuid())
+  name            String
+  description     String?    @db.Text
+  
+  // Box configuration snapshot
+  boxName         String
+  boxDescription  String     @db.Text
+  price           Decimal    @db.Decimal(10, 2)
+  cardsPerPack    Int
+  games           CardGame[]
+  
+  // Cards configuration stored as JSON
+  // Array of: { scryfallId, name, setName, setCode, collectorNumber, rarity, imageUrl, pullRate, coinValue, sourceGame }
+  cardsConfig     Json
+  
+  // Preview images
+  thumbnailUrl    String?    // Main preview image (highest value card)
+  previewImages   String[]   // Array of card images for gallery preview
+  
+  // Metadata
+  cardCount       Int        @default(0)
+  totalPullRate   Decimal    @db.Decimal(6, 3) @default(100)
+  
+  // Shared among all admins
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([name])
+  @@index([createdAt])
+}
