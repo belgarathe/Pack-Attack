@@ -29,7 +29,25 @@ export default function CreateBoxPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { addToast } = useToast();
+  
+  // ALL hooks must be called at the top, before any conditional returns
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD'>('MAGIC_THE_GATHERING');
+  const [apiSource, setApiSource] = useState<'default' | 'justtcg'>('default');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [boxCards, setBoxCards] = useState<CardData[]>([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    cardsPerPack: '',
+  });
+  
+  // Preset state
+  const [showPresetGallery, setShowPresetGallery] = useState(false);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -68,22 +86,6 @@ export default function CreateBoxPage() {
       </div>
     );
   }
-  const [searching, setSearching] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD'>('MAGIC_THE_GATHERING');
-  const [apiSource, setApiSource] = useState<'default' | 'justtcg'>('default');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [boxCards, setBoxCards] = useState<CardData[]>([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    cardsPerPack: '',
-  });
-  
-  // Preset state
-  const [showPresetGallery, setShowPresetGallery] = useState(false);
-  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
 
   const gameOptions = [
     { value: 'MAGIC_THE_GATHERING', label: 'Magic: The Gathering', defaultApi: 'Scryfall' },
