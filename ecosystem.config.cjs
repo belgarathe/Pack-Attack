@@ -6,38 +6,64 @@ module.exports = {
       args: 'start',
       cwd: '/var/www/packattack/app',
       
-      // Restart settings for high availability
+      // ================================================
+      // RESTART SETTINGS - Critical for stability
+      // ================================================
       autorestart: true,
-      max_restarts: 10,
-      min_uptime: '10s',
-      restart_delay: 4000,
+      max_restarts: 15,           // Increased from 10
+      min_uptime: '30s',          // Increased from 10s - consider restart only after 30s uptime
+      restart_delay: 5000,        // Wait 5s between restarts
       
-      // Memory management
-      max_memory_restart: '1G',
+      // Exponential backoff for repeated crashes
+      // Starts at 100ms, doubles each time up to max
+      exp_backoff_restart_delay: 100,
       
-      // Environment
+      // ================================================
+      // MEMORY MANAGEMENT - Prevent memory leaks
+      // ================================================
+      max_memory_restart: '800M', // Restart if memory exceeds 800MB (reduced from 1G for earlier detection)
+      
+      // ================================================
+      // ENVIRONMENT
+      // ================================================
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // Enable database heartbeat in production
+        ENABLE_DB_HEARTBEAT: 'true',
       },
       
-      // Logging
+      // ================================================
+      // LOGGING - Essential for debugging
+      // ================================================
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       error_file: '/var/log/pm2/packattack-error.log',
       out_file: '/var/log/pm2/packattack-out.log',
       merge_logs: true,
+      // Rotate logs to prevent disk exhaustion
+      log_type: 'json',
       
-      // Graceful shutdown
-      kill_timeout: 5000,
+      // ================================================
+      // GRACEFUL SHUTDOWN - Clean database connections
+      // ================================================
+      kill_timeout: 10000,        // Increased from 5000 - give more time for cleanup
       wait_ready: true,
-      listen_timeout: 10000,
+      listen_timeout: 15000,      // Increased from 10000 - allow more startup time
+      shutdown_with_message: true,
       
-      // Watch for crashes and restart
-      exp_backoff_restart_delay: 100,
-      
-      // Cluster mode for multi-core (optional, set to 1 for single instance)
+      // ================================================
+      // CLUSTERING - Optional multi-instance
+      // ================================================
+      // Set instances to 'max' or a number for clustering
+      // Note: If using sessions, ensure they work with clustering
       instances: 1,
-      exec_mode: 'fork',
+      exec_mode: 'fork',          // Use 'cluster' for multiple instances
+      
+      // ================================================
+      // HEALTH MONITORING
+      // ================================================
+      // PM2 will check if process is responding
+      // Customize health check endpoint if needed
     },
   ],
 

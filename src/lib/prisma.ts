@@ -105,6 +105,11 @@ export async function withRetry<T>(
 }
 
 function createPrismaClient(): PrismaClient {
+  // Connection pool settings are configured via DATABASE_URL query params:
+  // ?connection_limit=10&pool_timeout=30
+  // 
+  // Recommended DATABASE_URL format:
+  // postgresql://user:pass@host:5432/db?sslmode=require&connection_limit=10&pool_timeout=30
   const client = new PrismaClient({
     // Log only errors in production, more verbose in development
     log: process.env.NODE_ENV === 'development' 

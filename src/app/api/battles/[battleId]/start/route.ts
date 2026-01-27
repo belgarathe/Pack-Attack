@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 async function getRandomCard(boxId: string) {
   // Get all cards for this box
@@ -59,27 +59,33 @@ export async function POST(
       return NextResponse.json({ error: 'Battle ID missing' }, { status: 400 });
     }
 
-    // Get the battle with all details
-    const battle = await prisma.battle.findUnique({
-      where: { id: battleId },
-      include: {
-        participants: {
-          include: { user: true },
+    // Get the battle with all details - with retry for connection resilience
+    const battle = await withRetry(
+      () => prisma.battle.findUnique({
+        where: { id: battleId },
+        include: {
+          participants: {
+            include: { user: true },
+          },
+          box: {
+            include: { cards: true },
+          },
         },
-        box: {
-          include: { cards: true },
-        },
-      },
-    });
+      }),
+      'battle-start:findBattle'
+    );
 
     if (!battle) {
       return NextResponse.json({ error: 'Battle not found' }, { status: 404 });
     }
 
-    // Check if user is the battle creator or an admin
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    // Check if user is the battle creator or an admin - with retry
+    const user = await withRetry(
+      () => prisma.user.findUnique({
+        where: { email: session.user.email },
+      }),
+      'battle-start:findUser'
+    );
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

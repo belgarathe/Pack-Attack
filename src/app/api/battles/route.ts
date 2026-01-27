@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -15,18 +15,21 @@ const battleSchema = z.object({
 
 export async function GET() {
   try {
-    const battles = await prisma.battle.findMany({
-      include: {
-        creator: { select: { id: true, name: true, email: true } },
-        box: true,
-        participants: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+    const battles = await withRetry(
+      () => prisma.battle.findMany({
+        include: {
+          creator: { select: { id: true, name: true, email: true } },
+          box: true,
+          participants: {
+            include: { user: { select: { id: true, name: true, email: true } } },
+          },
+          winner: { select: { id: true, name: true, email: true } },
         },
-        winner: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      'battles:list'
+    );
 
     // Convert Decimal values to numbers
     const serializedBattles = battles.map(battle => ({

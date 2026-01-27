@@ -1,6 +1,8 @@
 /**
  * Rate limiting utility for API endpoints
  * Prevents abuse and ensures fair usage
+ * 
+ * STABILITY: Includes memory management to prevent unbounded growth
  */
 
 import { NextRequest } from 'next/server';
@@ -10,16 +12,25 @@ interface RateLimitConfig {
   uniqueTokenPerInterval: number; // Max number of unique tokens per interval
 }
 
-interface RateLimitStore {
-  [key: string]: {
-    count: number;
-    resetTime: number;
-  };
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
 }
+
+interface RateLimitStore {
+  [key: string]: RateLimitEntry;
+}
+
+// Maximum entries to prevent memory exhaustion
+const MAX_STORE_ENTRIES = 10000;
+// Cleanup interval (every 60 seconds)
+const CLEANUP_INTERVAL_MS = 60000;
 
 class RateLimiter {
   private store: RateLimitStore = {};
   private config: RateLimitConfig;
+  private lastCleanup: number = Date.now();
+  private entryCount: number = 0;
 
   constructor(config: RateLimitConfig) {
     this.config = config;
@@ -29,28 +40,80 @@ class RateLimiter {
     return `rate_limit:${identifier}`;
   }
 
-  private cleanup() {
+  private cleanup(force: boolean = false) {
     const now = Date.now();
+    
+    // Only cleanup if forced or enough time has passed
+    if (!force && now - this.lastCleanup < CLEANUP_INTERVAL_MS) {
+      return;
+    }
+    
+    this.lastCleanup = now;
+    let removed = 0;
+    
     // Clean up expired entries
-    Object.keys(this.store).forEach(key => {
+    const keys = Object.keys(this.store);
+    for (const key of keys) {
       if (this.store[key].resetTime < now) {
         delete this.store[key];
+        removed++;
       }
-    });
+    }
+    
+    this.entryCount = Object.keys(this.store).length;
+    
+    if (removed > 0) {
+      console.log(`[RateLimiter] Cleaned up ${removed} expired entries, ${this.entryCount} remaining`);
+    }
+  }
+
+  /**
+   * Emergency cleanup when store is too large
+   * Removes oldest entries first
+   */
+  private emergencyCleanup() {
+    console.warn(`[RateLimiter] Emergency cleanup triggered - store has ${this.entryCount} entries`);
+    
+    const now = Date.now();
+    const entries = Object.entries(this.store)
+      .map(([key, value]) => ({ key, ...value }))
+      .sort((a, b) => a.resetTime - b.resetTime);
+    
+    // Remove oldest 20% of entries
+    const toRemove = Math.ceil(entries.length * 0.2);
+    for (let i = 0; i < toRemove && i < entries.length; i++) {
+      delete this.store[entries[i].key];
+    }
+    
+    this.entryCount = Object.keys(this.store).length;
+    console.log(`[RateLimiter] Removed ${toRemove} oldest entries, ${this.entryCount} remaining`);
   }
 
   check(identifier: string): { success: boolean; remaining: number; resetTime: number } {
+    // Periodic cleanup
     this.cleanup();
+    
+    // Emergency cleanup if store is too large
+    if (this.entryCount >= MAX_STORE_ENTRIES) {
+      this.emergencyCleanup();
+    }
     
     const key = this.getKey(identifier);
     const now = Date.now();
     
     if (!this.store[key] || this.store[key].resetTime < now) {
+      // Track if this is a new entry
+      const isNewEntry = !this.store[key];
+      
       // Create new rate limit window
       this.store[key] = {
         count: 1,
         resetTime: now + this.config.interval,
       };
+      
+      if (isNewEntry) {
+        this.entryCount++;
+      }
       
       return {
         success: true,

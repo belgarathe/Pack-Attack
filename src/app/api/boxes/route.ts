@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export async function GET(request: Request) {
   try {
@@ -7,14 +7,17 @@ export async function GET(request: Request) {
     const id = searchParams.get('id');
 
     if (id) {
-      const box = await prisma.box.findUnique({
-        where: { id },
-        include: {
-          cards: {
-            orderBy: { coinValue: 'desc' },
+      const box = await withRetry(
+        () => prisma.box.findUnique({
+          where: { id },
+          include: {
+            cards: {
+              orderBy: { coinValue: 'desc' },
+            },
           },
-        },
-      });
+        }),
+        'boxes:findOne'
+      );
 
       if (!box) {
         return NextResponse.json({ error: 'Box not found' }, { status: 404 });
@@ -43,30 +46,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, boxes: [boxWithNumbers] });
     }
 
-    const boxes = await prisma.box.findMany({
-      where: { isActive: true },
-      include: {
-        cards: {
-          orderBy: { coinValue: 'desc' },
-          take: 3,
-          select: {
-            id: true,
-            name: true,
-            imageUrlGatherer: true,
-            imageUrlScryfall: true,
-            coinValue: true,
+    const boxes = await withRetry(
+      () => prisma.box.findMany({
+        where: { isActive: true },
+        include: {
+          cards: {
+            orderBy: { coinValue: 'desc' },
+            take: 3,
+            select: {
+              id: true,
+              name: true,
+              imageUrlGatherer: true,
+              imageUrlScryfall: true,
+              coinValue: true,
+            },
+          },
+          _count: {
+            select: { cards: true },
           },
         },
-        _count: {
-          select: { cards: true },
-        },
-      },
-      orderBy: [
-        { featured: 'desc' },
-        { popularity: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+        orderBy: [
+          { featured: 'desc' },
+          { popularity: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      }),
+      'boxes:findMany'
+    );
 
     // Update box images to highest coin value card (async, don't block response)
     Promise.all(

@@ -1,7 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcrypt';
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -16,9 +16,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        // Use withRetry for database resilience during authentication
+        const user = await withRetry(
+          () => prisma.user.findUnique({
+            where: { email: credentials.email },
+          }),
+          'auth:findUser'
+        );
 
         if (!user) {
           return null;

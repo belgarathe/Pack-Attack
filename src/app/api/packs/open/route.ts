@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -45,9 +45,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    const user = await withRetry(
+      () => prisma.user.findUnique({
+        where: { email: session.user.email },
+      }),
+      'pack-open:findUser'
+    );
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -56,12 +59,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { boxId, quantity } = openPackSchema.parse(body);
 
-    const box = await prisma.box.findUnique({
-      where: { id: boxId },
-      include: {
-        cards: true,
-      },
-    });
+    const box = await withRetry(
+      () => prisma.box.findUnique({
+        where: { id: boxId },
+        include: {
+          cards: true,
+        },
+      }),
+      'pack-open:findBox'
+    );
 
     if (!box) {
       return NextResponse.json({ error: 'Box not found' }, { status: 404 });

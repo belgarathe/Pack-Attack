@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 // GET - Get battle status for live updates
 export async function GET(
@@ -13,45 +13,48 @@ export async function GET(
     
     const isAdmin = session?.user?.role === 'ADMIN';
 
-    const battle = await prisma.battle.findUnique({
-      where: { id: battleId },
-      include: {
-        creator: { select: { id: true, name: true, email: true } },
-        box: {
-          include: {
-            cards: {
-              orderBy: { coinValue: 'desc' },
-              take: 3,
-              select: {
-                id: true,
-                name: true,
-                imageUrlGatherer: true,
-                imageUrlScryfall: true,
-                coinValue: true,
+    const battle = await withRetry(
+      () => prisma.battle.findUnique({
+        where: { id: battleId },
+        include: {
+          creator: { select: { id: true, name: true, email: true } },
+          box: {
+            include: {
+              cards: {
+                orderBy: { coinValue: 'desc' },
+                take: 3,
+                select: {
+                  id: true,
+                  name: true,
+                  imageUrlGatherer: true,
+                  imageUrlScryfall: true,
+                  coinValue: true,
+                }
               }
             }
-          }
-        },
-        participants: {
-          include: { user: { select: { id: true, name: true, email: true, isBot: true } } },
-        },
-        winner: { select: { id: true, name: true, email: true } },
-        pulls: {
-          include: {
-            participant: {
-              include: { user: true },
-            },
-            pull: {
-              include: { card: true },
-            },
           },
-          orderBy: [
-            { roundNumber: 'asc' },
-            { pulledAt: 'asc' },
-          ],
+          participants: {
+            include: { user: { select: { id: true, name: true, email: true, isBot: true } } },
+          },
+          winner: { select: { id: true, name: true, email: true } },
+          pulls: {
+            include: {
+              participant: {
+                include: { user: true },
+              },
+              pull: {
+                include: { card: true },
+              },
+            },
+            orderBy: [
+              { roundNumber: 'asc' },
+              { pulledAt: 'asc' },
+            ],
+          },
         },
-      },
-    });
+      }),
+      'battle-status:findBattle'
+    );
 
     if (!battle) {
       return NextResponse.json({ error: 'Battle not found' }, { status: 404 });
