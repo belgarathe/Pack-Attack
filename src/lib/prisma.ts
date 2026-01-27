@@ -220,16 +220,18 @@ async function forceRecreateClient(): Promise<PrismaClient> {
 }
 
 // Create or reuse the Prisma client
-let prismaInstance: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
+const prismaInstance: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
 
 // Export a getter that can return a fresh client if needed
-export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
+// Using a Proxy ensures we always access the current globalForPrisma.prisma
+// which may be recreated after connection failures
+export const prisma: PrismaClient = new Proxy(prismaInstance, {
+  get(_target, prop: string | symbol) {
     // Always use the current instance from globalForPrisma
     const client = globalForPrisma.prisma ?? prismaInstance;
-    const value = (client as Record<string | symbol, unknown>)[prop];
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === 'function') {
-      return value.bind(client);
+      return (value as (...args: unknown[]) => unknown).bind(client);
     }
     return value;
   }
