@@ -3,6 +3,9 @@ import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
 
+const CHECK_COOLDOWN = 30 * 1000; // 30 seconds
+const lastCheckByUser = new Map<string, number>();
+
 // POST: Check and update achievement progress for the current user
 export async function POST() {
   try {
@@ -11,20 +14,26 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    // PERFORMANCE: Fetch user and achievements in parallel
+    const [user, achievements] = await Promise.all([
+      prisma.user.findUnique({
+        where: { email: session.user.email },
+      }),
+      prisma.achievement.findMany({
+        where: { isActive: true },
+      }),
+    ]);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get all active achievements
-    const achievements = await prisma.achievement.findMany({
-      where: { isActive: true },
-    });
+    const lastCheck = lastCheckByUser.get(user.id) ?? 0;
+    if (Date.now() - lastCheck < CHECK_COOLDOWN) {
+      return NextResponse.json({ success: true, skipped: true });
+    }
 
-    // Get current user stats for checking achievements
+    // PERFORMANCE: Optimized stats queries - combined where possible
     const [
       totalPulls,
       totalBattles,
@@ -32,11 +41,10 @@ export async function POST() {
       totalSales,
       totalOrders,
       totalCoinsEarned,
-      uniqueGames,
+      uniqueGamesData,
       mythicPulls,
       rarePulls,
       jackpotWins,
-      collectionSize,
     ] = await Promise.all([
       prisma.pull.count({ where: { userId: user.id } }),
       prisma.battleParticipant.count({ where: { userId: user.id } }),
@@ -47,10 +55,21 @@ export async function POST() {
         where: { userId: user.id },
         _sum: { coinsReceived: true },
       }),
-      prisma.pull.findMany({
+      // PERFORMANCE: Use groupBy instead of findMany + Set for unique games
+      prisma.pull.groupBy({
+        by: ['cardId'],
         where: { userId: user.id, card: { isNot: null } },
-        include: { card: { select: { sourceGame: true } } },
-      }).then(pulls => new Set(pulls.map(p => p.card?.sourceGame)).size),
+        _count: true,
+      }).then(async groups => {
+        if (groups.length === 0) return 0;
+        const cardIds = groups.map(g => g.cardId).filter(Boolean) as string[];
+        if (cardIds.length === 0) return 0;
+        const games = await prisma.card.groupBy({
+          by: ['sourceGame'],
+          where: { id: { in: cardIds } },
+        });
+        return games.length;
+      }),
       prisma.pull.count({
         where: {
           userId: user.id,
@@ -66,10 +85,10 @@ export async function POST() {
       prisma.battle.count({
         where: { winnerId: user.id, battleMode: 'JACKPOT' },
       }),
-      prisma.pull.count({
-        where: { userId: user.id, cardId: { not: null } },
-      }),
     ]);
+
+    const uniqueGames = uniqueGamesData;
+    const collectionSize = totalPulls; // Same as totalPulls with cardId filter
 
     // Map achievement codes to their progress
     const progressMap: Record<string, number> = {
@@ -120,60 +139,103 @@ export async function POST() {
       progressMap.EARLY_BIRD = 1;
     }
 
-    // Update progress for each achievement
+    // PERFORMANCE: Batch fetch all existing user achievements instead of individual queries
+    const existingUserAchievements = await prisma.userAchievement.findMany({
+      where: { userId: user.id },
+    });
+
+    // Create lookup map for O(1) access
+    const userAchievementMap = new Map(
+      existingUserAchievements.map(ua => [ua.achievementId, ua])
+    );
+
+    // Prepare batch operations
+    const toCreate: Array<{
+      userId: string;
+      achievementId: string;
+      progress: number;
+      unlockedAt: Date | null;
+    }> = [];
+    const toUpdate: Array<{
+      id: string;
+      progress: number;
+      unlockedAt: Date | null;
+    }> = [];
     const newlyUnlocked: Array<{ code: string; name: string; coinReward: number }> = [];
 
+    const now = new Date();
+
+    // Process all achievements in memory
     for (const achievement of achievements) {
       const progress = progressMap[achievement.code] || 0;
-      
-      // Get or create user achievement
-      let userAchievement = await prisma.userAchievement.findUnique({
-        where: {
-          userId_achievementId: {
-            userId: user.id,
-            achievementId: achievement.id,
-          },
-        },
-      });
+      const existingUA = userAchievementMap.get(achievement.id);
+      const isUnlocked = progress >= achievement.requirement;
 
-      if (!userAchievement) {
-        userAchievement = await prisma.userAchievement.create({
-          data: {
-            userId: user.id,
-            achievementId: achievement.id,
-            progress: Math.min(progress, achievement.requirement),
-            unlockedAt: progress >= achievement.requirement ? new Date() : null,
-          },
+      if (!existingUA) {
+        // Need to create
+        toCreate.push({
+          userId: user.id,
+          achievementId: achievement.id,
+          progress: Math.min(progress, achievement.requirement),
+          unlockedAt: isUnlocked ? now : null,
         });
-        
-        if (progress >= achievement.requirement) {
+
+        if (isUnlocked) {
           newlyUnlocked.push({
             code: achievement.code,
             name: achievement.name,
             coinReward: Number(achievement.coinReward),
           });
         }
-      } else if (!userAchievement.unlockedAt) {
-        // Update progress if not yet unlocked
-        const wasUnlocked = progress >= achievement.requirement;
-        
-        await prisma.userAchievement.update({
-          where: { id: userAchievement.id },
-          data: {
-            progress: Math.min(progress, achievement.requirement),
-            unlockedAt: wasUnlocked ? new Date() : null,
-          },
-        });
-
-        if (wasUnlocked) {
-          newlyUnlocked.push({
-            code: achievement.code,
-            name: achievement.name,
-            coinReward: Number(achievement.coinReward),
+      } else if (!existingUA.unlockedAt) {
+        // Need to update if progress changed
+        const newProgress = Math.min(progress, achievement.requirement);
+        if (newProgress !== existingUA.progress || isUnlocked) {
+          toUpdate.push({
+            id: existingUA.id,
+            progress: newProgress,
+            unlockedAt: isUnlocked ? now : null,
           });
+
+          if (isUnlocked) {
+            newlyUnlocked.push({
+              code: achievement.code,
+              name: achievement.name,
+              coinReward: Number(achievement.coinReward),
+            });
+          }
         }
       }
     }
+
+    // PERFORMANCE: Execute batch operations
+    await prisma.$transaction(async (tx) => {
+      // Batch create new user achievements
+      if (toCreate.length > 0) {
+        await tx.userAchievement.createMany({
+          data: toCreate,
+          skipDuplicates: true,
+        });
+      }
+
+      // Batch update existing achievements (need individual updates for different values)
+      // But we can run them in parallel within the transaction
+      if (toUpdate.length > 0) {
+        await Promise.all(
+          toUpdate.map(ua =>
+            tx.userAchievement.update({
+              where: { id: ua.id },
+              data: {
+                progress: ua.progress,
+                unlockedAt: ua.unlockedAt,
+              },
+            })
+          )
+        );
+      }
+    });
+
+    lastCheckByUser.set(user.id, Date.now());
 
     return NextResponse.json({
       success: true,

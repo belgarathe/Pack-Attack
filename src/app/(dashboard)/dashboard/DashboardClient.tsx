@@ -272,15 +272,23 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
   const fetchAchievements = async () => {
     setLoading(true);
     try {
-      // First check/update achievements progress
-      await fetch('/api/user/achievements/check', { method: 'POST' });
-      
-      // Then fetch achievements with updated progress
-      const res = await fetch('/api/user/achievements');
+      // PERFORMANCE: Fast load without progress recompute
+      const res = await fetch('/api/user/achievements?update=false');
       const data = await res.json();
       if (res.ok) {
         setAchievements(data);
       }
+
+      // Update progress in background, then refresh data
+      void fetch('/api/user/achievements/check', { method: 'POST' })
+        .then(async (checkRes) => {
+          if (!checkRes.ok) return;
+          const refreshed = await fetch('/api/user/achievements?update=false');
+          if (!refreshed.ok) return;
+          const refreshedData = await refreshed.json();
+          setAchievements(refreshedData);
+        })
+        .catch(() => {});
     } catch (error) {
       console.error('Failed to fetch achievements:', error);
     } finally {
@@ -856,7 +864,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                             alt={pull.card.name}
                             fill
                             className="object-cover"
-                            unoptimized
+                            sizes="(max-width: 1024px) 22vw, 96px"
                           />
                           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
                           <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1305,7 +1313,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                           alt={pull.card.name}
                           fill
                           className="object-cover transition-transform group-hover:scale-110"
-                          unoptimized
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
                         />
                         {/* Overlays */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
@@ -1463,7 +1471,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                                   alt={item.cardName}
                                   fill
                                   className="object-cover"
-                                  unoptimized
+                                  sizes="96px"
                                 />
                               ) : (
                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -1950,7 +1958,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                 alt={zoomedCard.card.name}
                 fill
                 className="object-cover"
-                unoptimized
+                sizes="(max-width: 768px) 90vw, 420px"
               />
             </div>
 

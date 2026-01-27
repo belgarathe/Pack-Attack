@@ -398,7 +398,7 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
                     alt={pull.card.name}
                     fill
                     className="object-cover transition-transform group-hover:scale-105"
-                    unoptimized
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
                   />
                   {pull.cartItem && (
                     <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
@@ -446,7 +446,7 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
                 alt={zoomedCard.card.name}
                 fill
                 className="object-contain rounded-xl"
-                unoptimized
+                sizes="(max-width: 768px) 90vw, 420px"
               />
             </div>
 

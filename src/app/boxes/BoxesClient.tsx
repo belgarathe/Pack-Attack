@@ -210,7 +210,7 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
+                                sizes="(max-width: 640px) 14vw, 80px"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gray-700">
