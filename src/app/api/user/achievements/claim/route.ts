@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST: Claim reward for an unlocked achievement
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 30 claims per minute (general rate)
+    const rateLimitResult = await rateLimit(request, 'general');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,8 +82,14 @@ export async function POST(request: Request) {
 }
 
 // POST: Claim all unclaimed rewards at once
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
+    // Rate limit: 30 claims per minute (general rate)
+    const rateLimitResult = await rateLimit(request, 'general');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

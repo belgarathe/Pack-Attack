@@ -1,12 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { rateLimit } from '@/lib/rate-limit';
 
 const SHIPPING_COST_COINS = 5.00;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 3 checkout attempts per minute
+    const rateLimitResult = await rateLimit(request, 'payment');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

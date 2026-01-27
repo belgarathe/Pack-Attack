@@ -1,14 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 const purchaseCoinsSchema = z.object({
   amount: z.number().int().min(10).max(1000), // 10 to 1000 euros
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 3 payment attempts per minute
+    const rateLimitResult = await rateLimit(request, 'payment');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

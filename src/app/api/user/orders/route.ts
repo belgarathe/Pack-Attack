@@ -1,9 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Rate limit sensitive data access
+    const rateLimitResult = await rateLimit(request, 'sensitiveData');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,9 +25,13 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const pageParam = parseInt(searchParams.get('page') || '1', 10);
+    const limitParam = parseInt(searchParams.get('limit') || '10', 10);
     const status = searchParams.get('status') || '';
+
+    // Validate pagination parameters
+    const page = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const limit = isNaN(limitParam) || limitParam < 1 ? 10 : Math.min(limitParam, 100); // Cap at 100
 
     const where = {
       userId: user.id,

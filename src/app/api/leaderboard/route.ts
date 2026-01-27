@@ -27,8 +27,12 @@ export async function GET(request: NextRequest) {
     let targetYear: number;
 
     if (monthParam && yearParam) {
-      targetMonth = parseInt(monthParam);
-      targetYear = parseInt(yearParam);
+      targetMonth = parseInt(monthParam, 10);
+      targetYear = parseInt(yearParam, 10);
+      // Validate parsed values
+      if (isNaN(targetMonth) || isNaN(targetYear) || targetMonth < 1 || targetMonth > 12 || targetYear < 2020 || targetYear > 2100) {
+        return NextResponse.json({ error: 'Invalid month or year parameter' }, { status: 400 });
+      }
     } else if (period === 'previous') {
       // Previous month
       const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -113,7 +117,8 @@ export async function GET(request: NextRequest) {
       'July', 'August', 'September', 'October', 'November', 'December'];
     const monthName = monthNames[targetMonth - 1];
 
-    return NextResponse.json({
+    // PERFORMANCE: Add cache headers - leaderboard can be cached for 60 seconds
+    const response = NextResponse.json({
       success: true,
       leaderboard: leaderboard.slice(0, 10), // Top 10 only
       fullLeaderboard: leaderboard, // All entries for full listing
@@ -129,6 +134,8 @@ export async function GET(request: NextRequest) {
       },
       prizes: PRIZE_CONFIG,
     });
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    return response;
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });

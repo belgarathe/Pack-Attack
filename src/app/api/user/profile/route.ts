@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -52,8 +53,14 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
+    // Rate limit: 30 profile updates per minute
+    const rateLimitResult = await rateLimit(request, 'sensitiveData');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
