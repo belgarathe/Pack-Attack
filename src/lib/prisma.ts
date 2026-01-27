@@ -3,12 +3,15 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   heartbeatInterval: NodeJS.Timeout | undefined;
+  lastHealthyTime: number | undefined;
+  reconnectInProgress: boolean | undefined;
 };
 
 // Maximum retries for database operations
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 1000;
 const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+const ENGINE_RESTART_THRESHOLD_MS = 60000; // Force engine restart if unhealthy for 60s
 
 // Helper function to check if error is a connection error
 function isConnectionError(error: unknown): boolean {
@@ -28,16 +31,29 @@ function isConnectionError(error: unknown): boolean {
   if (error instanceof Prisma.PrismaClientRustPanicError) {
     return true;
   }
-  // Check for generic connection errors
+  // Check for generic connection errors including "Engine is not yet connected"
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return message.includes('connection') || 
            message.includes('timeout') ||
            message.includes('econnrefused') ||
            message.includes('econnreset') ||
-           message.includes('closed');
+           message.includes('closed') ||
+           message.includes('engine is not yet connected') ||
+           message.includes('engine is not running');
   }
   return false;
+}
+
+// Check if error requires a full engine restart (not just reconnect)
+function requiresEngineRestart(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes('engine is not yet connected') ||
+           message.includes('engine is not running') ||
+           message.includes('rust panic');
+  }
+  return error instanceof Prisma.PrismaClientRustPanicError;
 }
 
 // Sleep helper
@@ -48,6 +64,7 @@ function sleep(ms: number): Promise<void> {
 /**
  * Execute a database operation with automatic retry on connection errors
  * Includes automatic reconnection attempts after multiple failures
+ * Will force recreate the Prisma client if the engine is in a bad state
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
@@ -55,10 +72,14 @@ export async function withRetry<T>(
 ): Promise<T> {
   let lastError: unknown;
   let reconnectAttempted = false;
+  let engineRestartAttempted = false;
   
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await operation();
+      const result = await operation();
+      // Mark successful operation
+      globalForPrisma.lastHealthyTime = Date.now();
+      return result;
     } catch (error) {
       lastError = error;
       
@@ -70,17 +91,45 @@ export async function withRetry<T>(
           error instanceof Error ? error.message : 'Unknown error'
         );
         
-        // After 2 failed attempts, try to reconnect
-        if (attempt >= 2 && !reconnectAttempted) {
+        // If error requires engine restart, do it immediately
+        if (requiresEngineRestart(error) && !engineRestartAttempted) {
+          engineRestartAttempted = true;
+          console.log('[Prisma] Engine failure detected, forcing client recreation...');
+          try {
+            await forceRecreateClient();
+            console.log('[Prisma] Client recreated successfully');
+          } catch (restartError) {
+            console.error('[Prisma] Client recreation failed:', 
+              restartError instanceof Error ? restartError.message : 'Unknown error');
+          }
+          await sleep(delay);
+          continue;
+        }
+        
+        // After 2 failed attempts, try standard reconnect
+        if (attempt >= 2 && !reconnectAttempted && !engineRestartAttempted) {
           reconnectAttempted = true;
           console.log('[Prisma] Attempting database reconnection...');
           try {
-            await prisma.$disconnect();
-            await prisma.$connect();
+            const client = globalForPrisma.prisma;
+            if (client) {
+              await client.$disconnect();
+              await client.$connect();
+            }
             console.log('[Prisma] Reconnection successful');
           } catch (reconnectError) {
             console.error('[Prisma] Reconnection failed:', 
               reconnectError instanceof Error ? reconnectError.message : 'Unknown error');
+            
+            // If reconnection fails, try full restart
+            if (!engineRestartAttempted) {
+              engineRestartAttempted = true;
+              try {
+                await forceRecreateClient();
+              } catch {
+                // Ignore - will retry on next attempt
+              }
+            }
           }
         }
         
@@ -117,16 +166,80 @@ function createPrismaClient(): PrismaClient {
       : ['error', 'warn'],
   });
   
+  // Mark connection as healthy when created
+  globalForPrisma.lastHealthyTime = Date.now();
+  
   return client;
 }
 
+/**
+ * Force recreate the Prisma client when the engine is in a bad state
+ * This is necessary when the Prisma Query Engine crashes and can't recover
+ */
+async function forceRecreateClient(): Promise<PrismaClient> {
+  if (globalForPrisma.reconnectInProgress) {
+    // Wait for ongoing reconnection
+    await sleep(500);
+    return globalForPrisma.prisma!;
+  }
+  
+  globalForPrisma.reconnectInProgress = true;
+  console.log('[Prisma] Force recreating client due to engine failure...');
+  
+  try {
+    // Try to cleanly disconnect the old client
+    if (globalForPrisma.prisma) {
+      try {
+        await Promise.race([
+          globalForPrisma.prisma.$disconnect(),
+          sleep(5000) // Timeout disconnect after 5s
+        ]);
+      } catch {
+        // Ignore disconnect errors - the client is already broken
+      }
+    }
+    
+    // Create a completely new client
+    const newClient = createPrismaClient();
+    
+    // Test the new client
+    await newClient.$queryRaw`SELECT 1`;
+    
+    // Replace the global client
+    globalForPrisma.prisma = newClient;
+    globalForPrisma.lastHealthyTime = Date.now();
+    
+    console.log('[Prisma] Successfully recreated client');
+    return newClient;
+  } catch (error) {
+    console.error('[Prisma] Failed to recreate client:', error instanceof Error ? error.message : 'Unknown error');
+    throw error;
+  } finally {
+    globalForPrisma.reconnectInProgress = false;
+  }
+}
+
 // Create or reuse the Prisma client
-export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
+let prismaInstance: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
+
+// Export a getter that can return a fresh client if needed
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    // Always use the current instance from globalForPrisma
+    const client = globalForPrisma.prisma ?? prismaInstance;
+    const value = (client as Record<string | symbol, unknown>)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  }
+});
 
 // Cache the Prisma client globally to prevent connection pool exhaustion
 // This is critical for production stability - without this, each request
 // creates a new connection which can exhaust the database connection pool
-globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prismaInstance;
+globalForPrisma.lastHealthyTime = Date.now();
 
 // Heartbeat mechanism to keep database connections alive
 // This prevents connection timeout issues by periodically pinging the database
@@ -136,21 +249,53 @@ function startHeartbeat(): void {
     clearInterval(globalForPrisma.heartbeatInterval);
   }
   
+  let consecutiveFailures = 0;
+  
   globalForPrisma.heartbeatInterval = setInterval(async () => {
     try {
-      await prisma.$queryRaw`SELECT 1`;
-      // Silent success - no need to log every heartbeat
-    } catch (error) {
-      console.warn('[Prisma] Heartbeat failed, attempting reconnection...', 
-        error instanceof Error ? error.message : 'Unknown error');
+      const client = globalForPrisma.prisma;
+      if (!client) {
+        console.warn('[Prisma] No client available for heartbeat');
+        return;
+      }
       
-      try {
-        await prisma.$disconnect();
-        await prisma.$connect();
-        console.log('[Prisma] Reconnected successfully after heartbeat failure');
-      } catch (reconnectError) {
-        console.error('[Prisma] Reconnection failed:', 
-          reconnectError instanceof Error ? reconnectError.message : 'Unknown error');
+      await client.$queryRaw`SELECT 1`;
+      // Success - reset failure counter and update healthy time
+      consecutiveFailures = 0;
+      globalForPrisma.lastHealthyTime = Date.now();
+    } catch (error) {
+      consecutiveFailures++;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[Prisma] Heartbeat failed (${consecutiveFailures} consecutive), attempting reconnection...`, errorMessage);
+      
+      // Check if we need a full engine restart
+      const needsRestart = requiresEngineRestart(error) || consecutiveFailures >= 3;
+      
+      if (needsRestart) {
+        console.log('[Prisma] Forcing client recreation due to persistent failures...');
+        try {
+          await forceRecreateClient();
+          consecutiveFailures = 0;
+          console.log('[Prisma] Client recreated successfully after heartbeat failure');
+        } catch (restartError) {
+          console.error('[Prisma] Client recreation failed:', 
+            restartError instanceof Error ? restartError.message : 'Unknown error');
+        }
+      } else {
+        // Try standard reconnection first
+        try {
+          const client = globalForPrisma.prisma;
+          if (client) {
+            await client.$disconnect();
+            await client.$connect();
+          }
+          consecutiveFailures = 0;
+          globalForPrisma.lastHealthyTime = Date.now();
+          console.log('[Prisma] Reconnected successfully after heartbeat failure');
+        } catch (reconnectError) {
+          console.error('[Prisma] Reconnection failed:', 
+            reconnectError instanceof Error ? reconnectError.message : 'Unknown error');
+        }
       }
     }
   }, HEARTBEAT_INTERVAL_MS);
@@ -177,7 +322,10 @@ const gracefulShutdown = async () => {
     globalForPrisma.heartbeatInterval = undefined;
   }
   
-  await prisma.$disconnect();
+  const client = globalForPrisma.prisma;
+  if (client) {
+    await client.$disconnect();
+  }
   console.log('[Prisma] Disconnected successfully');
 };
 
@@ -194,10 +342,23 @@ if (typeof process !== 'undefined') {
  */
 export async function checkDatabaseHealth(): Promise<boolean> {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    const client = globalForPrisma.prisma;
+    if (!client) return false;
+    await client.$queryRaw`SELECT 1`;
+    globalForPrisma.lastHealthyTime = Date.now();
     return true;
   } catch (error) {
     console.error('[Prisma] Database health check failed:', error);
+    
+    // If health check fails with engine error, try to recreate client
+    if (requiresEngineRestart(error)) {
+      try {
+        await forceRecreateClient();
+        return true;
+      } catch {
+        return false;
+      }
+    }
     return false;
   }
 }
@@ -205,14 +366,29 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 /**
  * Reconnect to database after connection loss
  * Useful for manual recovery in edge cases
+ * Will force recreate the client if simple reconnect fails
  */
 export async function reconnectDatabase(): Promise<void> {
   try {
-    await prisma.$disconnect();
-    await prisma.$connect();
+    const client = globalForPrisma.prisma;
+    if (client) {
+      await client.$disconnect();
+      await client.$connect();
+    }
+    globalForPrisma.lastHealthyTime = Date.now();
     console.log('[Prisma] Successfully reconnected to database');
   } catch (error) {
-    console.error('[Prisma] Failed to reconnect to database:', error);
-    throw error;
+    console.error('[Prisma] Standard reconnect failed, forcing client recreation:', error);
+    // Force recreate if standard reconnect fails
+    await forceRecreateClient();
   }
+}
+
+/**
+ * Get the time since last healthy database connection
+ * @returns milliseconds since last successful query, or -1 if never healthy
+ */
+export function getTimeSinceLastHealthy(): number {
+  if (!globalForPrisma.lastHealthyTime) return -1;
+  return Date.now() - globalForPrisma.lastHealthyTime;
 }

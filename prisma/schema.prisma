@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -96,8 +97,12 @@ model Card {
   updatedAt        DateTime  @updatedAt
 
   @@unique([scryfallId, boxId])
+  // PERFORMANCE: Indexes for common query patterns
   @@index([boxId])
   @@index([name])
+  @@index([rarity])           // Rarity-based filtering
+  @@index([sourceGame])       // Game filtering
+  @@index([boxId, rarity])    // Combined box + rarity queries
 }
 
 model Pull {
@@ -113,8 +118,12 @@ model Pull {
   battlePull BattlePull?
   cartItem  CartItem?
 
+  // PERFORMANCE: Indexes for common query patterns
   @@index([userId])
   @@index([timestamp])
+  @@index([userId, timestamp]) // User stats queries
+  @@index([cardId])            // Card lookup queries
+  @@index([boxId])             // Box-related queries
 }
 
 model Cart {
@@ -197,9 +206,15 @@ model Battle {
   startedAt         DateTime?
   finishedAt        DateTime?
 
+  // PERFORMANCE: Indexes for common query patterns
   @@index([status])
   @@index([creatorId])
   @@index([battleMode])
+  @@index([winnerId])              // Winner queries
+  @@index([finishedAt])            // Leaderboard date range queries
+  @@index([status, createdAt])     // Battle list queries
+  @@index([winnerId, status])      // User win statistics
+  @@index([status, finishedAt])    // Leaderboard queries
 }
 
 model BattleParticipant {
@@ -327,9 +342,13 @@ model Order {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
+  // PERFORMANCE: Indexes for common query patterns
   @@index([userId])
   @@index([status])
   @@index([assignedShopId])
+  @@index([userId, status])        // User order filtering
+  @@index([createdAt])             // Date-based queries
+  @@index([assignedShopId, status]) // Shop order filtering
 }
 
 enum ShippingPaymentMethod {
