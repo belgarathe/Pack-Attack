@@ -55,8 +55,8 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    // Rate limit: 30 profile updates per minute
-    const rateLimitResult = await rateLimit(request, 'sensitiveData');
+    // Rate limit: 100 profile updates per minute
+    const rateLimitResult = await rateLimit(request, 'general');
     if (!rateLimitResult.success && rateLimitResult.response) {
       return rateLimitResult.response;
     }

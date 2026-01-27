@@ -5,8 +5,8 @@ import { rateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
-    // Rate limit sensitive data access
-    const rateLimitResult = await rateLimit(request, 'sensitiveData');
+    // Rate limit user data access
+    const rateLimitResult = await rateLimit(request, 'general');
     if (!rateLimitResult.success && rateLimitResult.response) {
       return rateLimitResult.response;
     }
