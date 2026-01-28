@@ -78,15 +78,16 @@ module.exports = {
   ],
 
   // Deploy configuration (optional)
+  // SECURITY: Using packattack user instead of root for deployments
   deploy: {
     production: {
-      user: 'root',
-      host: '82.165.66.236',
+      user: 'packattack',
+      host: process.env.DEPLOY_HOST || '82.165.66.236',
       ref: 'origin/main',
-      repo: 'git@github.com:user/pack-attack.git',
+      repo: process.env.DEPLOY_REPO || 'git@github.com:user/pack-attack.git',
       path: '/var/www/packattack',
       'pre-deploy-local': '',
-      'post-deploy': 'npm install && npx prisma db push && npm run build && pm2 reload ecosystem.config.cjs --env production',
+      'post-deploy': 'npm ci --production && npx prisma generate && npx prisma migrate deploy && npm run build && pm2 reload ecosystem.config.cjs --env production',
       'pre-setup': '',
     },
   },
