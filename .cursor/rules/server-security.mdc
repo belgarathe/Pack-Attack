@@ -1,0 +1,54 @@
+# Server Security Requirements
+
+## IMPORTANT: Security-First Deployment
+
+When setting up a new server or redeploying Pack-Attack, **ALWAYS** run security hardening BEFORE deploying the application.
+
+## Security Scripts Location
+
+| Script | Path | Purpose |
+|--------|------|---------|
+| **Hardening Script** | `scripts/server-security-hardening.sh` | Run on fresh servers |
+| **Nginx Config** | `scripts/nginx-secure-config.conf` | Secure web server setup |
+| **Status Check** | `scripts/security-status-check.sh` | Verify security posture |
+| **Setup Guide** | `SERVER_SECURITY_SETUP_GUIDE.md` | Full documentation |
+
+## New Server Deployment Order
+
+1. **FIRST** - Run security hardening:
+   ```bash
+   sudo bash scripts/server-security-hardening.sh
+   ```
+
+2. **SECOND** - Create application user and directories
+
+3. **THIRD** - Install Nginx with secure config:
+   ```bash
+   cp scripts/nginx-secure-config.conf /etc/nginx/sites-available/packattack
+   ```
+
+4. **FOURTH** - Set up SSL certificate
+
+5. **LAST** - Deploy application with `packattack-deploy`
+
+## Security Checklist Before Go-Live
+
+- [ ] Security hardening script completed
+- [ ] Firewall active (only 22, 80, 443)
+- [ ] Fail2Ban running
+- [ ] SSH key-only authentication
+- [ ] SSL certificate installed
+- [ ] npm audit shows 0 vulnerabilities
+- [ ] Lynis score 77+
+
+## Quick Security Check
+
+After any deployment, verify security:
+```bash
+sudo bash scripts/security-status-check.sh
+```
+
+## Reference
+
+- Full audit report: `DEEP_SECURITY_AUDIT_REPORT.md`
+- Setup guide: `SERVER_SECURITY_SETUP_GUIDE.md`

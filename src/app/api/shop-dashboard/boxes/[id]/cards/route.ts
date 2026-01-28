@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { CardGame } from '@prisma/client';
 
 // POST - Add cards to a box
 export async function POST(
@@ -55,7 +56,7 @@ export async function POST(
         type: (card.type as string) || 'Unknown',
         pullRate: parseFloat(String(card.pullRate)) || 0,
         coinValue: parseFloat(String(card.coinValue)) || 1,
-        sourceGame: (card.sourceGame as string) || 'MAGIC_THE_GATHERING',
+        sourceGame: ((card.sourceGame as string) || 'MAGIC_THE_GATHERING') as CardGame,
         boxId,
       }));
 

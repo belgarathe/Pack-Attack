@@ -170,9 +170,9 @@ const nextConfig: NextConfig = {
       'date-fns',
       'zod',
     ],
-    // External packages for server components (Prisma needs native binaries)
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma', 'bcrypt'],
   },
+  // External packages for server components (Prisma needs native binaries)
+  serverExternalPackages: ['@prisma/client', 'prisma', 'bcrypt'],
   // Remove console logs in production for better performance
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
