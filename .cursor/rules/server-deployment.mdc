@@ -1,0 +1,183 @@
+---
+description: Pack Attack server connection, deployment, and admin credentials
+alwaysApply: true
+---
+
+# Pack Attack Server Infrastructure
+
+## Server Connection
+
+| Property | Value |
+|----------|-------|
+| **Server IP** | 82.165.66.236 |
+| **Domain** | pack-attack.de |
+| **OS** | Ubuntu 24.04.3 LTS |
+| **SSH Key** | `~/.ssh/id_ed25519_packattack` |
+
+### SSH Connection Command
+
+```bash
+ssh -i ~/.ssh/id_ed25519_packattack root@82.165.66.236
+```
+
+For Windows PowerShell:
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\id_ed25519_packattack" root@82.165.66.236
+```
+
+---
+
+## Deployment Commands
+
+### Quick Deploy (update from GitHub main branch)
+
+```bash
+# On the server:
+sudo packattack-deploy
+
+# Or manually:
+cd /var/www/packattack/app
+sudo -u packattack git fetch origin main
+sudo -u packattack git reset --hard origin/main
+sudo -u packattack npm ci --production=false
+sudo -u packattack npx prisma generate
+sudo -u packattack npx prisma db push --accept-data-loss
+sudo -u packattack npm run build
+sudo -u packattack pm2 reload packattack --update-env
+```
+
+### Remote Deploy (from local machine)
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\id_ed25519_packattack" root@82.165.66.236 "sudo packattack-deploy"
+```
+
+---
+
+## Application Management
+
+### PM2 Commands
+
+```bash
+# View status
+sudo -u packattack pm2 list
+
+# View logs
+sudo -u packattack pm2 logs packattack
+
+# Restart
+sudo -u packattack pm2 restart packattack
+
+# Monitor
+sudo -u packattack pm2 monit
+```
+
+### Health Check
+
+```bash
+curl https://pack-attack.de/api/health
+```
+
+---
+
+## Database
+
+| Property | Value |
+|----------|-------|
+| **Provider** | Neon PostgreSQL |
+| **Host** | ep-patient-resonance-ahmtm2jq-pooler.c-3.us-east-1.aws.neon.tech |
+| **Database** | neondb |
+| **SSL** | Required |
+
+### Prisma Commands
+
+```bash
+cd /var/www/packattack/app
+sudo -u packattack npx prisma studio  # Open Prisma Studio
+sudo -u packattack npx prisma db push  # Push schema changes
+```
+
+---
+
+## Admin Account
+
+| Field | Value |
+|-------|-------|
+| **Email** | tim@meggert.email |
+| **Name** | Tim |
+| **Role** | ADMIN |
+| **Login URL** | https://pack-attack.de/login |
+| **Admin Panel** | https://pack-attack.de/admin |
+
+### Create/Update Admin
+
+```bash
+cd /var/www/packattack/app
+ADMIN_EMAIL='tim@meggert.email' ADMIN_PASSWORD='NewPassword' ADMIN_NAME='Tim' sudo -u packattack -E npx tsx scripts/create-admin.ts
+```
+
+---
+
+## Security Features
+
+- **Firewall**: UFW (ports 22, 80, 443 only)
+- **Intrusion Prevention**: Fail2Ban (SSH, nginx)
+- **SSL**: Let's Encrypt (auto-renews)
+- **Rate Limiting**: Nginx + Application level
+- **Auto Updates**: Unattended security upgrades enabled
+
+### Check Security Status
+
+```bash
+# Firewall
+sudo ufw status
+
+# Fail2Ban
+sudo fail2ban-client status
+
+# SSL Certificate
+sudo certbot certificates
+```
+
+---
+
+## Automatic Backups
+
+| Property | Value |
+|----------|-------|
+| **Interval** | Every 25 hours |
+| **Backup File** | `/var/backups/packattack/database/packattack_backup.sql.gz` |
+| **Last Backup** | `/var/backups/packattack/database/last_backup.txt` |
+| **Log** | `/var/log/packattack/backup.log` |
+
+### Manual Backup
+
+```bash
+/usr/local/bin/packattack-backup-db
+```
+
+### Check Backup Status
+
+```bash
+# View last backup time
+cat /var/backups/packattack/database/last_backup.txt
+
+# View backup size
+ls -lh /var/backups/packattack/database/
+
+# Check timer status
+systemctl list-timers packattack-backup.timer
+```
+
+---
+
+## File Locations
+
+| Path | Description |
+|------|-------------|
+| `/var/www/packattack/app` | Application root |
+| `/var/www/packattack/app/.env` | Environment config |
+| `/var/log/packattack/` | Application logs |
+| `/var/log/pm2/` | PM2 logs |
+| `/etc/nginx/sites-available/packattack` | Nginx config |
+| `/var/backups/packattack/database/` | Database backups |
