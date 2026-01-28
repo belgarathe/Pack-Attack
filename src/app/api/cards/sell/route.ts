@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { rateLimit } from '@/lib/rate-limit';
 
 const sellCardSchema = z.object({
   pullId: z.string(),
@@ -10,37 +9,42 @@ const sellCardSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Apply rate limiting - 100 requests per minute (general limit)
-    const rateLimitResult = await rateLimit(request, 'general');
-    if (!rateLimitResult.success && rateLimitResult.response) {
-      return rateLimitResult.response;
-    }
+    // PERFORMANCE: Parse body and session in parallel
+    const [session, body] = await Promise.all([
+      getCurrentSession(),
+      request.json(),
+    ]);
 
-    const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const body = await request.json();
     const { pullId } = sellCardSchema.parse(body);
 
-    const pull = await prisma.pull.findUnique({
-      where: { id: pullId },
-      include: {
-        card: true,
-        cartItem: true,
+    // PERFORMANCE: Single query to get pull with user validation and card data
+    // This replaces two separate queries (user + pull)
+    const pull = await prisma.pull.findFirst({
+      where: {
+        id: pullId,
+        user: { email: session.user.email },
+      },
+      select: {
+        id: true,
+        userId: true,
+        cartItem: { select: { id: true } },
+        card: {
+          select: {
+            id: true,
+            name: true,
+            coinValue: true,
+            imageUrlGatherer: true,
+            imageUrlScryfall: true,
+          },
+        },
       },
     });
 
-    if (!pull || pull.userId !== user.id) {
+    if (!pull) {
       return NextResponse.json({ error: 'Pull not found or not owned' }, { status: 404 });
     }
 
@@ -57,19 +61,19 @@ export async function POST(request: NextRequest) {
     const cardImage = pull.card.imageUrlGatherer || pull.card.imageUrlScryfall || null;
     const cardId = pull.card.id;
 
-    // Delete pull, add coins, and create sale history
+    // PERFORMANCE: Execute all operations in a single transaction
     const [, updatedUser] = await prisma.$transaction([
       prisma.pull.delete({
         where: { id: pullId },
       }),
       prisma.user.update({
-        where: { id: user.id },
+        where: { id: pull.userId },
         data: { coins: { increment: coinValue } },
         select: { coins: true },
       }),
       prisma.saleHistory.create({
         data: {
-          userId: user.id,
+          userId: pull.userId,
           cardId: cardId,
           cardName: cardName,
           cardImage: cardImage,

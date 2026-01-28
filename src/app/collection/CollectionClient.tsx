@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Image from 'next/image';
 import { Coins, ShoppingCart, X, AlertTriangle, Filter, ChevronDown, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useRouter } from 'next/navigation';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
 
 type Pull = {
@@ -74,9 +73,10 @@ function getGameBadgeColor(game: string): string {
 }
 
 // PERFORMANCE: Wrap component in memo to prevent unnecessary re-renders
-export const CollectionClient = memo(function CollectionClient({ pulls, availableGames }: CollectionClientProps) {
+export const CollectionClient = memo(function CollectionClient({ pulls: initialPulls, availableGames }: CollectionClientProps) {
   const { addToast } = useToast();
-  const router = useRouter();
+  // PERFORMANCE: Use local state for optimistic updates (no router.refresh needed)
+  const [pulls, setPulls] = useState<Pull[]>(initialPulls);
   const [loading, setLoading] = useState<string | null>(null);
   const [zoomedCard, setZoomedCard] = useState<Pull | null>(null);
   const [showSellAllModal, setShowSellAllModal] = useState(false);
@@ -126,8 +126,14 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
     return () => document.removeEventListener('keydown', handleEscape);
   }, [zoomedCard]);
 
-  const handleSell = async (pullId: string, coinValue: number) => {
+  // PERFORMANCE: Optimistic update - remove card immediately, no page refresh
+  const handleSell = useCallback(async (pullId: string, coinValue: number) => {
     setLoading(pullId);
+    
+    // Optimistic update - remove card from UI immediately
+    setPulls(prev => prev.filter(p => p.id !== pullId));
+    setZoomedCard(null);
+    
     try {
       const res = await fetch('/api/cards/sell', {
         method: 'POST',
@@ -138,6 +144,8 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
       const data = await res.json();
 
       if (!res.ok) {
+        // Revert optimistic update on error
+        setPulls(initialPulls);
         addToast({
           title: 'Error',
           description: data.error || 'Failed to sell card',
@@ -156,8 +164,10 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
       } else {
         emitCoinBalanceUpdate();
       }
-      router.refresh();
+      // No router.refresh() - UI already updated optimistically
     } catch (error) {
+      // Revert optimistic update on error
+      setPulls(initialPulls);
       console.error('Error selling card:', error);
       addToast({
         title: 'Error',
@@ -167,10 +177,18 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
     } finally {
       setLoading(null);
     }
-  };
+  }, [addToast, initialPulls]);
 
-  const handleAddToCart = async (pullId: string) => {
+  // PERFORMANCE: Optimistic update for cart
+  const handleAddToCart = useCallback(async (pullId: string) => {
     setLoading(pullId);
+    
+    // Optimistic update - mark as in cart
+    setPulls(prev => prev.map(p => 
+      p.id === pullId ? { ...p, cartItem: { id: 'temp' } } : p
+    ));
+    setZoomedCard(null);
+    
     try {
       const res = await fetch('/api/cart/add', {
         method: 'POST',
@@ -181,6 +199,10 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
       const data = await res.json();
 
       if (!res.ok) {
+        // Revert optimistic update on error
+        setPulls(prev => prev.map(p => 
+          p.id === pullId ? { ...p, cartItem: null } : p
+        ));
         addToast({
           title: 'Error',
           description: data.error || 'Failed to add to cart',
@@ -193,9 +215,12 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
         title: 'Success',
         description: 'Card added to cart!',
       });
-
-      router.refresh();
+      // No router.refresh() - UI already updated optimistically
     } catch (error) {
+      // Revert optimistic update on error
+      setPulls(prev => prev.map(p => 
+        p.id === pullId ? { ...p, cartItem: null } : p
+      ));
       console.error('Error adding to cart:', error);
       addToast({
         title: 'Error',
@@ -205,19 +230,30 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
     } finally {
       setLoading(null);
     }
-  };
+  }, [addToast]);
 
-  const handleSellAll = async () => {
+  // PERFORMANCE: Optimistic update for sell all
+  const handleSellAll = useCallback(async () => {
     setSellAllLoading(true);
+    
+    // Get IDs of cards we're selling (not in cart)
+    const sellableIds = pulls.filter(p => p.card && !p.cartItem).map(p => p.id);
+    
+    // Optimistic update - remove all sellable cards
+    setPulls(prev => prev.filter(p => p.cartItem !== null));
+    
     try {
       const res = await fetch('/api/cards/sell-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pullIds: sellableIds }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // Revert optimistic update on error
+        setPulls(initialPulls);
         addToast({
           title: 'Error',
           description: data.error || 'Failed to sell cards',
@@ -238,8 +274,10 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
       }
       
       setShowSellAllModal(false);
-      router.refresh();
+      // No router.refresh() - UI already updated optimistically
     } catch (error) {
+      // Revert optimistic update on error
+      setPulls(initialPulls);
       console.error('Error selling all cards:', error);
       addToast({
         title: 'Error',
@@ -249,7 +287,7 @@ export const CollectionClient = memo(function CollectionClient({ pulls, availabl
     } finally {
       setSellAllLoading(false);
     }
-  };
+  }, [addToast, initialPulls, pulls]);
 
   const getRarityColor = (rarity: string) => {
     switch (rarity?.toLowerCase()) {

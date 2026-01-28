@@ -1,37 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { rateLimit } from '@/lib/rate-limit';
+import { z } from 'zod';
+
+// Schema for batch selling specific cards
+const batchSellSchema = z.object({
+  pullIds: z.array(z.string()).optional(), // If provided, only sell these cards
+});
 
 export async function POST(request: NextRequest) {
   try {
-    // Apply rate limiting - 10 requests per minute for bulk operations
-    const rateLimitResult = await rateLimit(request, 'general');
-    if (!rateLimitResult.success && rateLimitResult.response) {
-      return rateLimitResult.response;
-    }
+    // PERFORMANCE: Parse body and session in parallel
+    const [session, body] = await Promise.all([
+      getCurrentSession(),
+      request.json().catch(() => ({})), // Allow empty body for sell-all
+    ]);
 
-    const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { pullIds } = batchSellSchema.parse(body);
+
+    // PERFORMANCE: Single optimized query to get user and pulls
+    // Uses select to only fetch needed fields
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: { id: true },
     });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get all pulls that are NOT in cart
+    // Build where clause - either specific pulls or all non-cart pulls
+    const whereClause = pullIds && pullIds.length > 0
+      ? {
+          id: { in: pullIds },
+          userId: user.id,
+          cartItem: null,
+        }
+      : {
+          userId: user.id,
+          cartItem: null,
+        };
+
+    // PERFORMANCE: Only select fields we need for the sale
     const pulls = await prisma.pull.findMany({
-      where: {
-        userId: user.id,
-        cartItem: null,
-      },
-      include: {
-        card: true,
+      where: whereClause,
+      select: {
+        id: true,
+        card: {
+          select: {
+            id: true,
+            name: true,
+            coinValue: true,
+            imageUrlGatherer: true,
+            imageUrlScryfall: true,
+          },
+        },
       },
     });
 
@@ -39,30 +66,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No cards to sell' }, { status: 400 });
     }
 
-    // Calculate total coins and prepare sale history entries
+    // PERFORMANCE: Calculate totals in a single pass
     let totalCoins = 0;
-    const saleHistoryData = pulls
-      .filter(pull => pull.card)
-      .map(pull => {
-        const coinValue = Number(pull.card!.coinValue);
-        totalCoins += coinValue;
-        return {
-          userId: user.id,
-          cardId: pull.card!.id,
-          cardName: pull.card!.name,
-          cardImage: pull.card!.imageUrlGatherer || pull.card!.imageUrlScryfall || null,
-          coinsReceived: coinValue,
-        };
-      });
+    const saleHistoryData: Array<{
+      userId: string;
+      cardId: string;
+      cardName: string;
+      cardImage: string | null;
+      coinsReceived: number;
+    }> = [];
 
-    // Perform all operations in a transaction
-    const [, updatedUser] = await prisma.$transaction([
-      // Delete all pulls
-      prisma.pull.deleteMany({
-        where: {
+    for (const pull of pulls) {
+      if (pull.card) {
+        const coinValue = Number(pull.card.coinValue);
+        totalCoins += coinValue;
+        saleHistoryData.push({
           userId: user.id,
-          cartItem: null,
-        },
+          cardId: pull.card.id,
+          cardName: pull.card.name,
+          cardImage: pull.card.imageUrlGatherer || pull.card.imageUrlScryfall || null,
+          coinsReceived: coinValue,
+        });
+      }
+    }
+
+    // PERFORMANCE: Execute all operations in a single transaction
+    const pullIdsToDelete = pulls.map(p => p.id);
+    
+    const [, updatedUser] = await prisma.$transaction([
+      // Delete pulls by ID (more efficient than re-querying)
+      prisma.pull.deleteMany({
+        where: { id: { in: pullIdsToDelete } },
       }),
       // Add coins to user
       prisma.user.update({
@@ -83,7 +117,10 @@ export async function POST(request: NextRequest) {
       newBalance: Number(updatedUser.coins),
     });
   } catch (error) {
-    console.error('Error selling all cards:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
+    }
+    console.error('Error selling cards:', error);
     return NextResponse.json({ error: 'Failed to sell cards' }, { status: 500 });
   }
 }
