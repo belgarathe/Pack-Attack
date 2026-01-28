@@ -12,10 +12,10 @@ import {
   CheckCircle,
   Truck,
   Store,
-  Plus,
   BarChart3,
   Sparkles,
-  ClipboardList
+  ClipboardList,
+  Database
 } from 'lucide-react';
 
 export default async function ShopDashboard() {
@@ -343,45 +343,22 @@ export default async function ShopDashboard() {
             </div>
           </Link>
 
-          {/* Create Box */}
+          {/* My Stock - Future API Integration */}
           <Link 
-            href="/shop-dashboard/boxes/create" 
-            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-teal-500/50 transition-all group relative overflow-hidden"
+            href="/shop-dashboard/stock" 
+            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-teal-500/50 transition-all group relative overflow-hidden col-span-2"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
               <div className="inline-flex items-center justify-center w-14 h-14 mb-5 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 ring-1 ring-teal-500/30">
-                <Plus className="w-7 h-7 text-teal-400" />
+                <Database className="w-7 h-7 text-teal-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">Create New Box</h3>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">My Stock</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Create custom card boxes with your inventory. Set pull rates and coin values.
+                View and manage your card inventory. Connect your stock via API integration.
               </p>
               <div className="mt-4 flex items-center text-teal-400 text-sm font-medium">
-                <span>Create Box</span>
-                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-
-          {/* My Boxes */}
-          <Link 
-            href="/shop-dashboard/boxes" 
-            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-cyan-500/50 transition-all group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative">
-              <div className="inline-flex items-center justify-center w-14 h-14 mb-5 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
-                <Package className="w-7 h-7 text-cyan-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">My Boxes</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                View and manage your created boxes. Edit cards, prices, and availability.
-              </p>
-              <div className="mt-4 flex items-center text-cyan-400 text-sm font-medium">
-                <span>View Boxes</span>
+                <span>Manage Stock</span>
                 <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
