@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { ShopClient } from './ShopClient';
 
-// Force dynamic rendering so products are fetched fresh on each request
-export const dynamic = 'force-dynamic';
+// PERFORMANCE: Use ISR instead of force-dynamic
+// Products update every 2 minutes which is frequent enough for stock changes
+export const revalidate = 120; // Revalidate every 2 minutes
 
 async function getProducts() {
   const products = await prisma.shopProduct.findMany({

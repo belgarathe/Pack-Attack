@@ -140,67 +140,115 @@ export async function POST(
       },
     });
 
-    // Process pulls for each participant
-    // Initially create pulls WITHOUT assigning to user's collection (userId will be set later based on winner)
+    // PERFORMANCE: Prepare all pulls data upfront without DB calls in loops
+    // Pre-calculate all card draws and batch all database operations
+    
     const allPullIds: string[] = [];
     const participantTotals = new Map<string, number>();
-    const participantPullIds = new Map<string, string[]>(); // Track which pulls belong to which participant for display
+    const participantPullIds = new Map<string, string[]>();
+
+    // Pre-fetch all cards for random selection (single query)
+    const boxCards = battle.box.cards;
+    if (boxCards.length === 0) {
+      return NextResponse.json({ error: 'No cards in box' }, { status: 400 });
+    }
+
+    const totalPullRate = boxCards.reduce((sum, card) => sum + Number(card.pullRate), 0);
+
+    // Helper to draw a random card (no DB call)
+    const drawRandomCard = () => {
+      const random = Math.random() * totalPullRate;
+      let accumulator = 0;
+      for (const card of boxCards) {
+        accumulator += Number(card.pullRate);
+        if (random <= accumulator) return card;
+      }
+      return boxCards[boxCards.length - 1];
+    };
+
+    // Prepare all pull data in memory
+    interface PullData {
+      participantId: string;
+      participantUserId: string;
+      cardId: string;
+      cardValue: number;
+      cardName: string;
+      cardImage: string | null;
+      cardRarity: string | null;
+      round: number;
+    }
+    const allPullsData: PullData[] = [];
 
     for (const participant of battle.participants) {
       let participantTotal = 0;
-      const thisPullIds: string[] = [];
 
-      // Pull cards for each round
       for (let round = 1; round <= battle.rounds; round++) {
-        const cardsPerRound = battle.box.cardsPerPack;
-        
-        for (let cardIndex = 0; cardIndex < cardsPerRound; cardIndex++) {
-          const card = await getRandomCard(battle.box.id);
-          
-          // Create pull record - initially assigned to the participant who pulled it
-          // This will be reassigned after winner is determined
+        for (let cardIndex = 0; cardIndex < battle.box.cardsPerPack; cardIndex++) {
+          const card = drawRandomCard();
           const cardCoinValue = Number(card.coinValue);
-          const pull = await prisma.pull.create({
-            data: {
-              userId: participant.userId,
-              boxId: battle.box.id,
-              cardId: card.id,
-              cardValue: card.coinValue,
-            },
+          
+          allPullsData.push({
+            participantId: participant.id,
+            participantUserId: participant.userId,
+            cardId: card.id,
+            cardValue: cardCoinValue,
+            cardName: card.name,
+            cardImage: card.imageUrlGatherer,
+            cardRarity: card.rarity,
+            round,
           });
-
-          // Create battle pull record (for display/animation purposes)
-          await prisma.battlePull.create({
-            data: {
-              battleId,
-              participantId: participant.id,
-              pullId: pull.id,
-              roundNumber: round,
-              coinValue: cardCoinValue,
-              itemName: card.name,
-              itemImage: card.imageUrlGatherer,
-              itemRarity: card.rarity,
-            },
-          });
-
-          allPullIds.push(pull.id);
-          thisPullIds.push(pull.id);
+          
           participantTotal += cardCoinValue;
         }
       }
 
-      // Update participant total value
-      await prisma.battleParticipant.update({
-        where: { id: participant.id },
-        data: {
-          totalValue: participantTotal,
-          roundsPulled: battle.rounds,
-        },
-      });
-
       participantTotals.set(participant.id, participantTotal);
-      participantPullIds.set(participant.userId, thisPullIds);
     }
+
+    // PERFORMANCE: Execute all database operations in a single transaction
+    await prisma.$transaction(async (tx) => {
+      // Batch create all pulls
+      for (const pullData of allPullsData) {
+        const pull = await tx.pull.create({
+          data: {
+            userId: pullData.participantUserId,
+            boxId: battle.box.id,
+            cardId: pullData.cardId,
+            cardValue: pullData.cardValue,
+          },
+        });
+
+        await tx.battlePull.create({
+          data: {
+            battleId: battleId!,
+            participantId: pullData.participantId,
+            pullId: pull.id,
+            roundNumber: pullData.round,
+            coinValue: pullData.cardValue,
+            itemName: pullData.cardName,
+            itemImage: pullData.cardImage,
+            itemRarity: pullData.cardRarity,
+          },
+        });
+
+        allPullIds.push(pull.id);
+        
+        const existing = participantPullIds.get(pullData.participantUserId) || [];
+        existing.push(pull.id);
+        participantPullIds.set(pullData.participantUserId, existing);
+      }
+
+      // Batch update all participant totals
+      for (const participant of battle.participants) {
+        await tx.battleParticipant.update({
+          where: { id: participant.id },
+          data: {
+            totalValue: participantTotals.get(participant.id) || 0,
+            roundsPulled: battle.rounds,
+          },
+        });
+      }
+    });
 
     // Determine winner based on battle mode
     let winnerId: string | null = null;

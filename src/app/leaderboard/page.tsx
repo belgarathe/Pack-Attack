@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import { LeaderboardClient } from './LeaderboardClient';
 
-export const dynamic = 'force-dynamic';
+// PERFORMANCE: Use ISR instead of force-dynamic
+export const revalidate = 120; // Revalidate every 2 minutes
 
 export default function LeaderboardPage() {
   return (

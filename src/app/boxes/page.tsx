@@ -2,9 +2,9 @@ import { prisma } from '@/lib/prisma';
 import { Package } from 'lucide-react';
 import BoxesClient from './BoxesClient';
 
-// Force dynamic rendering for real-time updates
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// PERFORMANCE: Use ISR with 60-second revalidation instead of force-dynamic
+// This caches the page and regenerates it every 60 seconds, reducing DB load
+export const revalidate = 60; // Revalidate every 60 seconds
 
 async function getBoxes() {
   try {

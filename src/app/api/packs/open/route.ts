@@ -93,12 +93,18 @@ export async function POST(request: NextRequest) {
       data: { coins: { decrement: totalCost } },
     });
 
-    // Create pulls
-    const pulls = [];
+    // Prepare all pulls data upfront (no DB calls in loop)
     const cardsForDrawing = box.cards.map(card => ({
       id: card.id,
       pullRate: Number(card.pullRate),
     }));
+
+    const pullsData: Array<{
+      userId: string;
+      boxId: string;
+      cardId: string;
+      cardValue: typeof box.cards[0]['coinValue'];
+    }> = [];
 
     for (let i = 0; i < quantity; i++) {
       for (let j = 0; j < box.cardsPerPack; j++) {
@@ -106,27 +112,45 @@ export async function POST(request: NextRequest) {
         const card = box.cards.find(c => c.id === cardId);
         
         if (card) {
-          const pull = await prisma.pull.create({
-            data: {
-              userId: user.id,
-              boxId: box.id,
-              cardId: card.id,
-              cardValue: card.coinValue,
-            },
-            include: {
-              card: true,
-            },
+          pullsData.push({
+            userId: user.id,
+            boxId: box.id,
+            cardId: card.id,
+            cardValue: card.coinValue,
           });
-          pulls.push(pull);
         }
       }
     }
 
-    // Update box popularity
-    await prisma.box.update({
-      where: { id: box.id },
-      data: { popularity: { increment: quantity } },
+    // PERFORMANCE: Batch create all pulls in single transaction
+    const createdPulls = await prisma.$transaction(async (tx) => {
+      // Create all pulls at once
+      await tx.pull.createMany({
+        data: pullsData,
+      });
+
+      // Fetch them back with card data
+      const pulls = await tx.pull.findMany({
+        where: {
+          userId: user.id,
+          boxId: box.id,
+          createdAt: { gte: new Date(Date.now() - 5000) }, // Last 5 seconds
+        },
+        include: { card: true },
+        orderBy: { createdAt: 'desc' },
+        take: pullsData.length,
+      });
+
+      // Update box popularity
+      await tx.box.update({
+        where: { id: box.id },
+        data: { popularity: { increment: quantity } },
+      });
+
+      return pulls;
     });
+
+    const pulls = createdPulls;
 
     // Convert Decimal values to numbers for client
     const pullsForClient = pulls.map(pull => ({

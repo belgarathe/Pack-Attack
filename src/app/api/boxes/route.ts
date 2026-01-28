@@ -74,17 +74,8 @@ export async function GET(request: Request) {
       'boxes:findMany'
     );
 
-    // Update box images to highest coin value card (async, don't block response)
-    Promise.all(
-      boxes.map(async (box) => {
-        if (box.cards.length > 0 && box.cards[0].imageUrlGatherer && box.imageUrl !== box.cards[0].imageUrlGatherer) {
-          await prisma.box.update({
-            where: { id: box.id },
-            data: { imageUrl: box.cards[0].imageUrlGatherer },
-          });
-        }
-      })
-    ).catch(console.error);
+    // NOTE: Box image updates are now handled in admin routes only
+    // Removed fire-and-forget updates that could cause memory leaks
 
     // Convert Decimal values to numbers for JSON response
     const boxesWithNumbers = boxes.map(box => ({
