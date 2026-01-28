@@ -134,10 +134,10 @@ export async function POST(request: NextRequest) {
         where: {
           userId: user.id,
           boxId: box.id,
-          createdAt: { gte: new Date(Date.now() - 5000) }, // Last 5 seconds
+          timestamp: { gte: new Date(Date.now() - 5000) }, // Last 5 seconds
         },
         include: { card: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { timestamp: 'desc' },
         take: pullsData.length,
       });
 
