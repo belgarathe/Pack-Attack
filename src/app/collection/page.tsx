@@ -19,6 +19,8 @@ async function getCollection() {
     return { pullsData: [], availableGames: [] };
   }
 
+  // PERFORMANCE: Limit initial load to 500 cards to prevent slow page loads
+  // Client-side filtering and virtual scrolling handles display
   const pulls = await prisma.pull.findMany({
     where: {
       userId: user.id,
@@ -42,6 +44,7 @@ async function getCollection() {
       },
     },
     orderBy: { timestamp: 'desc' },
+    take: 500, // PERFORMANCE: Limit to 500 cards per page load
   });
 
   let cart;

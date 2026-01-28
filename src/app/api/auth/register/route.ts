@@ -5,11 +5,20 @@ import { z } from 'zod';
 import { sendVerificationEmail, generateVerificationToken } from '@/lib/email';
 import { rateLimit } from '@/lib/rate-limit';
 
+// SECURITY: Strong password validation
 const registerSchema = z.object({
-  name: z.string().optional(),
-  email: z.string().email(),
-  password: z.string().min(6),
+  name: z.string().min(1).max(100).optional(),
+  email: z.string().email().max(255),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
 });
+
+// SECURITY: Bcrypt cost factor (12 is recommended for 2024+)
+const BCRYPT_ROUNDS = 12;
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting - 5 attempts per 15 minutes
@@ -29,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User already exists' }, { status: 400 });
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
     
     // Generate verification token
     const { token, expires } = generateVerificationToken();

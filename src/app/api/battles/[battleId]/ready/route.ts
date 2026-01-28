@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
 // POST - Mark yourself as ready
 export async function POST(
@@ -8,6 +9,12 @@ export async function POST(
   { params }: { params: Promise<{ battleId: string }> }
 ) {
   try {
+    // SECURITY: Rate limit ready operations
+    const rateLimitResult = await rateLimit(request, 'general');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

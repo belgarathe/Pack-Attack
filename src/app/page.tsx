@@ -1,6 +1,28 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { Package, Trophy, Users, Swords, Coins, Clock, ChevronRight, Sparkles } from 'lucide-react';
+import type { Metadata } from 'next';
+
+// SEO Metadata
+export const metadata: Metadata = {
+  title: 'Pack Attack - Open Trading Card Packs & Battle for Real Cards',
+  description: 'Experience the thrill of opening trading card packs online. Open Pokemon, Magic, Yu-Gi-Oh, and more. Battle other players and win real cards shipped to your door!',
+  keywords: ['trading cards', 'pack opening', 'pokemon cards', 'magic the gathering', 'yugioh', 'card battles', 'tcg'],
+  openGraph: {
+    title: 'Pack Attack - Open Trading Card Packs & Battle for Real Cards',
+    description: 'Experience the thrill of opening trading card packs online. Battle other players and win real cards!',
+    type: 'website',
+    siteName: 'Pack Attack',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pack Attack - Open Trading Card Packs & Battle',
+    description: 'Experience the thrill of opening trading card packs online.',
+  },
+};
+
+// Enable ISR for homepage
+export const revalidate = 60; // Revalidate every 60 seconds
 
 // Fetch stats from database
 async function getStats() {

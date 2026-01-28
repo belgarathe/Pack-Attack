@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
@@ -328,7 +328,8 @@ export function ShopClient({ initialProducts, categories, games }: ShopClientPro
   );
 }
 
-function ProductCard({ 
+// PERFORMANCE: Memoized ProductCard to prevent unnecessary re-renders
+const ProductCard = memo(function ProductCard({ 
   product, 
   onAddToCart, 
   isAdding,
@@ -450,4 +451,7 @@ function ProductCard({
       </div>
     </div>
   );
-}
+});
+
+// Display name for React DevTools
+ProductCard.displayName = 'ProductCard';

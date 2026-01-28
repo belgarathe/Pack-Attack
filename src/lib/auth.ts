@@ -1,9 +1,13 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma, withRetry } from './prisma';
 
 export const authOptions: NextAuthOptions = {
+  // Ensure secret is set
+  secret: process.env.NEXTAUTH_SECRET,
+  
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -34,6 +38,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // SECURITY: Enforce email verification before login
+        if (!user.emailVerified) {
+          // Log for monitoring but don't reveal to user why login failed
+          console.warn(`[Auth] Login attempt with unverified email: ${user.email}`);
+          return null;
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -43,15 +54,49 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  
+  // SECURITY: Session configuration with expiration
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days absolute maximum
+    updateAge: 24 * 60 * 60,   // Refresh token every 24 hours
   },
+  
+  // SECURITY: JWT configuration with expiration
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  
+  // SECURITY: Cookie settings for production
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
+  
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
+        // SECURITY: Session fixation protection - regenerate token on login
         token.id = user.id;
         token.role = user.role;
+        token.iat = Math.floor(Date.now() / 1000);
+        token.jti = crypto.randomUUID(); // Unique token ID for each session
       }
+      
+      // Refresh timestamp on token update
+      if (trigger === 'update') {
+        token.iat = Math.floor(Date.now() / 1000);
+      }
+      
       return token;
     },
     async session({ session, token }) {

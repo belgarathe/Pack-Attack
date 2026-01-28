@@ -1,6 +1,18 @@
 import { prisma } from '@/lib/prisma';
 import { Package } from 'lucide-react';
 import BoxesClient from './BoxesClient';
+import type { Metadata } from 'next';
+
+// SEO Metadata
+export const metadata: Metadata = {
+  title: 'Trading Card Boxes - Pack Attack',
+  description: 'Browse our selection of trading card boxes. Open Pokemon, Magic: The Gathering, Yu-Gi-Oh, One Piece, Lorcana and more. Real cards, real thrills!',
+  openGraph: {
+    title: 'Trading Card Boxes - Pack Attack',
+    description: 'Browse our selection of trading card boxes from all major TCGs.',
+    type: 'website',
+  },
+};
 
 // PERFORMANCE: Use ISR with 60-second revalidation instead of force-dynamic
 // This caches the page and regenerates it every 60 seconds, reducing DB load

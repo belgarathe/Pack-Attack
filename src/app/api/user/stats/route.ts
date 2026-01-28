@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // SECURITY: Rate limit expensive stats queries
+    const rateLimitResult = await rateLimit(request as never, 'general');
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response;
+    }
+
     const session = await getCurrentSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +24,9 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get comprehensive stats
+    // PERFORMANCE: Optimized queries - fetch card data once and compute breakdowns in memory
+    // This eliminates the N+1 query pattern from the previous implementation
+    
     const [
       totalPulls,
       totalBattles,
@@ -27,8 +36,7 @@ export async function GET() {
       totalSales,
       totalCoinsEarned,
       recentPulls,
-      rarityBreakdown,
-      gameBreakdown,
+      pullsWithCards, // Single query to get all pull data with cards
       monthlyPulls,
     ] = await Promise.all([
       // Total pulls
@@ -81,50 +89,21 @@ export async function GET() {
         take: 10,
       }),
       
-      // Rarity breakdown
-      prisma.pull.groupBy({
-        by: ['cardId'],
-        where: { userId: user.id, cardId: { not: null } },
-        _count: true,
-      }).then(async (pulls) => {
-        const cardIds = pulls.map(p => p.cardId).filter(Boolean) as string[];
-        const cards = await prisma.card.findMany({
-          where: { id: { in: cardIds } },
-          select: { id: true, rarity: true },
-        });
-        
-        const rarityMap: Record<string, number> = {};
-        pulls.forEach(pull => {
-          const card = cards.find(c => c.id === pull.cardId);
-          if (card) {
-            const rarity = card.rarity || 'common';
-            rarityMap[rarity] = (rarityMap[rarity] || 0) + pull._count;
-          }
-        });
-        return rarityMap;
-      }),
-      
-      // Game breakdown
-      prisma.pull.groupBy({
-        by: ['cardId'],
-        where: { userId: user.id, cardId: { not: null } },
-        _count: true,
-      }).then(async (pulls) => {
-        const cardIds = pulls.map(p => p.cardId).filter(Boolean) as string[];
-        const cards = await prisma.card.findMany({
-          where: { id: { in: cardIds } },
-          select: { id: true, sourceGame: true },
-        });
-        
-        const gameMap: Record<string, number> = {};
-        pulls.forEach(pull => {
-          const card = cards.find(c => c.id === pull.cardId);
-          if (card) {
-            const game = card.sourceGame || 'MAGIC_THE_GATHERING';
-            gameMap[game] = (gameMap[game] || 0) + pull._count;
-          }
-        });
-        return gameMap;
+      // PERFORMANCE: Single query for rarity and game breakdown
+      // Fetch all pulls with card data in ONE query instead of N+1
+      prisma.pull.findMany({
+        where: { 
+          userId: user.id, 
+          cardId: { not: null } 
+        },
+        select: {
+          card: {
+            select: {
+              rarity: true,
+              sourceGame: true,
+            },
+          },
+        },
       }),
       
       // Monthly pulls (last 6 months)
@@ -139,6 +118,22 @@ export async function GET() {
         ORDER BY month DESC
       ` as Promise<Array<{ month: Date; count: bigint }>>,
     ]);
+
+    // PERFORMANCE: Compute breakdowns in memory from single query result
+    const rarityBreakdown: Record<string, number> = {};
+    const gameBreakdown: Record<string, number> = {};
+    
+    for (const pull of pullsWithCards) {
+      if (pull.card) {
+        // Rarity breakdown
+        const rarity = pull.card.rarity || 'common';
+        rarityBreakdown[rarity] = (rarityBreakdown[rarity] || 0) + 1;
+        
+        // Game breakdown
+        const game = pull.card.sourceGame || 'MAGIC_THE_GATHERING';
+        gameBreakdown[game] = (gameBreakdown[game] || 0) + 1;
+      }
+    }
 
     // Calculate win rate
     const winRate = totalBattles > 0 

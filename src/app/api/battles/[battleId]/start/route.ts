@@ -284,34 +284,43 @@ export async function POST(
       }
     }
 
-    // Now distribute cards based on battle mode
-    if (battle.shareMode) {
-      // SHARE MODE: Randomly distribute ALL cards among ALL participants
-      const shuffledPullIds = shuffleArray(allPullIds);
-      const participantUserIds = battle.participants.map(p => p.userId);
-      
-      // Distribute cards round-robin style after shuffle
-      for (let i = 0; i < shuffledPullIds.length; i++) {
-        const recipientUserId = participantUserIds[i % participantUserIds.length];
-        await prisma.pull.update({
-          where: { id: shuffledPullIds[i] },
-          data: { userId: recipientUserId },
-        });
-      }
-      
-      console.log(`Share mode: ${shuffledPullIds.length} cards randomly distributed among ${participantUserIds.length} participants`);
-    } else {
-      // WINNER TAKES ALL: Transfer ALL pulls to the winner
-      // Delete pulls from losers' collections and assign to winner
-      if (winnerId) {
-        await prisma.pull.updateMany({
-          where: { id: { in: allPullIds } },
-          data: { userId: winnerId },
-        });
+    // PERFORMANCE: Distribute cards inside a transaction to ensure consistency
+    await prisma.$transaction(async (tx) => {
+      if (battle.shareMode) {
+        // SHARE MODE: Randomly distribute ALL cards among ALL participants
+        const shuffledPullIds = shuffleArray(allPullIds);
+        const participantUserIds = battle.participants.map(p => p.userId);
         
-        console.log(`${battle.battleMode} mode: ${allPullIds.length} cards transferred to winner ${winnerId}`);
+        // PERFORMANCE: Group updates by user to minimize queries
+        const userPullMap = new Map<string, string[]>();
+        for (let i = 0; i < shuffledPullIds.length; i++) {
+          const recipientUserId = participantUserIds[i % participantUserIds.length];
+          const existing = userPullMap.get(recipientUserId) || [];
+          existing.push(shuffledPullIds[i]);
+          userPullMap.set(recipientUserId, existing);
+        }
+        
+        // Batch update pulls for each user
+        for (const [userId, pullIds] of userPullMap) {
+          await tx.pull.updateMany({
+            where: { id: { in: pullIds } },
+            data: { userId },
+          });
+        }
+        
+        console.log(`Share mode: ${shuffledPullIds.length} cards randomly distributed among ${participantUserIds.length} participants`);
+      } else {
+        // WINNER TAKES ALL: Transfer ALL pulls to the winner
+        if (winnerId) {
+          await tx.pull.updateMany({
+            where: { id: { in: allPullIds } },
+            data: { userId: winnerId },
+          });
+          
+          console.log(`${battle.battleMode} mode: ${allPullIds.length} cards transferred to winner ${winnerId}`);
+        }
       }
-    }
+    });
 
     // Calculate total prize (entry fees)
     const totalPrize = battle.entryFee * battle.participants.length;

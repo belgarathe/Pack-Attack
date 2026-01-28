@@ -19,9 +19,11 @@ async function getSalesHistory() {
     return [];
   }
 
+  // PERFORMANCE: Limit to 200 recent sales to prevent slow page loads
   const sales = await prisma.saleHistory.findMany({
     where: { userId: user.id },
     orderBy: { timestamp: 'desc' },
+    take: 200,
   });
 
   return sales;
