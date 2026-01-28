@@ -774,7 +774,6 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                             alt={card.name}
                             fill
                             className="object-cover"
-                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -821,7 +820,6 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                           alt={card.name}
                           fill
                           className="object-cover"
-                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-700" />
@@ -974,7 +972,7 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                   <div className="col-span-1">
                     <div className="relative w-10 h-14 rounded overflow-hidden">
                       {card.imageUrlGatherer ? (
-                        <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
+                        <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover"  />
                       ) : (
                         <div className="w-full h-full bg-gray-700" />
                       )}
@@ -1053,7 +1051,6 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                         alt={card.name}
                         fill
                         className="object-cover"
-                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-800 flex items-center justify-center">

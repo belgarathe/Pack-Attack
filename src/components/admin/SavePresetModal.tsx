@@ -169,7 +169,6 @@ export function SavePresetModal({ isOpen, onClose, boxData, boxCards, onSaved }:
                       alt={card.name}
                       fill
                       className="object-cover"
-                      unoptimized
                     />
                   )}
                 </div>

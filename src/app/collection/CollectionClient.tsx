@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Image from 'next/image';
 import { Coins, ShoppingCart, X, AlertTriangle, Filter, ChevronDown, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -73,7 +73,8 @@ function getGameBadgeColor(game: string): string {
   return colors[normalized] || 'bg-gray-400';
 }
 
-export function CollectionClient({ pulls, availableGames }: CollectionClientProps) {
+// PERFORMANCE: Wrap component in memo to prevent unnecessary re-renders
+export const CollectionClient = memo(function CollectionClient({ pulls, availableGames }: CollectionClientProps) {
   const { addToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
@@ -89,9 +90,12 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
     return pulls.filter(pull => pull.box.games?.includes(selectedGame));
   }, [pulls, selectedGame]);
 
-  // Calculate totals for sell all (only for filtered cards)
-  const sellableCards = filteredPulls.filter(p => p.card && !p.cartItem);
-  const totalValue = sellableCards.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0);
+  // PERFORMANCE: Memoize derived calculations
+  const { sellableCards, totalValue } = useMemo(() => {
+    const sellable = filteredPulls.filter(p => p.card && !p.cartItem);
+    const value = sellable.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0);
+    return { sellableCards: sellable, totalValue: value };
+  }, [filteredPulls]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -399,7 +403,6 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
                     fill
                     className="object-cover transition-transform group-hover:scale-105"
                     sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
-                    unoptimized
                   />
                   {pull.cartItem && (
                     <div className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2 py-1 text-xs font-bold text-white">
@@ -448,7 +451,6 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
                 fill
                 className="object-contain rounded-xl"
                 sizes="(max-width: 768px) 90vw, 420px"
-                unoptimized
               />
             </div>
 
@@ -552,4 +554,4 @@ export function CollectionClient({ pulls, availableGames }: CollectionClientProp
       )}
     </>
   );
-}
+});

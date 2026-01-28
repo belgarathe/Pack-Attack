@@ -39,55 +39,44 @@ export async function POST(
       return NextResponse.json({ error: 'No cards provided' }, { status: 400 });
     }
 
-    const createdCards = [];
-    const failedCards = [];
-
-    for (const card of cards) {
-      try {
+    // PERFORMANCE: Batch create all cards at once using createMany
+    try {
+      const cardDataToCreate = cards.map((card: Record<string, unknown>, index: number) => ({
         // Generate a unique scryfallId if not provided
-        const scryfallId = card.scryfallId || `shop-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        const created = await prisma.card.create({
-          data: {
-            scryfallId,
-            name: card.name,
-            setName: card.setName || '',
-            setCode: card.setCode || '',
-            collectorNumber: card.collectorNumber || '',
-            rarity: card.rarity || 'common',
-            imageUrlGatherer: card.imageUrlGatherer || card.imageUrl || '',
-            imageUrlScryfall: card.imageUrlScryfall || card.imageUrl || '',
-            colors: card.colors || [],
-            type: card.type || 'Unknown',
-            pullRate: parseFloat(card.pullRate) || 0,
-            coinValue: parseFloat(card.coinValue) || 1,
-            sourceGame: card.sourceGame || 'MAGIC_THE_GATHERING',
-            boxId,
-          },
-        });
-        createdCards.push(created);
-      } catch (err: any) {
-        console.error(`Failed to create card ${card.name}:`, err);
-        failedCards.push({
-          name: card.name,
-          error: err.message,
-        });
-      }
-    }
+        scryfallId: (card.scryfallId as string) || `shop-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+        name: (card.name as string) || '',
+        setName: (card.setName as string) || '',
+        setCode: (card.setCode as string) || '',
+        collectorNumber: (card.collectorNumber as string) || '',
+        rarity: (card.rarity as string) || 'common',
+        imageUrlGatherer: (card.imageUrlGatherer as string) || (card.imageUrl as string) || '',
+        imageUrlScryfall: (card.imageUrlScryfall as string) || (card.imageUrl as string) || '',
+        colors: (card.colors as string[]) || [],
+        type: (card.type as string) || 'Unknown',
+        pullRate: parseFloat(String(card.pullRate)) || 0,
+        coinValue: parseFloat(String(card.coinValue)) || 1,
+        sourceGame: (card.sourceGame as string) || 'MAGIC_THE_GATHERING',
+        boxId,
+      }));
 
-    if (failedCards.length > 0 && createdCards.length === 0) {
+      const result = await prisma.card.createMany({
+        data: cardDataToCreate,
+        skipDuplicates: true,
+      });
+
       return NextResponse.json({
-        error: 'Failed to add any cards',
-        failedCards,
+        success: true,
+        message: `Added ${result.count} cards to box`,
+        addedCount: result.count,
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Failed to batch create cards:', err);
+      return NextResponse.json({
+        error: 'Failed to add cards',
+        details: errorMessage,
       }, { status: 400 });
     }
-
-    return NextResponse.json({
-      success: true,
-      message: `Added ${createdCards.length} cards to box`,
-      addedCount: createdCards.length,
-      failedCards: failedCards.length > 0 ? failedCards : undefined,
-    });
   } catch (error) {
     console.error('Error adding cards to box:', error);
     return NextResponse.json({ error: 'Failed to add cards' }, { status: 500 });

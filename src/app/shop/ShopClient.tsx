@@ -355,7 +355,6 @@ const ProductCard = memo(function ProductCard({
               alt={product.name}
               fill
               className="object-cover group-hover:scale-105 transition-transform"
-              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

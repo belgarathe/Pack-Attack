@@ -550,7 +550,6 @@ export default function CreateBoxPage() {
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
                               />
                             )}
                             {isSelected ? (
@@ -598,7 +597,6 @@ export default function CreateBoxPage() {
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
                               />
                             )}
                           </div>
@@ -654,7 +652,6 @@ export default function CreateBoxPage() {
                               alt={highestCard.name}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           </div>
                           <div>

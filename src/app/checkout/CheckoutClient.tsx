@@ -393,7 +393,6 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
                         alt={item.pull.card.name}
                         fill
                         className="object-cover"
-                        unoptimized
                       />
                     </div>
                   );

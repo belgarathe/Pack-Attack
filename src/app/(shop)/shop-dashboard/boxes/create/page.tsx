@@ -525,7 +525,6 @@ export default function CreateShopBoxPage() {
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
                               />
                             )}
                             {isSelected ? (
@@ -583,7 +582,6 @@ export default function CreateShopBoxPage() {
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
                               />
                             )}
                           </div>
@@ -639,7 +637,6 @@ export default function CreateShopBoxPage() {
                               alt={highestCard.name}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           </div>
                           <div>

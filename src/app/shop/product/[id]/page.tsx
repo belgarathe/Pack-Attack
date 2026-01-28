@@ -198,7 +198,6 @@ export default function ProductPage() {
                   alt={product.name}
                   fill
                   className="object-contain"
-                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -255,7 +254,6 @@ export default function ProductPage() {
                       alt={`${product.name} ${index + 1}`}
                       fill
                       className="object-cover"
-                      unoptimized
                     />
                   </button>
                 ))}

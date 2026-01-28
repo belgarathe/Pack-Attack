@@ -485,7 +485,6 @@ export function OrdersClient({ orders: initialOrders, shops }: { orders: Order[]
                                   alt={item.cardName}
                                   fill
                                   className="object-cover"
-                                  unoptimized
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">

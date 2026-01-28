@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Menu, X, Store } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 import { usePathname } from 'next/navigation';
 
@@ -101,7 +101,8 @@ export function Navigation() {
       return;
     }
 
-    const interval = setInterval(fetchCoins, 10000);
+    // PERFORMANCE: Reduced polling frequency from 10s to 60s to reduce server load
+    const interval = setInterval(fetchCoins, 60000);
     return () => clearInterval(interval);
   }, [session, fetchCoins]);
 
@@ -122,12 +123,15 @@ export function Navigation() {
     { href: '/admin', icon: Settings, label: 'Admin', requiresAuth: true, adminOnly: true },
   ];
 
-  const filteredLinks = navLinks.filter(link => {
-    if (link.adminOnly && session?.user?.role !== 'ADMIN') return false;
-    if (link.shopOrAdmin && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SHOP_OWNER') return false;
-    if (link.requiresAuth && !session) return false;
-    return true;
-  });
+  // PERFORMANCE: Memoize filtered links
+  const filteredLinks = useMemo(() => {
+    return navLinks.filter(link => {
+      if (link.adminOnly && session?.user?.role !== 'ADMIN') return false;
+      if (link.shopOrAdmin && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SHOP_OWNER') return false;
+      if (link.requiresAuth && !session) return false;
+      return true;
+    });
+  }, [session]);
 
   return (
     <nav className="border-b border-gray-800 bg-gray-900/95 backdrop-blur-sm sticky top-0 z-50">

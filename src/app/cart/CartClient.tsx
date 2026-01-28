@@ -78,7 +78,6 @@ export function CartClient({ items, total }: { items: CartItem[]; total: number 
                     alt={item.pull.card.name}
                     fill
                     className="object-cover"
-                    unoptimized
                   />
                 </div>
                 <div className="flex-1">

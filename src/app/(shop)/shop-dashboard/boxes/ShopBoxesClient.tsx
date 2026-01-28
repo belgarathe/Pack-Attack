@@ -129,7 +129,6 @@ export function ShopBoxesClient({ boxes: initialBoxes, isAdmin }: { boxes: Box[]
                 alt={box.name}
                 fill
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">

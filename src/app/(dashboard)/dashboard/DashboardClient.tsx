@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -173,7 +173,8 @@ const tabs = [
   { id: 'settings', label: 'Settings', icon: Settings, gradient: 'from-slate-500 to-zinc-500' },
 ];
 
-export function DashboardClient({ initialUser, initialPulls, initialStats }: DashboardProps) {
+// PERFORMANCE: Wrap component in memo to prevent unnecessary re-renders
+export const DashboardClient = memo(function DashboardClient({ initialUser, initialPulls, initialStats }: DashboardProps) {
   const { addToast } = useToast();
   const router = useRouter();
   
@@ -425,7 +426,8 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     }
   };
 
-  const handleSellCard = async (pullId: string, coinValue: number) => {
+  // PERFORMANCE: Memoize handlers to prevent child re-renders
+  const handleSellCard = useCallback(async (pullId: string, coinValue: number) => {
     setLoading(true);
     try {
       const res = await fetch('/api/cards/sell', {
@@ -466,9 +468,9 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  const handleAddToCart = async (pullId: string) => {
+  const handleAddToCart = useCallback(async (pullId: string) => {
     setLoading(true);
     try {
       const res = await fetch('/api/cart/add', {
@@ -506,7 +508,7 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   const getRarityConfig = (rarity: string) => {
     switch (rarity?.toLowerCase()) {
@@ -587,22 +589,24 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     }
   };
 
-  // Filter pulls
-  const filteredPulls = pulls.filter(pull => {
-    if (!pull.card) return false;
-    
-    const matchesSearch = searchQuery === '' || 
-      pull.card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pull.box.name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRarity = rarityFilter === '' || 
-      pull.card.rarity.toLowerCase() === rarityFilter.toLowerCase();
-    
-    const matchesGame = gameFilter === '' || 
-      pull.card.sourceGame === gameFilter;
-    
-    return matchesSearch && matchesRarity && matchesGame;
-  });
+  // PERFORMANCE: Memoize filtered pulls to prevent recalculation on every render
+  const filteredPulls = useMemo(() => {
+    return pulls.filter(pull => {
+      if (!pull.card) return false;
+      
+      const matchesSearch = searchQuery === '' || 
+        pull.card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pull.box.name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRarity = rarityFilter === '' || 
+        pull.card.rarity.toLowerCase() === rarityFilter.toLowerCase();
+      
+      const matchesGame = gameFilter === '' || 
+        pull.card.sourceGame === gameFilter;
+      
+      return matchesSearch && matchesRarity && matchesGame;
+    });
+  }, [pulls, searchQuery, rarityFilter, gameFilter]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -660,10 +664,12 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
     }
   };
 
-  // Filter achievements by category
-  const filteredAchievements = achievements?.achievements.filter(a => 
-    achievementCategoryFilter === 'ALL' || a.category === achievementCategoryFilter
-  ) || [];
+  // PERFORMANCE: Memoize filtered achievements
+  const filteredAchievements = useMemo(() => {
+    return achievements?.achievements.filter(a => 
+      achievementCategoryFilter === 'ALL' || a.category === achievementCategoryFilter
+    ) || [];
+  }, [achievements, achievementCategoryFilter]);
 
   const currentTabConfig = tabs.find(t => t.id === activeTab);
 
@@ -865,7 +871,6 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                             fill
                             className="object-cover"
                             sizes="(max-width: 1024px) 22vw, 96px"
-                            unoptimized
                           />
                           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
                           <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1315,7 +1320,6 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                           fill
                           className="object-cover transition-transform group-hover:scale-110"
                           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
-                          unoptimized
                         />
                         {/* Overlays */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
@@ -1474,7 +1478,6 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                                   fill
                                   className="object-cover"
                                   sizes="96px"
-                                  unoptimized
                                 />
                               ) : (
                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -1962,7 +1965,6 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 90vw, 420px"
-                unoptimized
               />
             </div>
 
@@ -2020,4 +2022,4 @@ export function DashboardClient({ initialUser, initialPulls, initialStats }: Das
       )}
     </>
   );
-}
+});

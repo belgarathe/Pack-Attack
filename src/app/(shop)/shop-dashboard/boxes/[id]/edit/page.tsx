@@ -198,7 +198,6 @@ export default function EditShopBoxPage({ params }: { params: Promise<{ id: stri
                     alt={box.name}
                     fill
                     className="object-cover"
-                    unoptimized
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -219,7 +218,6 @@ export default function EditShopBoxPage({ params }: { params: Promise<{ id: stri
                         alt={card.name}
                         fill
                         className="object-cover"
-                        unoptimized
                       />
                     </div>
                   ))}

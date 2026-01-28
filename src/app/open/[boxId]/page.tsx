@@ -276,7 +276,7 @@ export default function OpenBoxPage() {
             <div className="flex flex-col md:flex-row items-start gap-6">
               <div className="relative w-full md:w-48 aspect-[3/4] rounded-xl overflow-hidden flex-shrink-0">
                 {box.imageUrl ? (
-                  <Image src={box.imageUrl} alt={box.name} fill className="object-cover" unoptimized />
+                  <Image src={box.imageUrl} alt={box.name} fill className="object-cover"  />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                     <Package className="w-12 h-12 text-gray-600" />
@@ -409,7 +409,7 @@ export default function OpenBoxPage() {
                         style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
                       >
                         {card.imageUrlGatherer ? (
-                          <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
+                          <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover"  />
                         ) : (
                           <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                             <span className="text-gray-600 text-xs">No Image</span>
@@ -464,7 +464,7 @@ export default function OpenBoxPage() {
                       }`}
                     >
                       {pull.card?.imageUrlGatherer && (
-                        <Image src={pull.card.imageUrlGatherer} alt={pull.card.name} fill className="object-cover" unoptimized />
+                        <Image src={pull.card.imageUrlGatherer} alt={pull.card.name} fill className="object-cover"  />
                       )}
                       {isFeatured && (
                         <div className="absolute top-2 right-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-gray-900">
@@ -518,7 +518,6 @@ export default function OpenBoxPage() {
                   alt={currentReveal.card.name} 
                   fill 
                   className="object-contain" 
-                  unoptimized 
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>

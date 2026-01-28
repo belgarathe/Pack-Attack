@@ -49,6 +49,11 @@ model User {
   achievements        UserAchievement[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+
+  // PERFORMANCE: Indexes for common query patterns
+  @@index([role])             // Admin queries filtering by role
+  @@index([isBot])            // Bot filtering
+  @@index([emailVerified])    // Email verification queries
 }
 
 model Box {
@@ -72,7 +77,12 @@ model Box {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
+  // PERFORMANCE: Indexes for common query patterns
   @@index([createdByShopId])
+  @@index([isActive])
+  @@index([featured])
+  @@index([popularity])
+  @@index([isActive, featured, popularity, createdAt])  // Box listing queries
 }
 
 model Card {
@@ -103,6 +113,7 @@ model Card {
   @@index([rarity])           // Rarity-based filtering
   @@index([sourceGame])       // Game filtering
   @@index([boxId, rarity])    // Combined box + rarity queries
+  @@index([coinValue])        // Card value sorting
 }
 
 model Pull {
@@ -160,6 +171,9 @@ model Transaction {
 
   @@index([userId])
   @@index([paypalOrderId])
+  @@index([status])                   // Payment status filtering
+  @@index([timestamp])                // Date-range queries
+  @@index([userId, status, timestamp]) // User transaction history
 }
 
 enum Role {
@@ -232,6 +246,7 @@ model BattleParticipant {
   @@unique([battleId, userId])
   @@index([battleId])
   @@index([userId])
+  @@index([battleId, isReady])  // Battle start queries
 }
 
 model BattlePull {
@@ -447,6 +462,7 @@ model ShopProduct {
   @@index([game])
   @@index([isActive])
   @@index([featured])
+  @@index([shopId, isActive, featured])  // Shop product filtering
 }
 
 enum ProductCategory {
@@ -531,6 +547,7 @@ model ShopOrder {
   @@index([shopId])
   @@index([status])
   @@index([orderNumber])
+  @@index([shopId, status, createdAt])  // Shop dashboard queries
 }
 
 model ShopOrderItem {
@@ -604,6 +621,7 @@ model ShopBoxOrder {
   @@index([boxId])
   @@index([status])
   @@index([orderNumber])
+  @@index([shopId, status, createdAt])  // Shop dashboard queries
 }
 
 enum ShopBoxOrderStatus {

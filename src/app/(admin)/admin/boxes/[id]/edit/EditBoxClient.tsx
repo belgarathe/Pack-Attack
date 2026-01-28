@@ -108,7 +108,6 @@ export function EditBoxClient({ box: initialBox }: { box: Box }) {
                       alt={box.name}
                       fill
                       className="object-cover"
-                      unoptimized
                     />
                   </div>
                   <div>
@@ -186,7 +185,6 @@ export function EditBoxClient({ box: initialBox }: { box: Box }) {
                               alt={card.name}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-800 flex items-center justify-center">

@@ -28,7 +28,6 @@ export function SalesHistoryClient({ sales }: { sales: Sale[] }) {
                 alt={sale.cardName}
                 fill
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-gray-800 flex items-center justify-center">

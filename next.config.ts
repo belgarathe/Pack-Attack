@@ -101,6 +101,10 @@ const allowedImageDomains = [
 ];
 
 const nextConfig: NextConfig = {
+  // Output standalone for optimized Docker deployments
+  output: 'standalone',
+  // Enable React strict mode for better development
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       ...allowedImageDomains.map((domain) => ({
@@ -155,7 +159,25 @@ const nextConfig: NextConfig = {
   // Experimental performance features
   experimental: {
     // Optimize package imports for smaller bundle
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-toast',
+      'framer-motion',
+      'date-fns',
+      'zod',
+    ],
+    // External packages for server components (Prisma needs native binaries)
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma', 'bcrypt'],
+  },
+  // Remove console logs in production for better performance
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
   },
   // Powered-by header removal (security through obscurity)
   poweredByHeader: false,

@@ -230,7 +230,6 @@ export function ShopOrdersClient({ orders: initialOrders, isAdmin }: { orders: O
                             alt={order.cardName}
                             fill
                             className="object-cover"
-                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -343,7 +342,6 @@ export function ShopOrdersClient({ orders: initialOrders, isAdmin }: { orders: O
                               alt={order.cardName}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-800 flex items-center justify-center">

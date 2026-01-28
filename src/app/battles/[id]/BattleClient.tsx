@@ -252,7 +252,6 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
                                       alt={pull.pull.card.name}
                                       fill
                                       className="object-cover transition-transform group-hover:scale-105"
-                                      unoptimized
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                                     <div className="absolute bottom-0 left-0 right-0 p-2">
@@ -311,7 +310,6 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
                               alt={round.card.name}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           </div>
                         )}
@@ -376,7 +374,6 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
                                 alt={card.name}
                                 fill
                                 className="object-cover"
-                                unoptimized
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gray-700">
@@ -402,7 +399,6 @@ export default function BattleClient({ battle, currentUserId, isAdmin }: BattleC
                       alt={battle.box.name}
                       fill
                       className="object-cover opacity-80"
-                      unoptimized
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent" />
                   </div>

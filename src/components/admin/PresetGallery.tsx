@@ -229,7 +229,6 @@ export function PresetGallery({ onSelectPreset, isOpen, onClose }: PresetGallery
                                   alt={`Preview ${idx + 1}`}
                                   fill
                                   className="object-cover"
-                                  unoptimized
                                 />
                               </div>
                             ))}

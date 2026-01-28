@@ -125,93 +125,88 @@ export async function POST(
       }, 400);
     }
 
-    // Create cards with better error handling
-    const createdCards = [];
-    const failedCards = [];
+    // PERFORMANCE: Batch create all cards at once using createMany
+    try {
+      const cardDataToCreate = cardsToAdd.map(cardData => ({
+        scryfallId: cardData.scryfallId,
+        name: cardData.name,
+        setName: cardData.setName,
+        setCode: cardData.setCode,
+        collectorNumber: cardData.collectorNumber,
+        rarity: cardData.rarity,
+        imageUrlGatherer: cardData.imageUrlGatherer,
+        imageUrlScryfall: cardData.imageUrlScryfall || cardData.imageUrlGatherer,
+        pullRate: cardData.pullRate,
+        coinValue: cardData.coinValue,
+        sourceGame: cardData.sourceGame,
+        boxId: box.id,
+        colors: [],
+        type: '',
+      }));
 
-    for (const cardData of cardsToAdd) {
-      try {
-        const created = await prisma.card.create({
+      await prisma.card.createMany({
+        data: cardDataToCreate,
+        skipDuplicates: true,
+      });
+
+      // Fetch the created cards for the response
+      const createdCards = await prisma.card.findMany({
+        where: {
+          boxId: box.id,
+          scryfallId: { in: cardsToAdd.map(c => c.scryfallId) },
+        },
+      });
+
+      if (createdCards.length === 0) {
+        return jsonResponse({ 
+          error: 'Failed to create cards - no cards were created',
+          success: false
+        }, 400);
+      }
+
+      // Update box image to highest coin value card (if we added any cards)
+      if (cardsToAdd.length > 0) {
+        const highestValueCard = cardsToAdd.reduce((highest, card) =>
+          card.coinValue > highest.coinValue ? card : highest
+        );
+
+        await prisma.box.update({
+          where: { id },
           data: {
-            scryfallId: cardData.scryfallId,
-            name: cardData.name,
-            setName: cardData.setName,
-            setCode: cardData.setCode,
-            collectorNumber: cardData.collectorNumber,
-            rarity: cardData.rarity,
-            imageUrlGatherer: cardData.imageUrlGatherer,
-            imageUrlScryfall: cardData.imageUrlScryfall || cardData.imageUrlGatherer,
-            pullRate: cardData.pullRate,
-            coinValue: cardData.coinValue,
-            sourceGame: cardData.sourceGame,
-            boxId: box.id,
-            colors: [],
-            type: '',
+            imageUrl: highestValueCard.imageUrlGatherer,
           },
         });
-        createdCards.push(created);
-      } catch (error) {
-        console.error(`Failed to create card ${cardData.name}:`, error);
-        failedCards.push({
-          name: cardData.name,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
       }
-    }
 
-    if (failedCards.length > 0) {
-      // If some cards failed, delete the successfully created ones to maintain consistency
-      if (createdCards.length > 0) {
-        await prisma.card.deleteMany({
-          where: {
-            id: { in: createdCards.map(c => c.id) }
-          }
-        });
+      // Prepare successful response
+      const response: Record<string, unknown> = { 
+        success: true, 
+        cards: createdCards,
+        addedCount: createdCards.length
+      };
+
+      if (warning) {
+        response.warning = warning;
       }
-      
+
+      if (duplicatesWithExisting.length > 0) {
+        response.skippedExisting = duplicatesWithExisting;
+        response.message = `Added ${createdCards.length} cards. ${duplicatesWithExisting.length} cards were already in the box and skipped.`;
+      }
+
+      if (duplicatesInRequest.length > 0) {
+        response.skippedDuplicates = duplicatesInRequest;
+      }
+
+      return jsonResponse(response, 200);
+    } catch (error) {
+      console.error('Failed to batch create cards:', error);
       return jsonResponse({ 
-        error: 'Failed to create some cards', 
-        failedCards,
-        details: `Successfully created ${createdCards.length} cards, but ${failedCards.length} failed. All changes have been rolled back.`,
+        error: 'Failed to create cards', 
+        details: error instanceof Error ? error.message : 'Unknown error',
         success: false
       }, 400);
     }
-
-    // Update box image to highest coin value card (if we added any cards)
-    if (cardsToAdd.length > 0) {
-      const highestValueCard = cardsToAdd.reduce((highest, card) =>
-        card.coinValue > highest.coinValue ? card : highest
-      );
-
-      await prisma.box.update({
-        where: { id },
-        data: {
-          imageUrl: highestValueCard.imageUrlGatherer,
-        },
-      });
-    }
-
-    // Prepare successful response
-    const response: Record<string, unknown> = { 
-      success: true, 
-      cards: createdCards,
-      addedCount: createdCards.length
-    };
-
-    if (warning) {
-      response.warning = warning;
-    }
-
-    if (duplicatesWithExisting.length > 0) {
-      response.skippedExisting = duplicatesWithExisting;
-      response.message = `Added ${createdCards.length} cards. ${duplicatesWithExisting.length} cards were already in the box and skipped.`;
-    }
-
-    if (duplicatesInRequest.length > 0) {
-      response.skippedDuplicates = duplicatesInRequest;
-    }
-
-    return jsonResponse(response, 200);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return jsonResponse({ error: 'Invalid input', details: error.issues, success: false }, 400);
