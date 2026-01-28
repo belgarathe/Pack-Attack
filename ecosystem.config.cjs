@@ -7,15 +7,16 @@ module.exports = {
       cwd: '/var/www/packattack/app',
       
       // ================================================
-      // RESTART SETTINGS - Critical for stability
+      // RESTART SETTINGS - Prevent cascade failure loops
       // ================================================
       autorestart: true,
-      max_restarts: 20,           // Allow more restarts before giving up
-      min_uptime: '60s',          // Consider healthy only after 60s uptime
-      restart_delay: 3000,        // Wait 3s between restarts
+      max_restarts: 10,           // Limit restarts within time window
+      min_uptime: '30s',          // Consider stable after 30s (faster recovery)
+      restart_delay: 5000,        // Wait 5s between restarts (prevents rapid cycling)
       
-      // Exponential backoff for repeated crashes
-      exp_backoff_restart_delay: 200,
+      // Exponential backoff: starts at 100ms, doubles each time, caps at 15s
+      // This prevents rapid restart loops that can cause 400+ restarts
+      exp_backoff_restart_delay: 100,
       
       // ================================================
       // SCHEDULED RESTART - Prevent memory buildup
@@ -38,6 +39,10 @@ module.exports = {
         ENABLE_DB_HEARTBEAT: 'true',
         // Limit Node.js memory to prevent runaway processes
         NODE_OPTIONS: '--max-old-space-size=512',
+        // Increase HTTP timeout for slow external services
+        HTTP_TIMEOUT: '30000',
+        // Disable unnecessary telemetry that may cause network errors
+        NEXT_TELEMETRY_DISABLED: '1',
       },
       
       // ================================================
@@ -63,9 +68,12 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       
-      // Watch for hanging processes
-      // If process doesn't respond to PM2 for 30s, restart
-      // Note: This requires PM2 Plus for full functionality
+      // ================================================
+      // STABILITY PROTECTION
+      // ================================================
+      // Stop restarting if app fails to stay up for min_uptime
+      // within the max_restarts limit (prevents infinite loops)
+      stop_exit_codes: [0],       // Only stop auto-restart on clean exit
     },
   ],
 
