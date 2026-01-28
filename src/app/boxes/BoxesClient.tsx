@@ -211,6 +211,7 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                                 fill
                                 className="object-cover"
                                 sizes="80px"
+                                unoptimized
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gray-700">

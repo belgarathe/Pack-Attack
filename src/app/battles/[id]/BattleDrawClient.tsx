@@ -748,6 +748,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                           alt={currentReveal.card.name}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </div>
                       <div className="text-center">
@@ -943,6 +944,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                                     alt={pull.card.name}
                                     fill
                                     className="object-cover transition-transform group-hover:scale-110"
+                                    unoptimized
                                   />
                                 )}
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-1">
@@ -990,6 +992,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                               alt={round.winningCard.name}
                               fill
                               className="object-cover"
+                              unoptimized
                             />
                           </div>
                         )}
@@ -1037,6 +1040,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                                 alt={card.name}
                                 fill
                                 className="object-cover"
+                                unoptimized
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gray-700">

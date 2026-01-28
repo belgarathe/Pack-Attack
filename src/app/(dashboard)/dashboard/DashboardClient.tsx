@@ -871,6 +871,7 @@ export const DashboardClient = memo(function DashboardClient({ initialUser, init
                             fill
                             className="object-cover"
                             sizes="(max-width: 1024px) 22vw, 96px"
+                            unoptimized
                           />
                           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
                           <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1320,6 +1321,7 @@ export const DashboardClient = memo(function DashboardClient({ initialUser, init
                           fill
                           className="object-cover transition-transform group-hover:scale-110"
                           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
+                          unoptimized
                         />
                         {/* Overlays */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
@@ -1965,6 +1967,7 @@ export const DashboardClient = memo(function DashboardClient({ initialUser, init
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 90vw, 420px"
+                unoptimized
               />
             </div>
 

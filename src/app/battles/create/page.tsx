@@ -215,6 +215,7 @@ export default function CreateBattlePage() {
                                         alt={card.name}
                                         fill
                                         className="object-cover"
+                                        unoptimized
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gray-700">
