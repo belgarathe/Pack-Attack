@@ -31,7 +31,7 @@ type RarityTier = {
 
 const COMMON_TIER: RarityTier = {
   border: 'border-gray-400',
-  shadow: 'shadow-gray-400/50',
+  shadow: '',
   bg: 'bg-gray-400/20',
   text: 'text-gray-300',
   animation: '',
@@ -42,10 +42,10 @@ const COMMON_TIER: RarityTier = {
 
 const UNCOMMON_TIER: RarityTier = {
   border: 'border-green-400',
-  shadow: 'shadow-green-400/60',
+  shadow: '',
   bg: 'bg-green-500/20',
   text: 'text-green-400',
-  animation: 'animate-glow-uncommon',
+  animation: '',
   lindwurm: 'lindwurm-uncommon',
   glowColor: 'rgba(74, 222, 128, 0.8)',
   particleColor: '#4ade80',
@@ -53,10 +53,10 @@ const UNCOMMON_TIER: RarityTier = {
 
 const RARE_TIER: RarityTier = {
   border: 'border-blue-400',
-  shadow: 'shadow-blue-400/70',
+  shadow: '',
   bg: 'bg-blue-500/20',
   text: 'text-blue-400',
-  animation: 'animate-glow-rare',
+  animation: '',
   lindwurm: 'lindwurm-rare',
   glowColor: 'rgba(96, 165, 250, 0.9)',
   particleColor: '#60a5fa',
@@ -64,10 +64,10 @@ const RARE_TIER: RarityTier = {
 
 const EPIC_TIER: RarityTier = {
   border: 'border-purple-400',
-  shadow: 'shadow-purple-500/70',
+  shadow: '',
   bg: 'bg-purple-500/20',
   text: 'text-purple-400',
-  animation: 'animate-glow-epic',
+  animation: '',
   lindwurm: 'lindwurm-epic',
   glowColor: 'rgba(192, 132, 252, 1)',
   particleColor: '#c084fc',
@@ -75,10 +75,10 @@ const EPIC_TIER: RarityTier = {
 
 const LEGENDARY_TIER: RarityTier = {
   border: 'border-amber-400',
-  shadow: 'shadow-amber-400/80',
+  shadow: '',
   bg: 'bg-amber-500/25',
   text: 'text-amber-400',
-  animation: 'animate-glow-legendary',
+  animation: '',
   lindwurm: 'lindwurm-legendary',
   glowColor: 'rgba(251, 191, 36, 1)',
   particleColor: '#fbbf24',
@@ -561,11 +561,11 @@ export default function OpenBoxPage() {
                       } ${isOpened ? cardRarityGlow.border.replace('border-', 'ring-') : ''}`}
                     >
                       <div
-                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all rarity-card-hover ${
+                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all ${
                           isOpened 
-                            ? `${cardRarityGlow.border} ${cardRarityGlow.shadow} ${isFeatured ? 'shadow-xl scale-110' : 'shadow-lg scale-105'} ${cardRarityGlow.animation}` 
+                            ? `${cardRarityGlow.border} ${isFeatured ? 'scale-110' : 'scale-105'}` 
                             : isSpinning 
-                              ? 'border-blue-500 shadow-lg shadow-blue-500/50' 
+                              ? 'border-blue-500' 
                               : 'border-gray-700'
                         } ${isSpinning ? 'animate-spin-slow' : ''}`}
                         style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
@@ -580,7 +580,7 @@ export default function OpenBoxPage() {
                         )}
                         {isOpened && <div className={`absolute inset-0 ${cardRarityGlow.bg} animate-pulse`} />}
                         {isFeatured && (
-                          <div className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full ${cardRarityGlow.bg} ${cardRarityGlow.border} px-3 py-1 text-xs font-bold ${cardRarityGlow.text} shadow-lg backdrop-blur-sm`}>
+                          <div className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full ${cardRarityGlow.bg} ${cardRarityGlow.border} px-3 py-1 text-xs font-bold ${cardRarityGlow.text} backdrop-blur-sm`}>
                             Best Pull
                           </div>
                         )}
@@ -629,8 +629,8 @@ export default function OpenBoxPage() {
                       key={pull.id}
                       className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 ring-4 transition-transform ${
                         isFeatured 
-                          ? `${pullRarityGlow.border} ring-amber-400/60 scale-105 ${pullRarityGlow.shadow} shadow-xl ${pullRarityGlow.animation}` 
-                          : `${pullRarityGlow.border} ring-offset-2 ring-offset-gray-900 ${pullRarityGlow.shadow}`
+                          ? `${pullRarityGlow.border} ring-amber-400/60 scale-105` 
+                          : `${pullRarityGlow.border} ring-offset-2 ring-offset-gray-900`
                       }`}
                       style={{ ['--tw-ring-color' as string]: pullRarityGlow.border.replace('border-', 'rgb(var(--') }}
                     >
@@ -834,7 +834,7 @@ export default function OpenBoxPage() {
               
               {/* Card content container - NO glow */}
               <div 
-                className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center ${rarityGlow.animation}`}
+                className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center`}
                 style={{
                   boxShadow: 'none',
                 }}
@@ -862,7 +862,7 @@ export default function OpenBoxPage() {
                 
                 {/* Card image - NO glow */}
                 <div 
-                  className={`relative aspect-[63/88] w-72 overflow-hidden rounded-xl border-4 ${rarityGlow.border} mb-4 ${rarityGlow.animation}`}
+                  className={`relative aspect-[63/88] w-72 overflow-hidden rounded-xl border-4 ${rarityGlow.border} mb-4`}
                   style={{
                     boxShadow: 'none',
                   }}
