@@ -20,10 +20,17 @@ interface CacheConfig {
 }
 
 const DEFAULT_CONFIG: CacheConfig = {
-  maxEntries: 1000,
+  maxEntries: 500, // Reduced from 1000
   defaultTTL: 5 * 60 * 1000, // 5 minutes
-  cleanupInterval: 60 * 1000, // 1 minute
+  cleanupInterval: 30 * 1000, // 30 seconds (more aggressive cleanup)
 };
+
+// Global memory pressure threshold (percentage of heap used)
+const MEMORY_PRESSURE_THRESHOLD = 85;
+const CRITICAL_MEMORY_THRESHOLD = 92;
+
+// Track all cache instances for global cleanup
+const allCaches: Set<Cache<unknown>> = new Set();
 
 // ============================================================================
 // Generic Cache Class
@@ -35,10 +42,14 @@ class Cache<T> {
   private cleanupTimer: NodeJS.Timeout | null = null;
   private hits = 0;
   private misses = 0;
+  private name: string;
 
-  constructor(config: Partial<CacheConfig> = {}) {
+  constructor(config: Partial<CacheConfig> = {}, name: string = 'unnamed') {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.name = name;
     this.startCleanup();
+    // Register for global memory pressure cleanup
+    allCaches.add(this as unknown as Cache<unknown>);
   }
 
   private startCleanup(): void {
@@ -69,7 +80,7 @@ class Cache<T> {
 
     // Emergency cleanup if over limit
     if (this.store.size > this.config.maxEntries) {
-      const entriesToRemove = this.store.size - this.config.maxEntries + 100;
+      const entriesToRemove = this.store.size - this.config.maxEntries + 50;
       const entries = Array.from(this.store.entries())
         .sort((a, b) => a[1].createdAt - b[1].createdAt);
 
@@ -78,6 +89,46 @@ class Cache<T> {
         removed++;
       }
     }
+
+    // Check memory pressure and do aggressive cleanup if needed
+    this.checkMemoryPressure();
+  }
+
+  private checkMemoryPressure(): void {
+    const memUsage = process.memoryUsage();
+    const heapPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+
+    if (heapPercentage > CRITICAL_MEMORY_THRESHOLD) {
+      // Critical: Clear 75% of cache
+      this.aggressiveCleanup(0.75);
+    } else if (heapPercentage > MEMORY_PRESSURE_THRESHOLD) {
+      // High pressure: Clear 50% of cache
+      this.aggressiveCleanup(0.5);
+    }
+  }
+
+  /**
+   * Aggressively remove entries to free memory
+   * @param fraction - Fraction of entries to remove (0.5 = 50%)
+   */
+  aggressiveCleanup(fraction: number = 0.5): number {
+    const targetRemoval = Math.floor(this.store.size * fraction);
+    if (targetRemoval === 0) return 0;
+
+    // Sort by oldest first and remove
+    const entries = Array.from(this.store.entries())
+      .sort((a, b) => a[1].createdAt - b[1].createdAt);
+
+    let removed = 0;
+    for (let i = 0; i < targetRemoval && i < entries.length; i++) {
+      this.store.delete(entries[i][0]);
+      removed++;
+    }
+
+    if (removed > 0) {
+      console.log(`[Cache:${this.name}] Memory pressure cleanup: removed ${removed} entries`);
+    }
+    return removed;
   }
 
   get(key: string): T | undefined {
@@ -161,45 +212,45 @@ class Cache<T> {
 
 // Cache for box data (boxes don't change frequently)
 export const boxCache = new Cache<unknown>({
-  maxEntries: 200,
+  maxEntries: 100, // Reduced from 200
   defaultTTL: 5 * 60 * 1000, // 5 minutes
-});
+}, 'boxes');
 
 // Cache for card data within boxes (for random card selection)
 export const cardCache = new Cache<unknown>({
-  maxEntries: 500,
+  maxEntries: 200, // Reduced from 500
   defaultTTL: 10 * 60 * 1000, // 10 minutes
-});
+}, 'cards');
 
 // Cache for user data (short TTL for freshness)
 export const userCache = new Cache<unknown>({
-  maxEntries: 1000,
+  maxEntries: 300, // Reduced from 1000
   defaultTTL: 30 * 1000, // 30 seconds
-});
+}, 'users');
 
 // Cache for leaderboard data
 export const leaderboardCache = new Cache<unknown>({
-  maxEntries: 50,
+  maxEntries: 20, // Reduced from 50
   defaultTTL: 60 * 1000, // 1 minute
-});
+}, 'leaderboard');
 
 // Cache for shop products
 export const shopCache = new Cache<unknown>({
-  maxEntries: 500,
+  maxEntries: 150, // Reduced from 500
   defaultTTL: 2 * 60 * 1000, // 2 minutes
-});
+}, 'shop');
 
 // Cache for battle list
 export const battleCache = new Cache<unknown>({
-  maxEntries: 100,
+  maxEntries: 50, // Reduced from 100
   defaultTTL: 10 * 1000, // 10 seconds (battles change frequently)
-});
+}, 'battles');
 
 // Cache for achievements payloads (short TTL, per user)
 export const achievementsCache = new Cache<unknown>({
-  maxEntries: 2000,
+  maxEntries: 200, // SIGNIFICANTLY reduced from 2000
   defaultTTL: 30 * 1000, // 30 seconds
-});
+}, 'achievements');
 
 // ============================================================================
 // Cache Key Generators
@@ -275,18 +326,24 @@ class RequestDeduplicator {
 export const requestDeduplicator = new RequestDeduplicator();
 
 // ============================================================================
-// Memoization Helper
+// Memoization Helper (DEPRECATED - use Cache.getOrFetch instead)
 // ============================================================================
 
 /**
  * Memoize a function with automatic cache expiration
+ * @deprecated Use a shared cache instance with getOrFetch instead to avoid memory leaks
+ * Each call to memoize creates a new Cache instance that is never cleaned up
  */
 export function memoize<TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => Promise<TResult>,
   keyFn: (...args: TArgs) => string,
   ttl: number = 60000
 ): (...args: TArgs) => Promise<TResult> {
-  const cache = new Cache<TResult>({ defaultTTL: ttl });
+  // Use a shared generic cache instead of creating new instances
+  const cache = new Cache<TResult>({ 
+    defaultTTL: ttl,
+    maxEntries: 100, // Limit entries to prevent unbounded growth
+  }, 'memoized');
 
   return async (...args: TArgs): Promise<TResult> => {
     const key = keyFn(...args);
@@ -306,5 +363,94 @@ export function getAllCacheStats(): Record<string, ReturnType<Cache<unknown>['ge
     leaderboard: leaderboardCache.getStats(),
     shop: shopCache.getStats(),
     battles: battleCache.getStats(),
+    achievements: achievementsCache.getStats(),
   };
+}
+
+// ============================================================================
+// Global Memory Pressure Handler
+// ============================================================================
+
+let memoryCheckInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Force cleanup of all caches when memory pressure is detected
+ * Called automatically by the memory monitor or manually
+ */
+export function globalMemoryPressureCleanup(): number {
+  const memUsage = process.memoryUsage();
+  const heapPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+  
+  console.log(`[Cache] Global memory pressure cleanup triggered. Heap: ${heapPercentage.toFixed(1)}%`);
+  
+  let totalRemoved = 0;
+  const fraction = heapPercentage > CRITICAL_MEMORY_THRESHOLD ? 0.75 : 0.5;
+  
+  for (const cache of allCaches) {
+    totalRemoved += cache.aggressiveCleanup(fraction);
+  }
+  
+  // Force garbage collection if available (Node.js with --expose-gc flag)
+  if (global.gc) {
+    global.gc();
+    console.log('[Cache] Forced garbage collection');
+  }
+  
+  console.log(`[Cache] Global cleanup complete. Removed ${totalRemoved} entries total`);
+  return totalRemoved;
+}
+
+/**
+ * Clear all caches completely (emergency use)
+ */
+export function clearAllCaches(): void {
+  console.log('[Cache] Clearing ALL caches');
+  boxCache.clear();
+  cardCache.clear();
+  userCache.clear();
+  leaderboardCache.clear();
+  shopCache.clear();
+  battleCache.clear();
+  achievementsCache.clear();
+}
+
+/**
+ * Start periodic memory monitoring
+ * Automatically triggers cleanup when memory pressure is detected
+ */
+export function startMemoryMonitor(intervalMs: number = 30000): void {
+  if (memoryCheckInterval) {
+    clearInterval(memoryCheckInterval);
+  }
+  
+  memoryCheckInterval = setInterval(() => {
+    const memUsage = process.memoryUsage();
+    const heapPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+    
+    if (heapPercentage > MEMORY_PRESSURE_THRESHOLD) {
+      globalMemoryPressureCleanup();
+    }
+  }, intervalMs);
+  
+  // Don't keep process alive just for memory monitoring
+  if (memoryCheckInterval.unref) {
+    memoryCheckInterval.unref();
+  }
+  
+  console.log(`[Cache] Memory monitor started (interval: ${intervalMs}ms, threshold: ${MEMORY_PRESSURE_THRESHOLD}%)`);
+}
+
+/**
+ * Stop the memory monitor
+ */
+export function stopMemoryMonitor(): void {
+  if (memoryCheckInterval) {
+    clearInterval(memoryCheckInterval);
+    memoryCheckInterval = null;
+  }
+}
+
+// Start memory monitor in production
+if (process.env.NODE_ENV === 'production') {
+  startMemoryMonitor(30000); // Check every 30 seconds
 }

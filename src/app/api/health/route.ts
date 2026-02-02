@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { checkDatabaseHealth } from '@/lib/prisma';
+import { getAllCacheStats, globalMemoryPressureCleanup } from '@/lib/cache';
+
+interface CacheStats {
+  hits: number;
+  misses: number;
+  size: number;
+  hitRate: number;
+}
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -15,6 +23,11 @@ interface HealthStatus {
       used: number;
       total: number;
       percentage: number;
+      rss: number; // Resident Set Size (total memory)
+    };
+    cache?: {
+      totalEntries: number;
+      stats: Record<string, CacheStats>;
     };
   };
   version: string;
@@ -69,10 +82,32 @@ export async function GET() {
     used: Math.round(heapUsed / 1024 / 1024), // MB
     total: Math.round(heapTotal / 1024 / 1024), // MB
     percentage: memoryPercentage,
+    rss: Math.round(memoryUsage.rss / 1024 / 1024), // Total RSS in MB
   };
 
+  // Get cache statistics
+  try {
+    const cacheStats = getAllCacheStats();
+    const totalEntries = Object.values(cacheStats).reduce((sum, s) => sum + s.size, 0);
+    healthStatus.checks.cache = {
+      totalEntries,
+      stats: cacheStats,
+    };
+  } catch {
+    // Cache stats are optional
+  }
+
+  // Auto-cleanup if memory is critically high
+  if (memoryPercentage > 92) {
+    try {
+      globalMemoryPressureCleanup();
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
   // Mark as degraded if memory usage is high
-  if (memoryPercentage > 90) {
+  if (memoryPercentage > 85) {
     healthStatus.status = healthStatus.status === 'unhealthy' ? 'unhealthy' : 'degraded';
   }
 
