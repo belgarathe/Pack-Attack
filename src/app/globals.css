@@ -141,21 +141,19 @@
    RARITY GLOW ANIMATIONS - MAXIMUM INTENSITY
    ============================================ */
 
-/* Uncommon - Minimal Green Glow */
+/* Uncommon - Barely Visible Glow */
 @keyframes glow-uncommon {
   0%, 100% {
     box-shadow: 
-      0 0 8px 2px rgba(74, 222, 128, 0.25),
-      0 0 12px 4px rgba(74, 222, 128, 0.12),
-      inset 0 0 8px rgba(74, 222, 128, 0.08);
-    filter: brightness(1.05) drop-shadow(0 0 4px rgba(74, 222, 128, 0.25));
+      0 0 3px 1px rgba(74, 222, 128, 0.15),
+      inset 0 0 3px rgba(74, 222, 128, 0.05);
+    filter: brightness(1.02);
   }
   50% {
     box-shadow: 
-      0 0 10px 3px rgba(74, 222, 128, 0.3),
-      0 0 16px 6px rgba(74, 222, 128, 0.15),
-      inset 0 0 10px rgba(74, 222, 128, 0.1);
-    filter: brightness(1.08) drop-shadow(0 0 6px rgba(74, 222, 128, 0.3));
+      0 0 5px 2px rgba(74, 222, 128, 0.2),
+      inset 0 0 5px rgba(74, 222, 128, 0.08);
+    filter: brightness(1.03);
   }
 }
 
@@ -163,21 +161,19 @@
   animation: glow-uncommon 1.2s ease-in-out infinite;
 }
 
-/* Rare - Minimal Blue Glow */
+/* Rare - Barely Visible Glow */
 @keyframes glow-rare {
   0%, 100% {
     box-shadow: 
-      0 0 10px 3px rgba(96, 165, 250, 0.3),
-      0 0 15px 5px rgba(96, 165, 250, 0.15),
-      inset 0 0 10px rgba(96, 165, 250, 0.1);
-    filter: brightness(1.06) drop-shadow(0 0 5px rgba(96, 165, 250, 0.3));
+      0 0 4px 1px rgba(96, 165, 250, 0.18),
+      inset 0 0 4px rgba(96, 165, 250, 0.06);
+    filter: brightness(1.02);
   }
   50% {
     box-shadow: 
-      0 0 12px 4px rgba(96, 165, 250, 0.35),
-      0 0 18px 7px rgba(96, 165, 250, 0.2),
-      inset 0 0 12px rgba(96, 165, 250, 0.12);
-    filter: brightness(1.1) drop-shadow(0 0 7px rgba(96, 165, 250, 0.35));
+      0 0 6px 2px rgba(96, 165, 250, 0.22),
+      inset 0 0 6px rgba(96, 165, 250, 0.08);
+    filter: brightness(1.04);
   }
 }
 
@@ -185,28 +181,19 @@
   animation: glow-rare 1s ease-in-out infinite;
 }
 
-/* Epic - Minimal Purple Glow */
+/* Epic - Barely Visible Glow */
 @keyframes glow-epic {
   0%, 100% {
     box-shadow: 
-      0 0 12px 4px rgba(192, 132, 252, 0.35),
-      0 0 18px 7px rgba(168, 85, 247, 0.2),
-      inset 0 0 12px rgba(192, 132, 252, 0.12);
-    filter: brightness(1.08) saturate(1.1) drop-shadow(0 0 6px rgba(192, 132, 252, 0.3));
+      0 0 5px 2px rgba(192, 132, 252, 0.2),
+      inset 0 0 5px rgba(192, 132, 252, 0.08);
+    filter: brightness(1.03) saturate(1.05);
   }
-  33% {
+  50% {
     box-shadow: 
-      0 0 15px 5px rgba(168, 85, 247, 0.4),
-      0 0 22px 9px rgba(192, 132, 252, 0.25),
-      inset 0 0 15px rgba(168, 85, 247, 0.15);
-    filter: brightness(1.12) saturate(1.15) drop-shadow(0 0 8px rgba(168, 85, 247, 0.35));
-  }
-  66% {
-    box-shadow: 
-      0 0 14px 5px rgba(139, 92, 246, 0.38),
-      0 0 20px 8px rgba(168, 85, 247, 0.23),
-      inset 0 0 14px rgba(139, 92, 246, 0.14);
-    filter: brightness(1.1) saturate(1.12) drop-shadow(0 0 7px rgba(139, 92, 246, 0.32));
+      0 0 7px 3px rgba(168, 85, 247, 0.25),
+      inset 0 0 7px rgba(168, 85, 247, 0.1);
+    filter: brightness(1.05) saturate(1.08);
   }
 }
 
@@ -214,42 +201,19 @@
   animation: glow-epic 0.9s ease-in-out infinite;
 }
 
-/* Legendary/Mythic - Minimal Golden Glow */
+/* Legendary/Mythic - Barely Visible Glow */
 @keyframes glow-legendary {
-  0% {
+  0%, 100% {
     box-shadow: 
-      0 0 15px 5px rgba(251, 191, 36, 0.4),
-      0 0 22px 8px rgba(251, 146, 60, 0.25),
-      inset 0 0 15px rgba(251, 191, 36, 0.15);
-    filter: brightness(1.1) saturate(1.15) drop-shadow(0 0 8px rgba(251, 191, 36, 0.35));
-  }
-  25% {
-    box-shadow: 
-      0 0 18px 6px rgba(251, 146, 60, 0.45),
-      0 0 26px 10px rgba(251, 191, 36, 0.28),
-      inset 0 0 18px rgba(251, 146, 60, 0.18);
-    filter: brightness(1.15) saturate(1.2) drop-shadow(0 0 10px rgba(251, 146, 60, 0.4));
+      0 0 6px 2px rgba(251, 191, 36, 0.25),
+      inset 0 0 6px rgba(251, 191, 36, 0.1);
+    filter: brightness(1.04) saturate(1.08);
   }
   50% {
     box-shadow: 
-      0 0 20px 7px rgba(245, 158, 11, 0.5),
-      0 0 30px 12px rgba(251, 191, 36, 0.3),
-      inset 0 0 20px rgba(245, 158, 11, 0.2);
-    filter: brightness(1.18) saturate(1.25) drop-shadow(0 0 12px rgba(245, 158, 11, 0.45));
-  }
-  75% {
-    box-shadow: 
-      0 0 18px 6px rgba(234, 179, 8, 0.45),
-      0 0 26px 10px rgba(251, 146, 60, 0.28),
-      inset 0 0 18px rgba(234, 179, 8, 0.18);
-    filter: brightness(1.15) saturate(1.2) drop-shadow(0 0 10px rgba(234, 179, 8, 0.4));
-  }
-  100% {
-    box-shadow: 
-      0 0 15px 5px rgba(251, 191, 36, 0.4),
-      0 0 22px 8px rgba(251, 146, 60, 0.25),
-      inset 0 0 15px rgba(251, 191, 36, 0.15);
-    filter: brightness(1.1) saturate(1.15) drop-shadow(0 0 8px rgba(251, 191, 36, 0.35));
+      0 0 8px 3px rgba(245, 158, 11, 0.3),
+      inset 0 0 8px rgba(245, 158, 11, 0.12);
+    filter: brightness(1.06) saturate(1.12);
   }
 }
 
