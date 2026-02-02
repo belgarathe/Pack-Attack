@@ -689,24 +689,28 @@ export default function OpenBoxPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/99 p-4">
             {/* Main card container with modern styling */}
             <div className="relative card-reveal-animate">
-              {/* Card content container - Clean modern border with subtle glow */}
+              {/* Card content container with 5% glow */}
               <div 
                 className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center`}
                 style={{
-                  boxShadow: `0 0 20px ${rarityGlow.glowColor.replace('1)', '0.15)')}, 0 0 40px ${rarityGlow.glowColor.replace('1)', '0.08)')}`,
+                  boxShadow: `
+                    0 0 20px 8px ${rarityGlow.glowColor.replace('1)', '0.05)')},
+                    0 0 40px 15px ${rarityGlow.glowColor.replace('1)', '0.03)')},
+                    inset 0 0 25px ${rarityGlow.glowColor.replace('1)', '0.015)')}
+                  `,
                 }}
               >
-                {/* Rarity badge with subtle glow */}
+                {/* Rarity badge with 5% glow */}
                 <div 
-                  className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} z-10`}
+                  className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} backdrop-blur-sm z-10`}
                   style={{
-                    boxShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.2)')}`,
+                    boxShadow: `0 0 15px 6px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 30px 12px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
                   }}
                 >
                   <span 
                     className={`text-lg font-black uppercase tracking-widest ${rarityGlow.text}`}
                     style={{
-                      textShadow: `0 0 10px ${rarityGlow.glowColor.replace('1)', '0.3)')}`,
+                      textShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 25px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
                     }}
                   >
                     {currentReveal.card.rarity || 'Common'}
@@ -717,11 +721,15 @@ export default function OpenBoxPage() {
                   Pull {currentRevealIndex} of {revealTotal || quantity}
                 </p>
                 
-                {/* Card image with subtle glow */}
+                {/* Card image with 5% glow */}
                 <div 
                   className={`relative aspect-[63/88] w-72 overflow-hidden rounded-xl border-4 ${rarityGlow.border} mb-4`}
                   style={{
-                    boxShadow: `0 0 25px ${rarityGlow.glowColor.replace('1)', '0.2)')}, 0 0 50px ${rarityGlow.glowColor.replace('1)', '0.1)')}`,
+                    boxShadow: `
+                      0 0 18px 6px ${rarityGlow.glowColor.replace('1)', '0.05)')},
+                      0 0 35px 12px ${rarityGlow.glowColor.replace('1)', '0.03)')},
+                      inset 0 0 20px ${rarityGlow.glowColor.replace('1)', '0.02)')}
+                    `,
                   }}
                 >
                   {currentReveal.card.imageUrlGatherer ? (
@@ -737,29 +745,29 @@ export default function OpenBoxPage() {
                   )}
                 </div>
                 
-                {/* Card name with subtle text glow */}
+                {/* Card name with 5% text glow */}
                 <h3 
                   className={`mb-2 text-3xl font-black text-center ${rarityGlow.text}`}
                   style={{
-                    textShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.3)')}`,
+                    textShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.05)')}`,
                   }}
                 >
                   {currentReveal.card.name}
                 </h3>
                 <p className="mb-4 text-base text-gray-300 text-center font-medium">{box.name}</p>
                 
-                {/* Coin value with subtle glow */}
+                {/* Coin value with 5% glow */}
                 <div 
                   className={`flex items-center justify-center gap-4 px-8 py-4 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border}`}
                   style={{
-                    boxShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.2)')}`,
+                    boxShadow: `0 0 15px 5px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 30px 10px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
                   }}
                 >
                   <Coins className={`h-8 w-8 ${rarityGlow.text}`} />
                   <span 
                     className={`text-3xl font-black ${rarityGlow.text}`}
                     style={{
-                      textShadow: `0 0 10px ${rarityGlow.glowColor.replace('1)', '0.3)')}`,
+                      textShadow: `0 0 10px ${rarityGlow.glowColor.replace('1)', '0.05)')}`,
                     }}
                   >
                     {currentReveal.card.coinValue?.toFixed(2)} coins
