@@ -46,6 +46,7 @@ export async function GET() {
         used: 0,
         total: 0,
         percentage: 0,
+        rss: 0,
       },
     },
     version: process.env.npm_package_version || '1.0.0',
