@@ -687,11 +687,11 @@ export default function OpenBoxPage() {
         
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
-            {/* MASSIVE Ambient glow background */}
+            {/* Subtle Ambient glow background */}
             <div 
               className="absolute inset-0"
               style={{
-                background: `radial-gradient(circle at center, ${rarityGlow.glowColor} 0%, ${rarityGlow.glowColor.replace('1)', '0.5)')} 30%, transparent 70%)`,
+                background: `radial-gradient(circle at center, ${rarityGlow.glowColor.replace('1)', '0.15)')} 0%, ${rarityGlow.glowColor.replace('1)', '0.08)')} 30%, transparent 60%)`,
               }}
             />
             
@@ -709,7 +709,8 @@ export default function OpenBoxPage() {
                     top: `${15 + Math.sin(i * 0.8) * 35}%`,
                     animation: `pulse ${1 + Math.random()}s ease-in-out infinite`,
                     animationDelay: `${i * 0.15}s`,
-                    boxShadow: `0 0 20px 10px ${rarityGlow.particleColor}, 0 0 40px 20px ${rarityGlow.particleColor}`,
+                    boxShadow: `0 0 8px 4px ${rarityGlow.particleColor}, 0 0 15px 8px ${rarityGlow.particleColor}`,
+                    opacity: 0.6,
                   }}
                 />
               ))}
@@ -718,7 +719,7 @@ export default function OpenBoxPage() {
             {/* Main card container */}
             <div className="relative card-reveal-animate">
               
-              {/* ===== DRAGON BORDER FRAME ===== */}
+              {/* ===== DRAGON BORDER FRAME - PROMINENT ===== */}
               <svg 
                 className="absolute pointer-events-none"
                 style={{
@@ -726,7 +727,8 @@ export default function OpenBoxPage() {
                   left: '-60px',
                   width: 'calc(100% + 120px)',
                   height: 'calc(100% + 120px)',
-                  filter: `drop-shadow(0 0 30px ${rarityGlow.particleColor}) drop-shadow(0 0 60px ${rarityGlow.particleColor})`,
+                  filter: `drop-shadow(0 0 25px ${rarityGlow.particleColor}) drop-shadow(0 0 50px ${rarityGlow.particleColor}) drop-shadow(0 0 75px ${rarityGlow.particleColor})`,
+                  zIndex: 10,
                 }}
                 viewBox="0 0 440 600"
                 preserveAspectRatio="none"
@@ -735,16 +737,18 @@ export default function OpenBoxPage() {
                   {/* Gradient for dragon body */}
                   <linearGradient id={`dragon-grad-${currentReveal.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor={rarityGlow.particleColor}/>
-                    <stop offset="50%" stopColor={rarityGlow.particleColor} stopOpacity="0.7"/>
+                    <stop offset="50%" stopColor={rarityGlow.particleColor} stopOpacity="0.9"/>
                     <stop offset="100%" stopColor={rarityGlow.particleColor}/>
                   </linearGradient>
                   
-                  {/* Strong glow filter */}
-                  <filter id={`dragon-glow-${currentReveal.id}`} x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="8" result="blur"/>
+                  {/* Enhanced glow filter for prominence */}
+                  <filter id={`dragon-glow-${currentReveal.id}`} x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation="12" result="blur1"/>
+                    <feGaussianBlur stdDeviation="6" result="blur2"/>
                     <feMerge>
-                      <feMergeNode in="blur"/>
-                      <feMergeNode in="blur"/>
+                      <feMergeNode in="blur1"/>
+                      <feMergeNode in="blur1"/>
+                      <feMergeNode in="blur2"/>
                       <feMergeNode in="SourceGraphic"/>
                     </feMerge>
                   </filter>
@@ -762,7 +766,7 @@ export default function OpenBoxPage() {
                   <circle cx="45" cy="75" r="6" fill="white"/>
                   <circle cx="47" cy="75" r="3" fill="black"/>
                   
-                  {/* Left serpent body - wavy */}
+                  {/* Left serpent body - wavy (thicker for prominence) */}
                   <path 
                     d="M50 95 
                        Q20 130 35 170 
@@ -772,7 +776,7 @@ export default function OpenBoxPage() {
                        Q0 450 40 490
                        Q60 520 50 550"
                     stroke={`url(#dragon-grad-${currentReveal.id})`}
-                    strokeWidth="20"
+                    strokeWidth="28"
                     fill="none"
                     strokeLinecap="round"
                     style={{ animation: 'dragon-pulse 2s ease-in-out infinite' }}
@@ -800,7 +804,7 @@ export default function OpenBoxPage() {
                   <circle cx="395" cy="75" r="6" fill="white"/>
                   <circle cx="393" cy="75" r="3" fill="black"/>
                   
-                  {/* Right serpent body - wavy (mirrored) */}
+                  {/* Right serpent body - wavy (mirrored, thicker for prominence) */}
                   <path 
                     d="M390 95 
                        Q420 130 405 170 
@@ -810,7 +814,7 @@ export default function OpenBoxPage() {
                        Q440 450 400 490
                        Q380 520 390 550"
                     stroke={`url(#dragon-grad-${currentReveal.id})`}
-                    strokeWidth="20"
+                    strokeWidth="28"
                     fill="none"
                     strokeLinecap="round"
                     style={{ animation: 'dragon-pulse 2s ease-in-out infinite', animationDelay: '1s' }}
@@ -828,19 +832,19 @@ export default function OpenBoxPage() {
                 
                 {/* === TAIL AT BOTTOM === */}
                 <g filter={`url(#dragon-glow-${currentReveal.id})`}>
-                  {/* Left tail curling */}
+                  {/* Left tail curling (thicker) */}
                   <path 
                     d="M50 550 Q100 580 150 570 Q180 560 200 580 Q220 590 220 570"
                     stroke={rarityGlow.particleColor}
-                    strokeWidth="16"
+                    strokeWidth="22"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  {/* Right tail curling */}
+                  {/* Right tail curling (thicker) */}
                   <path 
                     d="M390 550 Q340 580 290 570 Q260 560 240 580 Q220 590 220 570"
                     stroke={rarityGlow.particleColor}
-                    strokeWidth="16"
+                    strokeWidth="22"
                     fill="none"
                     strokeLinecap="round"
                   />
@@ -866,10 +870,9 @@ export default function OpenBoxPage() {
                 className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center ${rarityGlow.animation}`}
                 style={{
                   boxShadow: `
-                    0 0 60px 20px ${rarityGlow.glowColor},
-                    0 0 120px 40px ${rarityGlow.glowColor},
-                    0 0 200px 60px ${rarityGlow.glowColor.replace('1)', '0.5)')},
-                    inset 0 0 60px ${rarityGlow.glowColor}
+                    0 0 20px 8px ${rarityGlow.glowColor},
+                    0 0 40px 15px ${rarityGlow.glowColor.replace('1)', '0.6)')},
+                    inset 0 0 25px ${rarityGlow.glowColor.replace('1)', '0.3)')}
                   `,
                 }}
               >
@@ -877,13 +880,13 @@ export default function OpenBoxPage() {
                 <div 
                   className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} backdrop-blur-sm z-10`}
                   style={{
-                    boxShadow: `0 0 40px 15px ${rarityGlow.glowColor}, 0 0 80px 30px ${rarityGlow.glowColor}`,
+                    boxShadow: `0 0 15px 6px ${rarityGlow.glowColor}, 0 0 30px 12px ${rarityGlow.glowColor.replace('1)', '0.6)')}`,
                   }}
                 >
                   <span 
                     className={`text-lg font-black uppercase tracking-widest ${rarityGlow.text}`}
                     style={{
-                      textShadow: `0 0 20px ${rarityGlow.glowColor}, 0 0 40px ${rarityGlow.glowColor}`,
+                      textShadow: `0 0 10px ${rarityGlow.glowColor}, 0 0 20px ${rarityGlow.glowColor}`,
                     }}
                   >
                     {currentReveal.card.rarity || 'Common'}
@@ -899,9 +902,9 @@ export default function OpenBoxPage() {
                   className={`relative aspect-[63/88] w-72 overflow-hidden rounded-xl border-4 ${rarityGlow.border} mb-4 ${rarityGlow.animation}`}
                   style={{
                     boxShadow: `
-                      0 0 50px 15px ${rarityGlow.glowColor},
-                      0 0 100px 30px ${rarityGlow.glowColor},
-                      inset 0 0 40px ${rarityGlow.glowColor}
+                      0 0 18px 6px ${rarityGlow.glowColor},
+                      0 0 35px 12px ${rarityGlow.glowColor.replace('1)', '0.6)')},
+                      inset 0 0 20px ${rarityGlow.glowColor.replace('1)', '0.4)')}
                     `,
                   }}
                 >
@@ -922,7 +925,7 @@ export default function OpenBoxPage() {
                 <h3 
                   className={`mb-2 text-3xl font-black text-center ${rarityGlow.text}`}
                   style={{
-                    textShadow: `0 0 30px ${rarityGlow.glowColor}, 0 0 60px ${rarityGlow.glowColor}, 0 0 90px ${rarityGlow.glowColor}`,
+                    textShadow: `0 0 12px ${rarityGlow.glowColor}, 0 0 25px ${rarityGlow.glowColor}`,
                   }}
                 >
                   {currentReveal.card.name}
@@ -933,14 +936,14 @@ export default function OpenBoxPage() {
                 <div 
                   className={`flex items-center justify-center gap-4 px-8 py-4 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border}`}
                   style={{
-                    boxShadow: `0 0 40px 10px ${rarityGlow.glowColor}, 0 0 80px 20px ${rarityGlow.glowColor}`,
+                    boxShadow: `0 0 15px 5px ${rarityGlow.glowColor}, 0 0 30px 10px ${rarityGlow.glowColor.replace('1)', '0.6)')}`,
                   }}
                 >
-                  <Coins className={`h-8 w-8 ${rarityGlow.text}`} style={{ filter: `drop-shadow(0 0 10px ${rarityGlow.glowColor})` }} />
+                  <Coins className={`h-8 w-8 ${rarityGlow.text}`} style={{ filter: `drop-shadow(0 0 8px ${rarityGlow.glowColor})` }} />
                   <span 
                     className={`text-3xl font-black ${rarityGlow.text}`}
                     style={{
-                      textShadow: `0 0 20px ${rarityGlow.glowColor}, 0 0 40px ${rarityGlow.glowColor}`,
+                      textShadow: `0 0 10px ${rarityGlow.glowColor}, 0 0 20px ${rarityGlow.glowColor}`,
                     }}
                   >
                     {currentReveal.card.coinValue?.toFixed(2)} coins
