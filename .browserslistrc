@@ -1,0 +1,32 @@
+# Browser support configuration for autoprefixer and other tools
+# This ensures consistent cross-browser compatibility
+
+# Modern browsers with good CSS support
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Safari versions
+last 2 Edge versions
+
+# iOS Safari (iPhone/iPad)
+last 2 iOS versions
+iOS >= 14
+
+# Android browsers
+last 2 Android versions
+Android >= 8
+
+# Samsung Internet
+last 2 Samsung versions
+
+# Opera
+last 2 Opera versions
+
+# Exclude IE entirely (deprecated)
+not IE 11
+not IE_Mob 11
+
+# Exclude dead browsers
+not dead
+
+# Support browsers with >0.5% market share
+> 0.5%

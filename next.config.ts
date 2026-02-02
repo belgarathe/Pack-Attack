@@ -116,17 +116,26 @@ const nextConfig: NextConfig = {
         ...domain,
       })),
     ],
-    // Enable image optimization for external images
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Device sizes optimized for common devices:
+    // 640 (mobile), 750 (iPhone Plus), 828 (iPhone Pro), 1080 (FHD mobile)
+    // 1200 (tablets), 1920 (desktop FHD), 2048 (retina/2K), 3840 (4K)
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    // Image sizes for icons, thumbnails, and small images
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512],
+    // Modern image formats - AVIF first (smaller), WebP fallback
     formats: ['image/avif', 'image/webp'],
-    // Minimize initial load
-    minimumCacheTTL: 60 * 60 * 24, // 24 hours
+    // Minimize initial load - cache for 7 days
+    minimumCacheTTL: 60 * 60 * 24 * 7,
+    // Limit concurrent image optimizations
+    dangerouslyAllowSVG: false,
+    contentDispositionType: 'inline',
   },
   productionBrowserSourceMaps: false,
-  // Enable compression
+  // Enable compression for all responses
   compress: true,
-  // Security headers for all routes
+  // Generate ETags for caching
+  generateEtags: true,
+  // Security and performance headers for all routes
   async headers() {
     return [
       {
@@ -151,6 +160,36 @@ const nextConfig: NextConfig = {
           {
             key: 'Expires',
             value: '0',
+          },
+        ],
+      },
+      {
+        // Cache static assets aggressively
+        source: '/(.*)\\.(ico|png|jpg|jpeg|gif|webp|avif|svg|woff|woff2|ttf|otf|eot)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Cache JavaScript and CSS with revalidation
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Browser hints for faster loading
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Accept-CH',
+            value: 'DPR, Viewport-Width, Width, Device-Memory, RTT, Downlink, ECT',
           },
         ],
       },
