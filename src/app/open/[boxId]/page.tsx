@@ -17,55 +17,76 @@ type BoxCard = {
   rarity: string;
 };
 
-// Rarity glow configuration
+// Rarity glow configuration - Enhanced with Lindwurm styling
 const RARITY_GLOW_CONFIG: Record<string, {
   border: string;
   shadow: string;
   bg: string;
   text: string;
   animation: string;
+  lindwurm: string;
+  glowColor: string;
+  particleColor: string;
 }> = {
   common: {
     border: 'border-gray-400',
     shadow: 'shadow-gray-400/50',
-    bg: 'bg-gray-400/10',
+    bg: 'bg-gray-400/20',
     text: 'text-gray-300',
     animation: '',
+    lindwurm: 'lindwurm-common',
+    glowColor: 'rgba(156, 163, 175, 0.6)',
+    particleColor: '#9ca3af',
   },
   uncommon: {
     border: 'border-green-400',
     shadow: 'shadow-green-400/60',
-    bg: 'bg-green-400/10',
+    bg: 'bg-green-500/20',
     text: 'text-green-400',
     animation: 'animate-glow-uncommon',
+    lindwurm: 'lindwurm-uncommon',
+    glowColor: 'rgba(74, 222, 128, 0.8)',
+    particleColor: '#4ade80',
   },
   rare: {
     border: 'border-blue-400',
     shadow: 'shadow-blue-400/70',
-    bg: 'bg-blue-400/10',
+    bg: 'bg-blue-500/20',
     text: 'text-blue-400',
     animation: 'animate-glow-rare',
+    lindwurm: 'lindwurm-rare',
+    glowColor: 'rgba(96, 165, 250, 0.9)',
+    particleColor: '#60a5fa',
   },
   epic: {
     border: 'border-purple-400',
     shadow: 'shadow-purple-500/70',
-    bg: 'bg-purple-400/10',
+    bg: 'bg-purple-500/20',
     text: 'text-purple-400',
     animation: 'animate-glow-epic',
+    lindwurm: 'lindwurm-epic',
+    glowColor: 'rgba(192, 132, 252, 1)',
+    particleColor: '#c084fc',
   },
   mythic: {
     border: 'border-amber-400',
     shadow: 'shadow-amber-400/80',
-    bg: 'bg-amber-400/15',
+    bg: 'bg-amber-500/25',
     text: 'text-amber-400',
     animation: 'animate-glow-legendary',
+    lindwurm: 'lindwurm-mythic',
+    glowColor: 'rgba(251, 191, 36, 1)',
+    particleColor: '#fbbf24',
   },
   legendary: {
     border: 'border-amber-400',
     shadow: 'shadow-amber-400/80',
-    bg: 'bg-amber-400/15',
+    bg: 'bg-amber-500/25',
     text: 'text-amber-400',
     animation: 'animate-glow-legendary',
+    lindwurm: 'lindwurm-legendary',
+    glowColor: 'rgba(251, 191, 36, 1)',
+    particleColor: '#fbbf24',
   },
 };
 
@@ -579,39 +600,268 @@ export default function OpenBoxPage() {
         </div>
       </div>
 
-      {/* Reveal Modal */}
+      {/* Reveal Modal - Enhanced with Lindwurm Dragon Border */}
       {isShowingReveal && currentReveal?.card && (() => {
         const rarityGlow = getRarityGlow(currentReveal.card.rarity);
+        const isHighRarity = ['epic', 'mythic', 'legendary'].includes(currentReveal.card.rarity?.toLowerCase() || '');
+        
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className={`relative w-full max-w-md glass-strong rounded-2xl p-6 border-2 ${rarityGlow.border} ${rarityGlow.shadow} shadow-2xl ${rarityGlow.animation} flex flex-col items-center`}>
-              {/* Rarity badge */}
-              <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full ${rarityGlow.bg} border ${rarityGlow.border} backdrop-blur-sm`}>
-                <span className={`text-xs font-bold uppercase tracking-wider ${rarityGlow.text}`}>
-                  {currentReveal.card.rarity || 'Common'}
-                </span>
-              </div>
-              <p className="mb-3 mt-2 text-sm font-semibold uppercase tracking-wide text-gray-300 text-center">
-                Pull {currentRevealIndex} of {revealTotal || quantity}
-              </p>
-              <div className={`relative aspect-[63/88] w-64 overflow-hidden rounded-xl border-2 ${rarityGlow.border} ${rarityGlow.shadow} shadow-lg mb-4 ${rarityGlow.animation}`}>
-                {currentReveal.card.imageUrlGatherer ? (
-                  <Image 
-                    src={currentReveal.card.imageUrlGatherer} 
-                    alt={currentReveal.card.name} 
-                    fill 
-                    className="object-contain"
-                    unoptimized
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+            {/* Ambient glow background */}
+            <div 
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `radial-gradient(circle at center, ${rarityGlow.glowColor} 0%, transparent 60%)`,
+              }}
+            />
+            
+            {/* Floating particles for high rarity */}
+            {isHighRarity && (
+              <>
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  {[...Array(12)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-2 h-2 rounded-full animate-pulse"
+                      style={{
+                        background: rarityGlow.particleColor,
+                        left: `${10 + (i * 7)}%`,
+                        top: `${20 + Math.sin(i) * 30}%`,
+                        animationDelay: `${i * 0.2}s`,
+                        boxShadow: `0 0 10px ${rarityGlow.particleColor}, 0 0 20px ${rarityGlow.particleColor}`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            
+            {/* Main card container with Lindwurm border */}
+            <div className={`relative card-reveal-animate ${rarityGlow.lindwurm}`}>
+              {/* Outer dragon border glow */}
+              <div 
+                className={`absolute -inset-4 rounded-3xl ${rarityGlow.animation}`}
+                style={{
+                  background: `conic-gradient(from 0deg, ${rarityGlow.glowColor}, transparent, ${rarityGlow.glowColor}, transparent, ${rarityGlow.glowColor})`,
+                  animation: 'lindwurm-rotate 2s linear infinite',
+                  filter: 'blur(8px)',
+                }}
+              />
+              
+              {/* Dragon scale pattern border */}
+              <div 
+                className="absolute -inset-3 rounded-2xl"
+                style={{
+                  background: `
+                    repeating-conic-gradient(
+                      from 0deg,
+                      ${rarityGlow.glowColor} 0deg 10deg,
+                      transparent 10deg 20deg
+                    )
+                  `,
+                  animation: 'scales-shimmer 3s linear infinite',
+                  opacity: 0.7,
+                }}
+              />
+              
+              {/* Inner glow ring */}
+              <div 
+                className={`absolute -inset-2 rounded-2xl ${rarityGlow.animation}`}
+                style={{
+                  boxShadow: `inset 0 0 40px ${rarityGlow.glowColor}, 0 0 60px ${rarityGlow.glowColor}`,
+                }}
+              />
+              
+              {/* Card content container */}
+              <div className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center ${rarityGlow.animation}`}
+                style={{
+                  boxShadow: `
+                    0 0 40px ${rarityGlow.glowColor},
+                    0 0 80px ${rarityGlow.glowColor},
+                    inset 0 0 30px ${rarityGlow.glowColor}
+                  `,
+                }}
+              >
+                {/* Dragon head decorations - top corners */}
+                <svg className="absolute -top-6 -left-6 w-12 h-12 opacity-80" viewBox="0 0 48 48" fill="none">
+                  <path 
+                    d="M24 4C12 4 8 16 8 24c0 4 2 8 6 10l-6 10h8l4-8c2 1 4 2 6 2s4-1 6-2l4 8h8l-6-10c4-2 6-6 6-10 0-8-4-20-16-20z" 
+                    fill={rarityGlow.particleColor}
+                    opacity="0.6"
                   />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
-                )}
-              </div>
-              <h3 className={`mb-1 text-2xl font-bold text-center ${rarityGlow.text}`}>{currentReveal.card.name}</h3>
-              <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
-              <div className={`flex items-center justify-center gap-2 ${rarityGlow.text}`}>
-                <Coins className="h-5 w-5" />
-                <span className="text-xl font-semibold">{currentReveal.card.coinValue?.toFixed(2)} coins</span>
+                  <circle cx="16" cy="20" r="3" fill="white" opacity="0.8"/>
+                  <circle cx="32" cy="20" r="3" fill="white" opacity="0.8"/>
+                </svg>
+                <svg className="absolute -top-6 -right-6 w-12 h-12 opacity-80 scale-x-[-1]" viewBox="0 0 48 48" fill="none">
+                  <path 
+                    d="M24 4C12 4 8 16 8 24c0 4 2 8 6 10l-6 10h8l4-8c2 1 4 2 6 2s4-1 6-2l4 8h8l-6-10c4-2 6-6 6-10 0-8-4-20-16-20z" 
+                    fill={rarityGlow.particleColor}
+                    opacity="0.6"
+                  />
+                  <circle cx="16" cy="20" r="3" fill="white" opacity="0.8"/>
+                  <circle cx="32" cy="20" r="3" fill="white" opacity="0.8"/>
+                </svg>
+                
+                {/* Rarity badge with dragon wings */}
+                <div className={`absolute -top-5 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full ${rarityGlow.bg} border-2 ${rarityGlow.border} backdrop-blur-sm z-10`}
+                  style={{
+                    boxShadow: `0 0 20px ${rarityGlow.glowColor}, 0 0 40px ${rarityGlow.glowColor}`,
+                  }}
+                >
+                  <span className={`text-sm font-bold uppercase tracking-widest ${rarityGlow.text} drop-shadow-lg`}>
+                    {currentReveal.card.rarity || 'Common'}
+                  </span>
+                </div>
+                
+                <p className="mb-4 mt-4 text-sm font-semibold uppercase tracking-wide text-gray-300 text-center">
+                  Pull {currentRevealIndex} of {revealTotal || quantity}
+                </p>
+                
+                {/* Card image with dragon border frame */}
+                <div className="relative mb-4">
+                  {/* Serpentine border decoration */}
+                  <svg className="absolute -inset-4 w-[calc(100%+32px)] h-[calc(100%+32px)]" viewBox="0 0 200 280" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id={`lindwurm-grad-${currentReveal.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={rarityGlow.particleColor} stopOpacity="0.9"/>
+                        <stop offset="50%" stopColor={rarityGlow.particleColor} stopOpacity="0.5"/>
+                        <stop offset="100%" stopColor={rarityGlow.particleColor} stopOpacity="0.9"/>
+                      </linearGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    {/* Left serpent/dragon body */}
+                    <path 
+                      d="M10 40 Q0 70 5 100 Q10 130 5 160 Q0 190 10 220 Q15 250 10 270" 
+                      stroke={`url(#lindwurm-grad-${currentReveal.id})`}
+                      strokeWidth="8"
+                      fill="none"
+                      filter="url(#glow)"
+                      strokeLinecap="round"
+                      className="animate-pulse"
+                    />
+                    {/* Right serpent/dragon body */}
+                    <path 
+                      d="M190 40 Q200 70 195 100 Q190 130 195 160 Q200 190 190 220 Q185 250 190 270" 
+                      stroke={`url(#lindwurm-grad-${currentReveal.id})`}
+                      strokeWidth="8"
+                      fill="none"
+                      filter="url(#glow)"
+                      strokeLinecap="round"
+                      className="animate-pulse"
+                    />
+                    {/* Top connecting arc with scales */}
+                    <path 
+                      d="M10 40 Q50 10 100 5 Q150 10 190 40" 
+                      stroke={`url(#lindwurm-grad-${currentReveal.id})`}
+                      strokeWidth="8"
+                      fill="none"
+                      filter="url(#glow)"
+                      strokeLinecap="round"
+                    />
+                    {/* Bottom connecting arc (tail) */}
+                    <path 
+                      d="M10 270 Q50 290 100 295 Q150 290 190 270" 
+                      stroke={`url(#lindwurm-grad-${currentReveal.id})`}
+                      strokeWidth="8"
+                      fill="none"
+                      filter="url(#glow)"
+                      strokeLinecap="round"
+                    />
+                    {/* Scale details on left */}
+                    <circle cx="5" cy="80" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="8" cy="120" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="5" cy="160" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="8" cy="200" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    {/* Scale details on right */}
+                    <circle cx="195" cy="80" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="192" cy="120" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="195" cy="160" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                    <circle cx="192" cy="200" r="4" fill={rarityGlow.particleColor} opacity="0.7"/>
+                  </svg>
+                  
+                  <div className={`relative aspect-[63/88] w-64 overflow-hidden rounded-xl border-4 ${rarityGlow.border} ${rarityGlow.animation}`}
+                    style={{
+                      boxShadow: `
+                        0 0 30px ${rarityGlow.glowColor},
+                        0 0 60px ${rarityGlow.glowColor},
+                        inset 0 0 20px ${rarityGlow.glowColor}
+                      `,
+                    }}
+                  >
+                    {currentReveal.card.imageUrlGatherer ? (
+                      <Image 
+                        src={currentReveal.card.imageUrlGatherer} 
+                        alt={currentReveal.card.name} 
+                        fill 
+                        className="object-contain"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
+                    )}
+                    {/* Inner glow overlay */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        boxShadow: `inset 0 0 40px ${rarityGlow.glowColor}`,
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Card name with glow */}
+                <h3 
+                  className={`mb-2 text-2xl font-bold text-center ${rarityGlow.text} drop-shadow-lg`}
+                  style={{
+                    textShadow: `0 0 20px ${rarityGlow.glowColor}, 0 0 40px ${rarityGlow.glowColor}`,
+                  }}
+                >
+                  {currentReveal.card.name}
+                </h3>
+                <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
+                
+                {/* Coin value with enhanced styling */}
+                <div 
+                  className={`flex items-center justify-center gap-3 px-6 py-3 rounded-full ${rarityGlow.bg} border-2 ${rarityGlow.border}`}
+                  style={{
+                    boxShadow: `0 0 20px ${rarityGlow.glowColor}`,
+                  }}
+                >
+                  <Coins className={`h-6 w-6 ${rarityGlow.text}`} />
+                  <span className={`text-2xl font-bold ${rarityGlow.text}`}
+                    style={{
+                      textShadow: `0 0 10px ${rarityGlow.glowColor}`,
+                    }}
+                  >
+                    {currentReveal.card.coinValue?.toFixed(2)} coins
+                  </span>
+                </div>
+                
+                {/* Dragon tail decorations - bottom corners */}
+                <svg className="absolute -bottom-4 -left-4 w-10 h-10 opacity-70" viewBox="0 0 40 40" fill="none">
+                  <path 
+                    d="M5 5 Q20 10 25 25 Q30 35 35 35" 
+                    stroke={rarityGlow.particleColor}
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <svg className="absolute -bottom-4 -right-4 w-10 h-10 opacity-70 scale-x-[-1]" viewBox="0 0 40 40" fill="none">
+                  <path 
+                    d="M5 5 Q20 10 25 25 Q30 35 35 35" 
+                    stroke={rarityGlow.particleColor}
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </div>
             </div>
           </div>
