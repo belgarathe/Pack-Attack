@@ -235,6 +235,37 @@
   animation: glow-legendary 1.2s ease-in-out infinite;
 }
 
+/* Rarity-based hover effects for card grid */
+.rarity-card-hover {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.rarity-card-hover[data-rarity="common"]:hover {
+  border-color: rgb(156 163 175);
+  box-shadow: 0 0 15px rgba(156, 163, 175, 0.3);
+}
+
+.rarity-card-hover[data-rarity="uncommon"]:hover {
+  border-color: rgb(74 222 128);
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+}
+
+.rarity-card-hover[data-rarity="rare"]:hover {
+  border-color: rgb(96 165 250);
+  box-shadow: 0 0 25px rgba(96, 165, 250, 0.5);
+}
+
+.rarity-card-hover[data-rarity="epic"]:hover {
+  border-color: rgb(192 132 252);
+  box-shadow: 0 0 25px rgba(192, 132, 252, 0.5);
+}
+
+.rarity-card-hover[data-rarity="mythic"]:hover,
+.rarity-card-hover[data-rarity="legendary"]:hover {
+  border-color: rgb(251 191 36);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+}
+
 /* Game-specific badge colors */
 .badge-mtg {
   background: linear-gradient(135deg, #b91c1c, #dc2626);

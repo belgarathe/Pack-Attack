@@ -14,6 +14,64 @@ type BoxCard = {
   imageUrlGatherer: string;
   coinValue: number;
   pullRate: number;
+  rarity: string;
+};
+
+// Rarity glow configuration
+const RARITY_GLOW_CONFIG: Record<string, {
+  border: string;
+  shadow: string;
+  bg: string;
+  text: string;
+  animation: string;
+}> = {
+  common: {
+    border: 'border-gray-400',
+    shadow: 'shadow-gray-400/50',
+    bg: 'bg-gray-400/10',
+    text: 'text-gray-300',
+    animation: '',
+  },
+  uncommon: {
+    border: 'border-green-400',
+    shadow: 'shadow-green-400/60',
+    bg: 'bg-green-400/10',
+    text: 'text-green-400',
+    animation: 'animate-glow-uncommon',
+  },
+  rare: {
+    border: 'border-blue-400',
+    shadow: 'shadow-blue-400/70',
+    bg: 'bg-blue-400/10',
+    text: 'text-blue-400',
+    animation: 'animate-glow-rare',
+  },
+  epic: {
+    border: 'border-purple-400',
+    shadow: 'shadow-purple-500/70',
+    bg: 'bg-purple-400/10',
+    text: 'text-purple-400',
+    animation: 'animate-glow-epic',
+  },
+  mythic: {
+    border: 'border-amber-400',
+    shadow: 'shadow-amber-400/80',
+    bg: 'bg-amber-400/15',
+    text: 'text-amber-400',
+    animation: 'animate-glow-legendary',
+  },
+  legendary: {
+    border: 'border-amber-400',
+    shadow: 'shadow-amber-400/80',
+    bg: 'bg-amber-400/15',
+    text: 'text-amber-400',
+    animation: 'animate-glow-legendary',
+  },
+};
+
+const getRarityGlow = (rarity: string | undefined) => {
+  const key = rarity?.toLowerCase() || 'common';
+  return RARITY_GLOW_CONFIG[key] || RARITY_GLOW_CONFIG.common;
 };
 
 type Box = {
@@ -393,20 +451,25 @@ export default function OpenBoxPage() {
                   const isOpened = openedCardIds.has(card.id);
                   const isSpinning = isAnimating && spinningCardIds.has(card.id);
                   const isFeatured = isOpened && featuredCardId === card.id;
+                  const cardRarityGlow = getRarityGlow(card.rarity);
 
                   return (
                     <div
                       key={card.id}
                       className={`relative group transition-transform ${
-                        isOpened ? (isFeatured ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-gray-900 z-10 scale-[1.03]' : 'ring-4 ring-yellow-500 ring-offset-2 ring-offset-gray-900 z-10') : ''
-                      }`}
+                        isOpened ? `ring-4 ring-offset-2 ring-offset-gray-900 z-10 ${isFeatured ? 'scale-[1.03]' : ''}` : ''
+                      } ${isOpened ? cardRarityGlow.border.replace('border-', 'ring-') : ''}`}
                     >
                       <div
-                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all ${
-                          isOpened ? (isFeatured ? 'border-amber-400 shadow-xl shadow-amber-400/60 scale-110' : 'border-yellow-500 shadow-lg shadow-yellow-500/50 scale-105') :
-                          isSpinning ? 'border-blue-500 shadow-lg shadow-blue-500/50' : 'border-gray-700 hover:border-gray-600'
+                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all rarity-card-hover ${
+                          isOpened 
+                            ? `${cardRarityGlow.border} ${cardRarityGlow.shadow} ${isFeatured ? 'shadow-xl scale-110' : 'shadow-lg scale-105'} ${cardRarityGlow.animation}` 
+                            : isSpinning 
+                              ? 'border-blue-500 shadow-lg shadow-blue-500/50' 
+                              : 'border-gray-700'
                         } ${isSpinning ? 'animate-spin-slow' : ''}`}
                         style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
+                        data-rarity={card.rarity?.toLowerCase() || 'common'}
                       >
                         {card.imageUrlGatherer ? (
                           <Image src={card.imageUrlGatherer} alt={card.name} fill className="object-cover" unoptimized />
@@ -415,9 +478,9 @@ export default function OpenBoxPage() {
                             <span className="text-gray-600 text-xs">No Image</span>
                           </div>
                         )}
-                        {isOpened && <div className={`absolute inset-0 ${isFeatured ? 'bg-amber-400/25' : 'bg-yellow-500/20'} animate-pulse`} />}
+                        {isOpened && <div className={`absolute inset-0 ${cardRarityGlow.bg} animate-pulse`} />}
                         {isFeatured && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-gray-900 shadow-lg">
+                          <div className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full ${cardRarityGlow.bg} ${cardRarityGlow.border} px-3 py-1 text-xs font-bold ${cardRarityGlow.text} shadow-lg backdrop-blur-sm`}>
                             Best Pull
                           </div>
                         )}
@@ -428,9 +491,13 @@ export default function OpenBoxPage() {
                         <div className="absolute top-2 right-2 bg-black/80 rounded-lg px-2 py-1">
                           <span className="text-xs font-bold text-white">{card.pullRate.toFixed(3)}%</span>
                         </div>
+                        {/* Rarity indicator */}
+                        <div className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${cardRarityGlow.bg} ${cardRarityGlow.text} backdrop-blur-sm`}>
+                          {card.rarity || 'Common'}
+                        </div>
                       </div>
                       <div className="mt-2 text-center">
-                        <p className="text-sm font-semibold text-white truncate">{card.name}</p>
+                        <p className={`text-sm font-semibold truncate ${cardRarityGlow.text}`}>{card.name}</p>
                       </div>
                     </div>
                   );
@@ -456,24 +523,32 @@ export default function OpenBoxPage() {
               }`}>
                 {pulls.map((pull) => {
                   const isFeatured = pull.id === featuredPullId;
+                  const pullRarityGlow = getRarityGlow(pull.card?.rarity);
                   return (
                     <div
                       key={pull.id}
                       className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 ring-4 transition-transform ${
-                        isFeatured ? 'border-amber-400 ring-amber-400/60 scale-105 shadow-xl shadow-amber-400/40' : 'border-yellow-500 ring-yellow-500/50'
+                        isFeatured 
+                          ? `${pullRarityGlow.border} ring-amber-400/60 scale-105 ${pullRarityGlow.shadow} shadow-xl ${pullRarityGlow.animation}` 
+                          : `${pullRarityGlow.border} ring-offset-2 ring-offset-gray-900 ${pullRarityGlow.shadow}`
                       }`}
+                      style={{ ['--tw-ring-color' as string]: pullRarityGlow.border.replace('border-', 'rgb(var(--') }}
                     >
                       {pull.card?.imageUrlGatherer && (
                         <Image src={pull.card.imageUrlGatherer} alt={pull.card.name} fill className="object-cover" unoptimized />
                       )}
                       {isFeatured && (
-                        <div className="absolute top-2 right-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-gray-900">
+                        <div className={`absolute top-2 right-2 rounded-full ${pullRarityGlow.bg} ${pullRarityGlow.border} px-2 py-0.5 text-[10px] font-bold ${pullRarityGlow.text}`}>
                           Best Pull
                         </div>
                       )}
+                      {/* Rarity indicator */}
+                      <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${pullRarityGlow.bg} ${pullRarityGlow.text} backdrop-blur-sm`}>
+                        {pull.card?.rarity || 'Common'}
+                      </div>
                       <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
                         <p className="text-xs text-white truncate">{pull.card?.name}</p>
-                        <p className="text-xs text-amber-400">{pull.card?.coinValue?.toFixed(2)} coins</p>
+                        <p className={`text-xs ${pullRarityGlow.text}`}>{pull.card?.coinValue?.toFixed(2)} coins</p>
                       </div>
                     </div>
                   );
@@ -505,34 +580,43 @@ export default function OpenBoxPage() {
       </div>
 
       {/* Reveal Modal */}
-      {isShowingReveal && currentReveal?.card && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-md glass-strong rounded-2xl p-6 border border-amber-400/50 shadow-2xl shadow-amber-500/30 flex flex-col items-center">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-300 text-center">
-              Pull {currentRevealIndex} of {revealTotal || quantity}
-            </p>
-            <div className="relative aspect-[63/88] w-64 overflow-hidden rounded-xl border-2 border-amber-400 shadow-lg shadow-amber-400/60 mb-4">
-              {currentReveal.card.imageUrlGatherer ? (
-                <Image 
-                  src={currentReveal.card.imageUrlGatherer} 
-                  alt={currentReveal.card.name} 
-                  fill 
-                  className="object-contain"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
-              )}
-            </div>
-            <h3 className="mb-1 text-2xl font-bold text-white text-center">{currentReveal.card.name}</h3>
-            <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
-            <div className="flex items-center justify-center gap-2 text-amber-400">
-              <Coins className="h-5 w-5" />
-              <span className="text-xl font-semibold">{currentReveal.card.coinValue?.toFixed(2)} coins</span>
+      {isShowingReveal && currentReveal?.card && (() => {
+        const rarityGlow = getRarityGlow(currentReveal.card.rarity);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className={`relative w-full max-w-md glass-strong rounded-2xl p-6 border-2 ${rarityGlow.border} ${rarityGlow.shadow} shadow-2xl ${rarityGlow.animation} flex flex-col items-center`}>
+              {/* Rarity badge */}
+              <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full ${rarityGlow.bg} border ${rarityGlow.border} backdrop-blur-sm`}>
+                <span className={`text-xs font-bold uppercase tracking-wider ${rarityGlow.text}`}>
+                  {currentReveal.card.rarity || 'Common'}
+                </span>
+              </div>
+              <p className="mb-3 mt-2 text-sm font-semibold uppercase tracking-wide text-gray-300 text-center">
+                Pull {currentRevealIndex} of {revealTotal || quantity}
+              </p>
+              <div className={`relative aspect-[63/88] w-64 overflow-hidden rounded-xl border-2 ${rarityGlow.border} ${rarityGlow.shadow} shadow-lg mb-4 ${rarityGlow.animation}`}>
+                {currentReveal.card.imageUrlGatherer ? (
+                  <Image 
+                    src={currentReveal.card.imageUrlGatherer} 
+                    alt={currentReveal.card.name} 
+                    fill 
+                    className="object-contain"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
+                )}
+              </div>
+              <h3 className={`mb-1 text-2xl font-bold text-center ${rarityGlow.text}`}>{currentReveal.card.name}</h3>
+              <p className="mb-4 text-sm text-gray-400 text-center">{box.name}</p>
+              <div className={`flex items-center justify-center gap-2 ${rarityGlow.text}`}>
+                <Coins className="h-5 w-5" />
+                <span className="text-xl font-semibold">{currentReveal.card.coinValue?.toFixed(2)} coins</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
