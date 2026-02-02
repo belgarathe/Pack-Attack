@@ -17,8 +17,8 @@ type BoxCard = {
   rarity: string;
 };
 
-// Rarity glow configuration - Enhanced with Lindwurm styling
-const RARITY_GLOW_CONFIG: Record<string, {
+// Rarity tier definitions
+type RarityTier = {
   border: string;
   shadow: string;
   bg: string;
@@ -27,72 +27,151 @@ const RARITY_GLOW_CONFIG: Record<string, {
   lindwurm: string;
   glowColor: string;
   particleColor: string;
-}> = {
-  common: {
-    border: 'border-gray-400',
-    shadow: 'shadow-gray-400/50',
-    bg: 'bg-gray-400/20',
-    text: 'text-gray-300',
-    animation: '',
-    lindwurm: 'lindwurm-common',
-    glowColor: 'rgba(156, 163, 175, 0.6)',
-    particleColor: '#9ca3af',
-  },
-  uncommon: {
-    border: 'border-green-400',
-    shadow: 'shadow-green-400/60',
-    bg: 'bg-green-500/20',
-    text: 'text-green-400',
-    animation: 'animate-glow-uncommon',
-    lindwurm: 'lindwurm-uncommon',
-    glowColor: 'rgba(74, 222, 128, 0.8)',
-    particleColor: '#4ade80',
-  },
-  rare: {
-    border: 'border-blue-400',
-    shadow: 'shadow-blue-400/70',
-    bg: 'bg-blue-500/20',
-    text: 'text-blue-400',
-    animation: 'animate-glow-rare',
-    lindwurm: 'lindwurm-rare',
-    glowColor: 'rgba(96, 165, 250, 0.9)',
-    particleColor: '#60a5fa',
-  },
-  epic: {
-    border: 'border-purple-400',
-    shadow: 'shadow-purple-500/70',
-    bg: 'bg-purple-500/20',
-    text: 'text-purple-400',
-    animation: 'animate-glow-epic',
-    lindwurm: 'lindwurm-epic',
-    glowColor: 'rgba(192, 132, 252, 1)',
-    particleColor: '#c084fc',
-  },
-  mythic: {
-    border: 'border-amber-400',
-    shadow: 'shadow-amber-400/80',
-    bg: 'bg-amber-500/25',
-    text: 'text-amber-400',
-    animation: 'animate-glow-legendary',
-    lindwurm: 'lindwurm-mythic',
-    glowColor: 'rgba(251, 191, 36, 1)',
-    particleColor: '#fbbf24',
-  },
-  legendary: {
-    border: 'border-amber-400',
-    shadow: 'shadow-amber-400/80',
-    bg: 'bg-amber-500/25',
-    text: 'text-amber-400',
-    animation: 'animate-glow-legendary',
-    lindwurm: 'lindwurm-legendary',
-    glowColor: 'rgba(251, 191, 36, 1)',
-    particleColor: '#fbbf24',
-  },
 };
 
-const getRarityGlow = (rarity: string | undefined) => {
-  const key = rarity?.toLowerCase() || 'common';
-  return RARITY_GLOW_CONFIG[key] || RARITY_GLOW_CONFIG.common;
+const COMMON_TIER: RarityTier = {
+  border: 'border-gray-400',
+  shadow: 'shadow-gray-400/50',
+  bg: 'bg-gray-400/20',
+  text: 'text-gray-300',
+  animation: '',
+  lindwurm: 'lindwurm-common',
+  glowColor: 'rgba(156, 163, 175, 0.6)',
+  particleColor: '#9ca3af',
+};
+
+const UNCOMMON_TIER: RarityTier = {
+  border: 'border-green-400',
+  shadow: 'shadow-green-400/60',
+  bg: 'bg-green-500/20',
+  text: 'text-green-400',
+  animation: 'animate-glow-uncommon',
+  lindwurm: 'lindwurm-uncommon',
+  glowColor: 'rgba(74, 222, 128, 0.8)',
+  particleColor: '#4ade80',
+};
+
+const RARE_TIER: RarityTier = {
+  border: 'border-blue-400',
+  shadow: 'shadow-blue-400/70',
+  bg: 'bg-blue-500/20',
+  text: 'text-blue-400',
+  animation: 'animate-glow-rare',
+  lindwurm: 'lindwurm-rare',
+  glowColor: 'rgba(96, 165, 250, 0.9)',
+  particleColor: '#60a5fa',
+};
+
+const EPIC_TIER: RarityTier = {
+  border: 'border-purple-400',
+  shadow: 'shadow-purple-500/70',
+  bg: 'bg-purple-500/20',
+  text: 'text-purple-400',
+  animation: 'animate-glow-epic',
+  lindwurm: 'lindwurm-epic',
+  glowColor: 'rgba(192, 132, 252, 1)',
+  particleColor: '#c084fc',
+};
+
+const LEGENDARY_TIER: RarityTier = {
+  border: 'border-amber-400',
+  shadow: 'shadow-amber-400/80',
+  bg: 'bg-amber-500/25',
+  text: 'text-amber-400',
+  animation: 'animate-glow-legendary',
+  lindwurm: 'lindwurm-legendary',
+  glowColor: 'rgba(251, 191, 36, 1)',
+  particleColor: '#fbbf24',
+};
+
+// Rarity glow configuration - Maps ALL card game rarity formats
+const RARITY_GLOW_CONFIG: Record<string, RarityTier> = {
+  // === COMMON TIER ===
+  'common': COMMON_TIER,
+  'c': COMMON_TIER,
+  
+  // === UNCOMMON TIER ===
+  'uncommon': UNCOMMON_TIER,
+  'uc': UNCOMMON_TIER,
+  'u': UNCOMMON_TIER,
+  
+  // === RARE TIER ===
+  'rare': RARE_TIER,
+  'r': RARE_TIER,
+  'holo rare': RARE_TIER,
+  'holo': RARE_TIER,
+  'promo': RARE_TIER,
+  'p': RARE_TIER,
+  
+  // === SUPER RARE / EPIC TIER ===
+  'super rare': EPIC_TIER,
+  'sr': EPIC_TIER,
+  'epic': EPIC_TIER,
+  'ultra rare': EPIC_TIER,
+  'ultra': EPIC_TIER,
+  'double rare': EPIC_TIER,
+  'rr': EPIC_TIER,
+  'leader': EPIC_TIER,
+  'l': EPIC_TIER,
+  'special': EPIC_TIER,
+  'sp': EPIC_TIER,
+  'illustration rare': EPIC_TIER,
+  'ir': EPIC_TIER,
+  'full art': EPIC_TIER,
+  'fa': EPIC_TIER,
+  'v': EPIC_TIER,
+  'vstar': EPIC_TIER,
+  'vmax': EPIC_TIER,
+  'ex': EPIC_TIER,
+  'gx': EPIC_TIER,
+  
+  // === LEGENDARY / MYTHIC TIER ===
+  'legendary': LEGENDARY_TIER,
+  'mythic': LEGENDARY_TIER,
+  'mythic rare': LEGENDARY_TIER,
+  'secret': LEGENDARY_TIER,
+  'secret rare': LEGENDARY_TIER,
+  'sec': LEGENDARY_TIER,
+  'ssr': LEGENDARY_TIER,
+  'ur': LEGENDARY_TIER,
+  'alt art': LEGENDARY_TIER,
+  'alternate art': LEGENDARY_TIER,
+  'aa': LEGENDARY_TIER,
+  'spr': LEGENDARY_TIER,  
+  'special art rare': LEGENDARY_TIER,
+  'sar': LEGENDARY_TIER,
+  'art rare': LEGENDARY_TIER,
+  'ar': LEGENDARY_TIER,
+  'trainer gallery': LEGENDARY_TIER,
+  'tg': LEGENDARY_TIER,
+  'gold': LEGENDARY_TIER,
+  'hyper rare': LEGENDARY_TIER,
+  'hr': LEGENDARY_TIER,
+  'chase': LEGENDARY_TIER,
+  'manga': LEGENDARY_TIER,
+  'comic': LEGENDARY_TIER,
+};
+
+// Get rarity glow config with smart fallback
+const getRarityGlow = (rarity: string | undefined): RarityTier => {
+  if (!rarity) return COMMON_TIER;
+  
+  const key = rarity.toLowerCase().trim();
+  
+  // Direct match
+  if (RARITY_GLOW_CONFIG[key]) {
+    return RARITY_GLOW_CONFIG[key];
+  }
+  
+  // Partial match - check if any config key is contained in the rarity string
+  for (const configKey of Object.keys(RARITY_GLOW_CONFIG)) {
+    if (key.includes(configKey) || configKey.includes(key)) {
+      return RARITY_GLOW_CONFIG[configKey];
+    }
+  }
+  
+  // Fallback to common
+  return COMMON_TIER;
 };
 
 type Box = {
