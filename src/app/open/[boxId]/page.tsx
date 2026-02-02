@@ -578,9 +578,9 @@ export default function OpenBoxPage() {
                             <span className="text-gray-600 text-xs">No Image</span>
                           </div>
                         )}
-                        {isOpened && <div className={`absolute inset-0 ${cardRarityGlow.bg} animate-pulse`} />}
+                        {/* Removed pulsing glow overlay */}
                         {isFeatured && (
-                          <div className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full ${cardRarityGlow.bg} ${cardRarityGlow.border} px-3 py-1 text-xs font-bold ${cardRarityGlow.text} backdrop-blur-sm`}>
+                          <div className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full ${cardRarityGlow.bg} ${cardRarityGlow.border} px-3 py-1 text-xs font-bold ${cardRarityGlow.text}`}>
                             Best Pull
                           </div>
                         )}
@@ -592,7 +592,7 @@ export default function OpenBoxPage() {
                           <span className="text-xs font-bold text-white">{card.pullRate.toFixed(3)}%</span>
                         </div>
                         {/* Rarity indicator */}
-                        <div className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${cardRarityGlow.bg} ${cardRarityGlow.text} backdrop-blur-sm`}>
+                        <div className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${cardRarityGlow.bg} ${cardRarityGlow.text}`}>
                           {card.rarity || 'Common'}
                         </div>
                       </div>
@@ -643,7 +643,7 @@ export default function OpenBoxPage() {
                         </div>
                       )}
                       {/* Rarity indicator */}
-                      <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${pullRarityGlow.bg} ${pullRarityGlow.text} backdrop-blur-sm`}>
+                      <div className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${pullRarityGlow.bg} ${pullRarityGlow.text}`}>
                         {pull.card?.rarity || 'Common'}
                       </div>
                       <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
@@ -704,12 +704,12 @@ export default function OpenBoxPage() {
               <svg 
                 className="absolute pointer-events-none"
                 style={{
-                  top: '-70px',
-                  left: '-70px',
-                  width: 'calc(100% + 140px)',
-                  height: 'calc(100% + 140px)',
+                  top: '-90px',
+                  left: '-90px',
+                  width: 'calc(100% + 180px)',
+                  height: 'calc(100% + 180px)',
                   filter: 'none',
-                  zIndex: 100,
+                  zIndex: 50,
                   opacity: 1,
                 }}
                 viewBox="0 0 440 600"
@@ -841,7 +841,7 @@ export default function OpenBoxPage() {
               >
                 {/* Rarity badge - NO glow */}
                 <div 
-                  className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} backdrop-blur-sm z-10`}
+                  className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} z-10`}
                   style={{
                     boxShadow: 'none',
                   }}
