@@ -700,7 +700,7 @@ export default function OpenBoxPage() {
             {/* Main card container */}
             <div className="relative card-reveal-animate">
               
-              {/* ===== DRAGON BORDER FRAME - MAXIMUM VISIBILITY ===== */}
+              {/* ===== DRAGON BORDER FRAME - CRISP AND CLEAR ===== */}
               <svg 
                 className="absolute pointer-events-none"
                 style={{
@@ -708,13 +708,7 @@ export default function OpenBoxPage() {
                   left: '-70px',
                   width: 'calc(100% + 140px)',
                   height: 'calc(100% + 140px)',
-                  filter: `
-                    drop-shadow(0 0 50px ${rarityGlow.particleColor}) 
-                    drop-shadow(0 0 100px ${rarityGlow.particleColor}) 
-                    drop-shadow(0 0 150px ${rarityGlow.particleColor})
-                    drop-shadow(0 0 200px ${rarityGlow.particleColor})
-                    brightness(1.5)
-                  `,
+                  filter: 'none',
                   zIndex: 100,
                   opacity: 1,
                 }}
@@ -722,47 +716,22 @@ export default function OpenBoxPage() {
                 preserveAspectRatio="none"
               >
                 <defs>
-                  {/* Maximum visibility gradient */}
-                  <linearGradient id={`dragon-grad-${currentReveal.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor={rarityGlow.particleColor} stopOpacity="1"/>
-                    <stop offset="50%" stopColor={rarityGlow.particleColor} stopOpacity="1"/>
-                    <stop offset="100%" stopColor={rarityGlow.particleColor} stopOpacity="1"/>
-                  </linearGradient>
-                  
-                  {/* Maximum intensity glow filter */}
-                  <filter id={`dragon-glow-${currentReveal.id}`} x="-200%" y="-200%" width="500%" height="500%">
-                    <feGaussianBlur stdDeviation="25" result="blur1"/>
-                    <feGaussianBlur stdDeviation="20" result="blur2"/>
-                    <feGaussianBlur stdDeviation="15" result="blur3"/>
-                    <feGaussianBlur stdDeviation="10" result="blur4"/>
-                    <feMerge>
-                      <feMergeNode in="blur1"/>
-                      <feMergeNode in="blur1"/>
-                      <feMergeNode in="blur2"/>
-                      <feMergeNode in="blur2"/>
-                      <feMergeNode in="blur3"/>
-                      <feMergeNode in="blur3"/>
-                      <feMergeNode in="blur4"/>
-                      <feMergeNode in="SourceGraphic"/>
-                      <feMergeNode in="SourceGraphic"/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
+                  {/* Solid color - NO gradient or filters */}
                 </defs>
                 
                 {/* === LEFT DRAGON/SERPENT === */}
-                <g filter={`url(#dragon-glow-${currentReveal.id})`}>
+                <g>
                   {/* Dragon head - top left */}
                   <path 
                     d="M60 80 L30 50 L20 70 L35 80 L20 90 L30 110 L60 90 Z" 
                     fill={rarityGlow.particleColor}
-                    style={{ animation: 'dragon-breathe 1.5s ease-in-out infinite' }}
+                    opacity="1"
                   />
                   {/* Eye */}
                   <circle cx="45" cy="75" r="6" fill="white"/>
                   <circle cx="47" cy="75" r="3" fill="black"/>
                   
-                  {/* Left serpent body - MAXIMUM thickness */}
+                  {/* Left serpent body - MAXIMUM thickness, CRISP */}
                   <path 
                     d="M50 95 
                        Q20 130 35 170 
@@ -776,32 +745,31 @@ export default function OpenBoxPage() {
                     fill="none"
                     strokeLinecap="round"
                     strokeOpacity="1"
-                    style={{ animation: 'dragon-pulse 2s ease-in-out infinite' }}
                   />
                   
                   {/* Dragon scales on left body */}
-                  <circle cx="35" cy="140" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="25" cy="200" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="35" cy="260" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="20" cy="320" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="40" cy="380" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="25" cy="440" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="45" cy="500" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
+                  <circle cx="35" cy="140" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="25" cy="200" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="35" cy="260" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="20" cy="320" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="40" cy="380" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="25" cy="440" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="45" cy="500" r="10" fill={rarityGlow.particleColor} opacity="1"/>
                 </g>
                 
                 {/* === RIGHT DRAGON/SERPENT === */}
-                <g filter={`url(#dragon-glow-${currentReveal.id})`}>
+                <g>
                   {/* Dragon head - top right */}
                   <path 
                     d="M380 80 L410 50 L420 70 L405 80 L420 90 L410 110 L380 90 Z" 
                     fill={rarityGlow.particleColor}
-                    style={{ animation: 'dragon-breathe 1.5s ease-in-out infinite', animationDelay: '0.5s' }}
+                    opacity="1"
                   />
                   {/* Eye */}
                   <circle cx="395" cy="75" r="6" fill="white"/>
                   <circle cx="393" cy="75" r="3" fill="black"/>
                   
-                  {/* Right serpent body - MAXIMUM thickness */}
+                  {/* Right serpent body - MAXIMUM thickness, CRISP */}
                   <path 
                     d="M390 95 
                        Q420 130 405 170 
@@ -815,22 +783,21 @@ export default function OpenBoxPage() {
                     fill="none"
                     strokeLinecap="round"
                     strokeOpacity="1"
-                    style={{ animation: 'dragon-pulse 2s ease-in-out infinite', animationDelay: '1s' }}
                   />
                   
                   {/* Dragon scales on right body */}
-                  <circle cx="405" cy="140" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="415" cy="200" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="405" cy="260" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="420" cy="320" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="400" cy="380" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="415" cy="440" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
-                  <circle cx="395" cy="500" r="8" fill={rarityGlow.particleColor} opacity="0.9"/>
+                  <circle cx="405" cy="140" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="415" cy="200" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="405" cy="260" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="420" cy="320" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="400" cy="380" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="415" cy="440" r="10" fill={rarityGlow.particleColor} opacity="1"/>
+                  <circle cx="395" cy="500" r="10" fill={rarityGlow.particleColor} opacity="1"/>
                 </g>
                 
                 {/* === TAIL AT BOTTOM === */}
-                <g filter={`url(#dragon-glow-${currentReveal.id})`}>
-                  {/* Left tail curling - MAXIMUM thickness */}
+                <g>
+                  {/* Left tail curling - MAXIMUM thickness, CRISP */}
                   <path 
                     d="M50 550 Q100 580 150 570 Q180 560 200 580 Q220 590 220 570"
                     stroke={rarityGlow.particleColor}
@@ -839,7 +806,7 @@ export default function OpenBoxPage() {
                     strokeLinecap="round"
                     strokeOpacity="1"
                   />
-                  {/* Right tail curling - MAXIMUM thickness */}
+                  {/* Right tail curling - MAXIMUM thickness, CRISP */}
                   <path 
                     d="M390 550 Q340 580 290 570 Q260 560 240 580 Q220 590 220 570"
                     stroke={rarityGlow.particleColor}
@@ -849,18 +816,18 @@ export default function OpenBoxPage() {
                     strokeOpacity="1"
                   />
                   {/* Tail spikes */}
-                  <polygon points="220,570 210,590 220,585 230,590" fill={rarityGlow.particleColor}/>
+                  <polygon points="220,570 210,590 220,585 230,590" fill={rarityGlow.particleColor} opacity="1"/>
                 </g>
                 
                 {/* === DECORATIVE FLAMES/BREATH from dragon heads === */}
                 {isHighRarity && (
-                  <g style={{ animation: 'dragon-breathe 0.8s ease-in-out infinite' }}>
-                    {/* Left dragon breath */}
-                    <ellipse cx="15" cy="65" rx="12" ry="8" fill={rarityGlow.particleColor} opacity="0.6"/>
-                    <ellipse cx="5" cy="60" rx="8" ry="5" fill={rarityGlow.particleColor} opacity="0.4"/>
-                    {/* Right dragon breath */}
-                    <ellipse cx="425" cy="65" rx="12" ry="8" fill={rarityGlow.particleColor} opacity="0.6"/>
-                    <ellipse cx="435" cy="60" rx="8" ry="5" fill={rarityGlow.particleColor} opacity="0.4"/>
+                  <g>
+                    {/* Left dragon breath - SOLID */}
+                    <ellipse cx="15" cy="65" rx="12" ry="8" fill={rarityGlow.particleColor} opacity="1"/>
+                    <ellipse cx="5" cy="60" rx="8" ry="5" fill={rarityGlow.particleColor} opacity="0.8"/>
+                    {/* Right dragon breath - SOLID */}
+                    <ellipse cx="425" cy="65" rx="12" ry="8" fill={rarityGlow.particleColor} opacity="1"/>
+                    <ellipse cx="435" cy="60" rx="8" ry="5" fill={rarityGlow.particleColor} opacity="0.8"/>
                   </g>
                 )}
               </svg>
