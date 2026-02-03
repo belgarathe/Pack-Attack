@@ -556,19 +556,50 @@ export default function OpenBoxPage() {
                   return (
                     <div
                       key={card.id}
-                      className={`relative group transition-transform ${
+                      className={`relative group transition-all duration-300 ${
                         isOpened ? `ring-4 ring-offset-2 ring-offset-gray-900 z-10 ${isFeatured ? 'scale-[1.03]' : ''}` : ''
                       } ${isOpened ? cardRarityGlow.border.replace('border-', 'ring-') : ''}`}
                     >
+                      {/* Glow effect behind card on hover */}
+                      <div 
+                        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl -z-10"
+                        style={{
+                          background: `radial-gradient(circle at center, ${cardRarityGlow.glowColor}, transparent 70%)`,
+                          transform: 'scale(1.1)',
+                        }}
+                      />
+                      
                       <div
-                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all ${
+                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 transition-all duration-300 ${
                           isOpened 
                             ? `${cardRarityGlow.border} ${isFeatured ? 'scale-110' : 'scale-105'}` 
                             : isSpinning 
                               ? 'border-blue-500' 
-                              : 'border-gray-700'
-                        } ${isSpinning ? 'animate-spin-slow' : ''}`}
-                        style={isSpinning ? { transformStyle: 'preserve-3d' } : {}}
+                              : 'border-gray-700 group-hover:border-opacity-0'
+                        } ${isSpinning ? 'animate-spin-slow' : 'group-hover:-translate-y-2 group-hover:scale-105'}`}
+                        style={
+                          isSpinning 
+                            ? { transformStyle: 'preserve-3d' } 
+                            : {
+                                boxShadow: `0 0 0 0 ${cardRarityGlow.glowColor.replace('1)', '0)')}`,
+                                transition: 'all 0.3s ease, box-shadow 0.3s ease',
+                              }
+                        }
+                        onMouseEnter={(e) => {
+                          if (!isSpinning && !isOpened) {
+                            e.currentTarget.style.boxShadow = `
+                              0 0 30px 8px ${cardRarityGlow.glowColor.replace('1)', '0.6)')},
+                              0 0 60px 15px ${cardRarityGlow.glowColor.replace('1)', '0.3)')},
+                              0 20px 40px rgba(0, 0, 0, 0.5)
+                            `;
+                            e.currentTarget.style.borderColor = cardRarityGlow.glowColor.replace('rgba(', '').replace(')', '').replace(/[\d.]+\)$/, '0.8)');
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSpinning && !isOpened) {
+                            e.currentTarget.style.boxShadow = `0 0 0 0 ${cardRarityGlow.glowColor.replace('1)', '0)')}`;
+                          }
+                        }}
                         data-rarity={card.rarity?.toLowerCase() || 'common'}
                       >
                         {card.imageUrlGatherer ? (
@@ -627,13 +658,39 @@ export default function OpenBoxPage() {
                   return (
                     <div
                       key={pull.id}
-                      className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 ring-4 transition-transform ${
-                        isFeatured 
-                          ? `${pullRarityGlow.border} ring-amber-400/60 scale-105` 
-                          : `${pullRarityGlow.border} ring-offset-2 ring-offset-gray-900`
-                      }`}
-                      style={{ ['--tw-ring-color' as string]: pullRarityGlow.border.replace('border-', 'rgb(var(--') }}
+                      className="relative group"
                     >
+                      {/* Glow effect behind pulled card on hover */}
+                      <div 
+                        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl -z-10"
+                        style={{
+                          background: `radial-gradient(circle at center, ${pullRarityGlow.glowColor}, transparent 70%)`,
+                          transform: 'scale(1.15)',
+                        }}
+                      />
+                      
+                      <div
+                        className={`relative aspect-[63/88] rounded-xl overflow-hidden border-2 ring-4 transition-all duration-300 ${
+                          isFeatured 
+                            ? `${pullRarityGlow.border} ring-amber-400/60 scale-105` 
+                            : `${pullRarityGlow.border} ring-offset-2 ring-offset-gray-900 group-hover:-translate-y-2 group-hover:scale-105`
+                        }`}
+                        style={{ ['--tw-ring-color' as string]: pullRarityGlow.border.replace('border-', 'rgb(var(--') }}
+                        onMouseEnter={(e) => {
+                          if (!isFeatured) {
+                            e.currentTarget.style.boxShadow = `
+                              0 0 30px 8px ${pullRarityGlow.glowColor.replace('1)', '0.7)')},
+                              0 0 60px 15px ${pullRarityGlow.glowColor.replace('1)', '0.4)')},
+                              0 25px 50px rgba(0, 0, 0, 0.6)
+                            `;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isFeatured) {
+                            e.currentTarget.style.boxShadow = '';
+                          }
+                        }}
+                      >
                       {pull.card?.imageUrlGatherer && (
                         <Image src={pull.card.imageUrlGatherer} alt={pull.card.name} fill className="object-cover" unoptimized />
                       )}
@@ -649,6 +706,7 @@ export default function OpenBoxPage() {
                       <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
                         <p className="text-xs text-white truncate">{pull.card?.name}</p>
                         <p className={`text-xs ${pullRarityGlow.text}`}>{pull.card?.coinValue?.toFixed(2)} coins</p>
+                      </div>
                       </div>
                     </div>
                   );
