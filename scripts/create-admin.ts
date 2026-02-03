@@ -47,6 +47,7 @@ async function createAdmin() {
           passwordHash,
           role: 'ADMIN',
           name,
+          emailVerified: new Date(), // Mark email as verified
         },
       });
       console.log('✅ Admin user updated successfully!');
@@ -61,6 +62,7 @@ async function createAdmin() {
           passwordHash,
           name,
           role: 'ADMIN',
+          emailVerified: new Date(), // Mark email as verified
           coins: 10000, // Give admin some starting coins
         },
       });

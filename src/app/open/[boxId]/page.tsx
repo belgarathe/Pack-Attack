@@ -679,100 +679,193 @@ export default function OpenBoxPage() {
         </div>
       </div>
 
-      {/* Reveal Modal - DRAMATIC Lindwurm Dragon Border */}
+      {/* Reveal Modal - Modern Premium Design */}
       {isShowingReveal && currentReveal?.card && (() => {
         const rarityGlow = getRarityGlow(currentReveal.card.rarity);
         const rarity = currentReveal.card.rarity?.toLowerCase() || 'common';
         const isHighRarity = ['epic', 'mythic', 'legendary'].includes(rarity);
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/99 p-4">
-            {/* Main card container with modern styling */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
+            {/* Animated background gradient */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse" 
+                   style={{ background: rarityGlow.glowColor }} />
+              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse delay-1000" 
+                   style={{ background: rarityGlow.glowColor }} />
+            </div>
+            
+            {/* Main card container with premium styling */}
             <div className="relative card-reveal-animate">
-              {/* Card content container with 5% glow */}
+              {/* Outer glow ring */}
               <div 
-                className={`relative w-full max-w-sm glass-strong rounded-2xl p-6 border-4 ${rarityGlow.border} flex flex-col items-center`}
+                className="absolute -inset-4 rounded-3xl opacity-60 blur-2xl"
+                style={{ background: `radial-gradient(circle, ${rarityGlow.glowColor}, transparent 70%)` }}
+              />
+              
+              {/* Card content container with sleek modern border */}
+              <div 
+                className={`relative w-full max-w-md backdrop-blur-xl rounded-3xl p-8 flex flex-col items-center border-2 ${rarityGlow.border}`}
                 style={{
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
                   boxShadow: `
-                    0 0 20px 8px ${rarityGlow.glowColor.replace('1)', '0.05)')},
-                    0 0 40px 15px ${rarityGlow.glowColor.replace('1)', '0.03)')},
-                    inset 0 0 25px ${rarityGlow.glowColor.replace('1)', '0.015)')}
+                    0 0 1px 1px ${rarityGlow.glowColor.replace('1)', '0.8)')},
+                    0 0 40px 10px ${rarityGlow.glowColor.replace('1)', '0.3)')},
+                    0 20px 60px -15px rgba(0, 0, 0, 0.8),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.5)
                   `,
                 }}
               >
-                {/* Rarity badge with 5% glow */}
+                {/* Top accent line */}
                 <div 
-                  className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border} backdrop-blur-sm z-10`}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px"
                   style={{
-                    boxShadow: `0 0 15px 6px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 30px 12px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
+                    background: `linear-gradient(90deg, transparent, ${rarityGlow.glowColor}, transparent)`,
+                  }}
+                />
+                
+                {/* Rarity badge with modern design */}
+                <div 
+                  className={`absolute -top-5 left-1/2 -translate-x-1/2 px-8 py-2.5 rounded-2xl ${rarityGlow.bg} border-2 ${rarityGlow.border} backdrop-blur-md z-10`}
+                  style={{
+                    background: `linear-gradient(135deg, ${rarityGlow.glowColor.replace('1)', '0.25)')}, ${rarityGlow.glowColor.replace('1)', '0.15)')})`,
+                    boxShadow: `
+                      0 0 30px ${rarityGlow.glowColor.replace('1)', '0.4)')},
+                      0 8px 16px rgba(0, 0, 0, 0.4),
+                      inset 0 1px 0 rgba(255, 255, 255, 0.2)
+                    `,
                   }}
                 >
                   <span 
-                    className={`text-lg font-black uppercase tracking-widest ${rarityGlow.text}`}
+                    className={`text-base font-black uppercase tracking-[0.2em] ${rarityGlow.text}`}
                     style={{
-                      textShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 25px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
+                      textShadow: `0 2px 10px ${rarityGlow.glowColor.replace('1)', '0.6)')}, 0 0 20px ${rarityGlow.glowColor.replace('1)', '0.3)')}`,
                     }}
                   >
                     {currentReveal.card.rarity || 'Common'}
                   </span>
                 </div>
                 
-                <p className="mb-4 mt-6 text-base font-bold uppercase tracking-wide text-gray-200 text-center">
+                <p className="mb-6 mt-8 text-sm font-semibold uppercase tracking-[0.15em] text-gray-400 text-center">
                   Pull {currentRevealIndex} of {revealTotal || quantity}
                 </p>
                 
-                {/* Card image with 5% glow */}
+                {/* Card image with sleek modern border */}
                 <div 
-                  className={`relative aspect-[63/88] w-72 overflow-hidden rounded-xl border-4 ${rarityGlow.border} mb-4`}
+                  className={`relative aspect-[63/88] w-80 overflow-hidden rounded-2xl border-2 ${rarityGlow.border} mb-6 group`}
                   style={{
+                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2))',
                     boxShadow: `
-                      0 0 18px 6px ${rarityGlow.glowColor.replace('1)', '0.05)')},
-                      0 0 35px 12px ${rarityGlow.glowColor.replace('1)', '0.03)')},
-                      inset 0 0 20px ${rarityGlow.glowColor.replace('1)', '0.02)')}
+                      0 0 1px 1px ${rarityGlow.glowColor.replace('1)', '0.9)')},
+                      0 0 80px 20px ${rarityGlow.glowColor.replace('1)', '0.25)')},
+                      0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                      inset 0 2px 4px rgba(255, 255, 255, 0.1),
+                      inset 0 -2px 4px rgba(0, 0, 0, 0.3)
                     `,
+                    transform: 'perspective(1000px) rotateY(0deg)',
+                    transition: 'transform 0.6s ease',
                   }}
                 >
+                  {/* Inner border accent */}
+                  <div 
+                    className="absolute inset-1 rounded-xl pointer-events-none"
+                    style={{
+                      border: `1px solid ${rarityGlow.glowColor.replace('1)', '0.3)')}`,
+                    }}
+                  />
+                  
                   {currentReveal.card.imageUrlGatherer ? (
                     <Image 
                       src={currentReveal.card.imageUrlGatherer} 
                       alt={currentReveal.card.name} 
                       fill 
-                      className="object-contain"
+                      className="object-contain transition-transform duration-300 group-hover:scale-105"
                       unoptimized
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-500">No Image</div>
                   )}
+                  
+                  {/* Corner accents */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 rounded-tl-2xl opacity-60"
+                       style={{ borderColor: rarityGlow.glowColor }} />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 rounded-tr-2xl opacity-60"
+                       style={{ borderColor: rarityGlow.glowColor }} />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 rounded-bl-2xl opacity-60"
+                       style={{ borderColor: rarityGlow.glowColor }} />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 rounded-br-2xl opacity-60"
+                       style={{ borderColor: rarityGlow.glowColor }} />
                 </div>
                 
-                {/* Card name with 5% text glow */}
+                {/* Card name with premium styling */}
                 <h3 
-                  className={`mb-2 text-3xl font-black text-center ${rarityGlow.text}`}
+                  className={`mb-3 text-4xl font-black text-center ${rarityGlow.text} leading-tight`}
                   style={{
-                    textShadow: `0 0 15px ${rarityGlow.glowColor.replace('1)', '0.05)')}`,
+                    textShadow: `
+                      0 2px 20px ${rarityGlow.glowColor.replace('1)', '0.4)')},
+                      0 4px 40px ${rarityGlow.glowColor.replace('1)', '0.2)')},
+                      0 0 80px ${rarityGlow.glowColor.replace('1)', '0.15)')}
+                    `,
                   }}
                 >
                   {currentReveal.card.name}
                 </h3>
-                <p className="mb-4 text-base text-gray-300 text-center font-medium">{box.name}</p>
+                <p className="mb-6 text-sm text-gray-400 text-center font-medium tracking-wide">{box.name}</p>
                 
-                {/* Coin value with 5% glow */}
+                {/* Divider line */}
                 <div 
-                  className={`flex items-center justify-center gap-4 px-8 py-4 rounded-full ${rarityGlow.bg} border-4 ${rarityGlow.border}`}
+                  className="w-24 h-px mb-6 rounded-full"
                   style={{
-                    boxShadow: `0 0 15px 5px ${rarityGlow.glowColor.replace('1)', '0.05)')}, 0 0 30px 10px ${rarityGlow.glowColor.replace('1)', '0.03)')}`,
+                    background: `linear-gradient(90deg, transparent, ${rarityGlow.glowColor}, transparent)`,
+                    boxShadow: `0 0 10px ${rarityGlow.glowColor.replace('1)', '0.5)')}`,
+                  }}
+                />
+                
+                {/* Coin value with sleek badge design */}
+                <div 
+                  className={`relative flex items-center justify-center gap-3 px-10 py-4 rounded-2xl ${rarityGlow.bg} border-2 ${rarityGlow.border} overflow-hidden`}
+                  style={{
+                    background: `linear-gradient(135deg, ${rarityGlow.glowColor.replace('1)', '0.15)')}, ${rarityGlow.glowColor.replace('1)', '0.05)')})`,
+                    boxShadow: `
+                      0 0 1px 1px ${rarityGlow.glowColor.replace('1)', '0.6)')},
+                      0 0 40px ${rarityGlow.glowColor.replace('1)', '0.25)')},
+                      0 10px 30px rgba(0, 0, 0, 0.3),
+                      inset 0 1px 0 rgba(255, 255, 255, 0.1)
+                    `,
                   }}
                 >
-                  <Coins className={`h-8 w-8 ${rarityGlow.text}`} />
-                  <span 
-                    className={`text-3xl font-black ${rarityGlow.text}`}
+                  {/* Animated shine effect */}
+                  <div 
+                    className="absolute inset-0 opacity-30"
                     style={{
-                      textShadow: `0 0 10px ${rarityGlow.glowColor.replace('1)', '0.05)')}`,
+                      background: `linear-gradient(110deg, transparent 40%, ${rarityGlow.glowColor.replace('1)', '0.3)')} 50%, transparent 60%)`,
+                      animation: 'shimmer 3s infinite',
+                    }}
+                  />
+                  
+                  <Coins className={`h-7 w-7 ${rarityGlow.text} relative z-10`} 
+                         style={{ filter: `drop-shadow(0 0 6px ${rarityGlow.glowColor})` }} />
+                  <span 
+                    className={`text-3xl font-black ${rarityGlow.text} relative z-10`}
+                    style={{
+                      textShadow: `
+                        0 2px 15px ${rarityGlow.glowColor.replace('1)', '0.6)')},
+                        0 0 30px ${rarityGlow.glowColor.replace('1)', '0.3)')}
+                      `,
                     }}
                   >
                     {currentReveal.card.coinValue?.toFixed(2)} coins
                   </span>
                 </div>
+                
+                {/* Bottom accent line */}
+                <div 
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${rarityGlow.glowColor.replace('1)', '0.5)')}, transparent)`,
+                  }}
+                />
               </div>
             </div>
           </div>

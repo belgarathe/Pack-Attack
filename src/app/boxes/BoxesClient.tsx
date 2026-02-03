@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Coins, Package, ChevronRight, ChevronDown, Filter, Sparkles } from 'lucide-react';
+import { Coins, Package, ChevronRight, ChevronDown, Filter, Sparkles, Layers } from 'lucide-react';
 
 interface Card {
   id: string;
@@ -70,7 +70,12 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 px-4 py-3 glass-strong rounded-xl text-white font-medium hover:bg-white/10 transition-all min-w-[220px]"
+            className="flex items-center gap-3 px-5 py-3.5 rounded-xl text-white font-semibold transition-all min-w-[240px] border border-gray-700/50 hover:border-blue-500/50"
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            }}
           >
             <Filter className="w-4 h-4 text-blue-400" />
             <span className="flex-1 text-left">
@@ -88,28 +93,40 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                 onClick={() => setIsDropdownOpen(false)} 
               />
               
-              {/* Dropdown */}
-              <div className="absolute top-full left-0 mt-2 w-full min-w-[260px] rounded-xl overflow-hidden z-50 border border-gray-700 shadow-2xl bg-gray-900">
-                <div className="max-h-[400px] overflow-y-auto py-2 bg-gray-900">
+              {/* Dropdown with premium styling */}
+              <div 
+                className="absolute top-full left-0 mt-3 w-full min-w-[280px] rounded-2xl overflow-hidden z-50 border-2 border-gray-700/80 shadow-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <div className="max-h-[420px] overflow-y-auto py-2"
+                     style={{
+                       scrollbarWidth: 'thin',
+                       scrollbarColor: 'rgba(59, 130, 246, 0.3) rgba(0, 0, 0, 0.2)',
+                     }}
+                >
                   {/* All Games option */}
                   <button
                     onClick={() => {
                       setSelectedGame('all');
                       setIsDropdownOpen(false);
                     }}
-                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 border-l-4 ${
                       selectedGame === 'all' 
-                        ? 'bg-blue-600/30 text-blue-400' 
-                        : 'text-gray-300 hover:bg-gray-800'
+                        ? 'bg-blue-600/20 text-blue-400 border-blue-500' 
+                        : 'text-gray-300 hover:bg-gray-800/50 border-transparent hover:border-blue-500/30'
                     }`}
                   >
                     <Package className="w-4 h-4" />
-                    <span className="font-medium">All Games</span>
-                    <span className="ml-auto text-xs text-gray-500">{boxes.length} boxes</span>
+                    <span className="font-semibold">All Games</span>
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium">{boxes.length}</span>
                   </button>
 
                   {/* Divider */}
-                  <div className="my-2 border-t border-gray-700" />
+                  <div className="my-2 mx-3 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
                   {/* Game options */}
                   {availableGames.map(game => {
@@ -121,15 +138,18 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                           setSelectedGame(game);
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 border-l-4 ${
                           selectedGame === game 
-                            ? 'bg-blue-600/30 text-blue-400' 
-                            : 'text-gray-300 hover:bg-gray-800'
+                            ? 'bg-blue-600/20 text-blue-400 border-blue-500' 
+                            : 'text-gray-300 hover:bg-gray-800/50 border-transparent hover:border-blue-500/30'
                         }`}
                       >
-                        <span className={`w-2 h-2 rounded-full ${getGameBadgeColor(game)}`} />
-                        <span className="font-medium">{getGameDisplayName(game)}</span>
-                        <span className="ml-auto text-xs text-gray-500">{gameBoxCount} boxes</span>
+                        <span 
+                          className={`w-2.5 h-2.5 rounded-full ${getGameBadgeColor(game)}`} 
+                          style={{ boxShadow: `0 0 8px currentColor` }}
+                        />
+                        <span className="font-semibold">{getGameDisplayName(game)}</span>
+                        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium">{gameBoxCount}</span>
                       </button>
                     );
                   })}
@@ -180,10 +200,22 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
             <Link 
               key={box.id} 
               href={`/open/${box.id}`}
-              className="group glass rounded-xl overflow-hidden card-lift"
+              className="group relative rounded-2xl overflow-hidden card-lift transition-all duration-300 hover:scale-[1.02]"
+              style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+              }}
             >
+              {/* Hover glow effect */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
+                   style={{
+                     background: 'radial-gradient(circle at center, rgba(59, 130, 246, 0.15), transparent 70%)',
+                   }} />
+              
               {/* Card Preview Section - Fanned Cards */}
-              <div className="relative h-48 bg-gradient-to-b from-gray-800/50 to-gray-900/80 flex items-end justify-center pb-2 overflow-hidden">
+              <div className="relative h-48 bg-gradient-to-b from-gray-800/40 to-gray-900/60 flex items-end justify-center pb-2 overflow-hidden">
                 {/* Background glow effect */}
                 <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 via-transparent to-transparent" />
                 
@@ -197,13 +229,18 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                       return (
                         <div
                           key={card.id}
-                          className="absolute transition-transform duration-300 group-hover:scale-105"
+                          className="absolute transition-all duration-500 group-hover:scale-110"
                           style={{
                             transform: `rotate(${rotations[index]}deg) translateX(${translations[index]}px)`,
                             zIndex: zIndexes[index],
                           }}
                         >
-                          <div className="relative w-20 h-[110px] rounded-md overflow-hidden border-2 border-gray-600 shadow-lg group-hover:border-amber-400/50 transition-colors bg-gray-800">
+                          <div 
+                            className="relative w-20 h-[110px] rounded-lg overflow-hidden border-2 border-gray-700/80 shadow-2xl group-hover:border-blue-400/80 transition-all duration-300 bg-gray-800"
+                            style={{
+                              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                            }}
+                          >
                             {card.imageUrlGatherer ? (
                               <Image
                                 src={card.imageUrlGatherer}
@@ -254,24 +291,31 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                 )}
               </div>
 
-              {/* Box Info */}
-              <div className="p-4 border-t border-gray-800">
-                <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors line-clamp-1">
+              {/* Box Info - Modern Premium Design */}
+              <div className="relative p-5 bg-gradient-to-b from-gray-900/60 to-gray-950/80">
+                {/* Top accent line */}
+                <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+                
+                <h3 className="text-base font-bold text-white mb-3 group-hover:text-blue-400 transition-colors line-clamp-1 tracking-wide">
                   {box.name}
                 </h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Coins className="w-4 h-4 text-amber-400" />
+                
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                    <Coins className="w-4 h-4 text-amber-400" style={{ filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.5))' }} />
                     <span className="text-sm font-bold text-amber-400">{box.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <span className="text-xs text-gray-500">coins</span>
                   </div>
-                  <div className="flex items-center gap-0.5 text-blue-400 text-xs font-medium group-hover:translate-x-0.5 transition-transform">
-                    Open <ChevronRight className="w-3 h-3" />
+                  <div className="flex items-center gap-1 text-blue-400 text-xs font-semibold group-hover:gap-2 transition-all duration-300">
+                    Open <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="mt-2 pt-2 border-t border-gray-800/50 flex items-center justify-between text-[11px] text-gray-500">
-                  <span>{box.cardsPerPack} cards/pack</span>
-                  <span>{box._count.cards} total</span>
+                
+                <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-800/50">
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3 h-3" />
+                    {box.cardsPerPack} cards/pack
+                  </span>
+                  <span className="font-medium">{box._count.cards} total</span>
                 </div>
               </div>
             </Link>
