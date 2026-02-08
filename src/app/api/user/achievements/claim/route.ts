@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { emitCoinBalanceUpdate } from '@/lib/coin-events';
 import { rateLimit } from '@/lib/rate-limit';
 
 // POST: Claim reward for an unlocked achievement
@@ -57,8 +56,14 @@ export async function POST(request: NextRequest) {
 
     const coinReward = Number(userAchievement.achievement.coinReward);
 
+    // Validate coin reward is a positive number
+    if (isNaN(coinReward) || coinReward <= 0) {
+      console.error('Invalid coin reward:', userAchievement.achievement.coinReward);
+      return NextResponse.json({ error: 'Invalid achievement reward' }, { status: 500 });
+    }
+
     // Update user coins and mark reward as claimed
-    const [updatedUser] = await prisma.$transaction([
+    const [updatedUser, updatedAchievement] = await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
         data: { coins: { increment: coinReward } },
@@ -69,11 +74,11 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    // Emit coin balance update event
-    emitCoinBalanceUpdate({
-      userId: user.id,
-      balance: Number(updatedUser.coins),
-    });
+    // Verify the transaction succeeded
+    if (!updatedUser || !updatedAchievement.rewardClaimed) {
+      console.error('Transaction failed to update user or achievement');
+      return NextResponse.json({ error: 'Failed to process claim' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -134,8 +139,14 @@ export async function PUT(request: NextRequest) {
       0
     );
 
+    // Validate total coins
+    if (isNaN(totalCoins) || totalCoins <= 0) {
+      console.error('Invalid total coins:', totalCoins);
+      return NextResponse.json({ error: 'Invalid achievement rewards' }, { status: 500 });
+    }
+
     // Update user coins and mark all rewards as claimed
-    const [updatedUser] = await prisma.$transaction([
+    const results = await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
         data: { coins: { increment: totalCoins } },
@@ -148,11 +159,13 @@ export async function PUT(request: NextRequest) {
       ),
     ]);
 
-    // Emit coin balance update event
-    emitCoinBalanceUpdate({
-      userId: user.id,
-      balance: Number(updatedUser.coins),
-    });
+    const updatedUser = results[0];
+
+    // Verify the transaction succeeded
+    if (!updatedUser) {
+      console.error('Transaction failed to update user');
+      return NextResponse.json({ error: 'Failed to process claims' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
