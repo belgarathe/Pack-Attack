@@ -101,6 +101,29 @@ done
 echo -e "${GREEN}✓ Configuration validated${NC}"
 
 #===============================================================================
+# STEP 1.5: PRE-DEPLOYMENT SECURITY VALIDATION
+#===============================================================================
+
+echo -e "${YELLOW}Step 1.5: Security Validation${NC}"
+
+# Run pre-deployment checks
+if [ -f "./scripts/pre-deploy-security-check.sh" ]; then
+    chmod +x ./scripts/pre-deploy-security-check.sh
+    ./scripts/pre-deploy-security-check.sh
+else
+    echo -e "${YELLOW}Warning: Pre-deployment security check not found${NC}"
+fi
+
+# Verify DATABASE_URL has connection pooling
+if [[ ! "$DATABASE_URL" =~ "connection_limit" ]]; then
+    echo -e "${RED}ERROR: DATABASE_URL missing connection pooling parameters${NC}"
+    echo "Add: ?connection_limit=10&pool_timeout=30"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Security validation passed${NC}"
+
+#===============================================================================
 # STEP 2: SYSTEM HARDENING
 #===============================================================================
 
@@ -232,8 +255,8 @@ in criminal prosecution.
 ================================================================================
 EOF
 
-# Restart SSH
-systemctl restart sshd
+# Restart SSH (Ubuntu 24.04 uses ssh.service, not sshd.service)
+systemctl restart ssh 2>/dev/null || systemctl restart sshd
 
 echo -e "${GREEN}✓ SSH hardening complete${NC}"
 
@@ -731,6 +754,24 @@ sudo -u "${APP_USER}" npx prisma generate
 
 # Run migrations
 sudo -u "${APP_USER}" npx prisma migrate deploy
+
+# Verify instrumentation.ts exists (global error handlers)
+if [ ! -f "src/instrumentation.ts" ]; then
+    echo -e "${YELLOW}Creating instrumentation.ts for global error handling...${NC}"
+    sudo -u "${APP_USER}" cat > src/instrumentation.ts << 'INST_EOF'
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+    
+    process.on('uncaughtException', (error, origin) => {
+      console.error('Uncaught Exception:', error, 'Origin:', origin);
+    });
+  }
+}
+INST_EOF
+fi
 
 # Build application
 sudo -u "${APP_USER}" npm run build

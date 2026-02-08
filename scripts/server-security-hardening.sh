@@ -78,6 +78,82 @@ apt-get install -y -qq \
 log_info "Security tools installed."
 
 # ============================================
+# 2.5. INSTALL AND CONFIGURE CLAMAV (MALWARE PROTECTION)
+# ============================================
+log_info "Step 2.5: Installing ClamAV for malware protection..."
+
+# Install ClamAV for real-time malware scanning
+apt-get install -y -qq clamav clamav-daemon clamav-freshclam
+
+# Stop services for configuration
+systemctl stop clamav-freshclam 2>/dev/null || true
+systemctl stop clamav-daemon 2>/dev/null || true
+
+# Update virus definitions
+log_info "Updating ClamAV virus definitions (this may take a few minutes)..."
+freshclam || log_warn "ClamAV update failed, will retry on next boot"
+
+# Configure ClamAV for real-time scanning of /dev/shm
+# This is critical as malware was previously found in /dev/shm
+log_info "Configuring ClamAV to monitor /dev/shm (previous malware location)..."
+
+# Backup original config
+cp /etc/clamav/clamd.conf /etc/clamav/clamd.conf.backup 2>/dev/null || true
+
+# Enable OnAccess scanning for /dev/shm
+cat >> /etc/clamav/clamd.conf << 'EOF'
+
+# ============================================
+# Pack-Attack Custom Configuration
+# Real-time scanning for malware prevention
+# ============================================
+
+# Enable on-access scanning
+OnAccessIncludePath /dev/shm
+OnAccessExcludeUID clamav
+OnAccessPrevention yes
+OnAccessExtraScanning yes
+
+# Scan options
+DetectPUA yes
+ScanArchive yes
+ScanELF yes
+AlertBrokenExecutables yes
+EOF
+
+# Create systemd service for on-access scanning
+cat > /etc/systemd/system/clamav-onacc.service << 'EOF'
+[Unit]
+Description=ClamAV On-Access Scanner
+Requires=clamav-daemon.service
+After=clamav-daemon.service syslog.target network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/sbin/clamonacc -F --move=/var/quarantine
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create quarantine directory
+mkdir -p /var/quarantine
+chmod 700 /var/quarantine
+
+# Enable and start services
+systemctl daemon-reload
+systemctl enable clamav-daemon
+systemctl enable clamav-freshclam
+systemctl enable clamav-onacc
+systemctl start clamav-daemon || log_warn "ClamAV daemon failed to start"
+systemctl start clamav-freshclam
+systemctl start clamav-onacc || log_warn "ClamAV on-access scanning not available (may require newer kernel)"
+
+log_info "ClamAV installed and configured for /dev/shm monitoring."
+
+# ============================================
 # 3. CONFIGURE AUTOMATIC SECURITY UPDATES
 # ============================================
 log_info "Step 3: Configuring automatic security updates..."
@@ -691,7 +767,7 @@ echo "=============================================="
 echo ""
 echo "Summary:"
 echo "  - System packages updated"
-echo "  - Security tools installed (AIDE, auditd, Fail2Ban, RKHunter, Lynis)"
+echo "  - Security tools installed (AIDE, auditd, Fail2Ban, RKHunter, Lynis, ClamAV)"
 echo "  - Kernel hardening applied"
 echo "  - SSH hardened (key-only auth, modern ciphers)"
 echo "  - Firewall enabled (ports 22, 80, 443 only)"

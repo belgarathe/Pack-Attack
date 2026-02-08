@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    // Emit coin balance update event
+    emitCoinBalanceUpdate({
+      userId: user.id,
+      balance: Number(updatedUser.coins),
+    });
+
     return NextResponse.json({
       success: true,
       coinsAwarded: coinReward,
@@ -141,6 +147,12 @@ export async function PUT(request: NextRequest) {
         })
       ),
     ]);
+
+    // Emit coin balance update event
+    emitCoinBalanceUpdate({
+      userId: user.id,
+      balance: Number(updatedUser.coins),
+    });
 
     return NextResponse.json({
       success: true,

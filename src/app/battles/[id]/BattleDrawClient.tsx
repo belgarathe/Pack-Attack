@@ -51,6 +51,7 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
   const [showingRoundWinner, setShowingRoundWinner] = useState<RoundResult | null>(null);
   const [joining, setJoining] = useState(false);
   const [readyLoading, setReadyLoading] = useState(false);
+  const [timeUntilAutoStart, setTimeUntilAutoStart] = useState<number | null>(null);
   
   // SIMPLE ANIMATION STATE - one flag to rule them all
   const [animationPlayed, setAnimationPlayed] = useState(false);
@@ -108,6 +109,40 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
       sessionStorage.setItem(`battle_seen_${battleIdRef.current}`, 'true');
     }
   }, []);
+
+  // Calculate time until auto-start
+  useEffect(() => {
+    if (battle.status !== 'WAITING' || !battle.fullAt || !isBattleFull) {
+      setTimeUntilAutoStart(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const fullAt = new Date(battle.fullAt);
+      const autoStartAt = new Date(fullAt.getTime() + 30 * 60 * 1000); // 30 minutes after fullAt
+      const now = new Date();
+      const msRemaining = autoStartAt.getTime() - now.getTime();
+
+      if (msRemaining <= 0) {
+        setTimeUntilAutoStart(0);
+      } else {
+        setTimeUntilAutoStart(Math.floor(msRemaining / 1000)); // Convert to seconds
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [battle.status, battle.fullAt, isBattleFull]);
+
+  // Format countdown time
+  const formatTimeRemaining = (seconds: number) => {
+    if (seconds <= 0) return 'Auto-starting soon...';
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Initialize totals - only on mount, not on battle updates
   useEffect(() => {
@@ -641,6 +676,48 @@ export default function BattleDrawClient({ battle: initialBattle, currentUserId,
                     "I'm Ready!"
                   )}
                 </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Auto-Start Countdown - Show when battle is full and waiting */}
+        {isBattleFull && battle.status === 'WAITING' && !battleComplete && timeUntilAutoStart !== null && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className={`rounded-3xl border p-6 ${
+              timeUntilAutoStart <= 300 
+                ? 'border-orange-500/30 bg-gradient-to-br from-orange-900/30 to-red-900/20' 
+                : 'border-blue-500/30 bg-gradient-to-br from-blue-900/30 to-indigo-900/20'
+            }`}>
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${
+                  timeUntilAutoStart <= 300 
+                    ? 'bg-gradient-to-br from-orange-500 to-red-600' 
+                    : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                }`}>
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`text-xl font-bold ${
+                    timeUntilAutoStart <= 300 ? 'text-orange-400' : 'text-blue-400'
+                  }`}>
+                    Auto-Start Timer
+                  </h3>
+                  <p className="text-gray-400">
+                    {timeUntilAutoStart <= 0 
+                      ? 'Battle will start automatically any moment now...' 
+                      : `Battle will start automatically in ${formatTimeRemaining(timeUntilAutoStart)}`}
+                  </p>
+                </div>
+                <div className={`text-3xl font-bold ${
+                  timeUntilAutoStart <= 300 ? 'text-orange-400' : 'text-blue-400'
+                }`}>
+                  {formatTimeRemaining(timeUntilAutoStart)}
+                </div>
               </div>
             </div>
           </motion.div>

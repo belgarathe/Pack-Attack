@@ -219,6 +219,7 @@ model Battle {
   updatedAt         DateTime            @updatedAt
   startedAt         DateTime?
   finishedAt        DateTime?
+  fullAt            DateTime?           // Timestamp when battle became full
 
   // PERFORMANCE: Indexes for common query patterns
   @@index([status])
@@ -229,6 +230,7 @@ model Battle {
   @@index([status, createdAt])     // Battle list queries
   @@index([winnerId, status])      // User win statistics
   @@index([status, finishedAt])    // Leaderboard queries
+  @@index([status, fullAt])        // Auto-start queries
 }
 
 model BattleParticipant {

@@ -92,6 +92,15 @@ export async function POST(
       }),
     ]);
 
+    // Check if battle is now full and set fullAt timestamp
+    const participantCount = battle.participants.length + 1; // Add the new participant
+    if (participantCount >= battle.maxParticipants && !battle.fullAt) {
+      await prisma.battle.update({
+        where: { id: battleId },
+        data: { fullAt: new Date() },
+      });
+    }
+
     // Get updated battle
     const updatedBattle = await prisma.battle.findUnique({
       where: { id: battleId },

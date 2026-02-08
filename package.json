@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "create-admin": "tsx scripts/create-admin.ts",
     "create-bots": "tsx scripts/create-bots.ts",
+    "check-auto-start": "tsx scripts/check-battle-auto-start.ts",
     "build:prod": "npm ci && prisma generate && prisma migrate deploy && next build",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
@@ -65,7 +66,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.24",
     "eslint": "^9",
-    "eslint-config-next": "16.0.3",
+    "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
