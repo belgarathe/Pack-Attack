@@ -994,6 +994,15 @@ img {
   a,
   [role="button"] {
     min-height: var(--touch-target-comfortable);
+    min-width: var(--touch-target-min);
+  }
+  
+  /* Enhanced active states for better touch feedback */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    opacity: 0.8;
+    transform: scale(0.97);
   }
   
   /* Disable hover states that cause sticky on touch */
@@ -1003,6 +1012,12 @@ img {
   
   .hover\:bg-gray-800:active {
     background-color: rgb(31 41 55);
+  }
+  
+  /* Better tap highlight for links and buttons */
+  a:active,
+  button:active {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.3);
   }
 }
 
@@ -1255,60 +1270,8 @@ input[type="file"]::file-selector-button:hover {
    NAVIGATION RESPONSIVE STYLES
    ============================================ */
 
-/* Desktop navigation - hidden on mobile, visible on large screens (1024px+) */
-.desktop-nav {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .desktop-nav {
-    display: flex;
-  }
-}
-
-/* Desktop right side - hidden on mobile, visible on tablet+ (768px+) */
-.desktop-right {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .desktop-right {
-    display: flex;
-  }
-}
-
-/* Mobile right side - visible on mobile, hidden on tablet+ */
-.mobile-right {
-  display: flex;
-}
-
-@media (min-width: 768px) {
-  .mobile-right {
-    display: none;
-  }
-}
-
-/* Mobile menu container - visible on mobile, hidden on tablet+ */
-.mobile-menu-container {
-  display: block;
-}
-
-@media (min-width: 768px) {
-  .mobile-menu-container {
-    display: none;
-  }
-}
-
-/* Mobile backdrop - visible on mobile, hidden on tablet+ */
-.mobile-backdrop {
-  display: block;
-}
-
-@media (min-width: 768px) {
-  .mobile-backdrop {
-    display: none;
-  }
-}
+/* Navigation uses Tailwind utilities directly (hidden/flex, md:hidden, lg:flex, etc.) 
+   Legacy custom classes removed for consistency */
 
 /* Truncate text with ellipsis */
 .truncate-text {
@@ -1464,6 +1427,65 @@ input[type="file"]::file-selector-button:hover {
 .text-responsive-2xl { font-size: var(--text-2xl); }
 .text-responsive-3xl { font-size: var(--text-3xl); }
 .text-responsive-4xl { font-size: var(--text-4xl); }
+
+/* ============================================
+   ENHANCED MOBILE INTERACTION UTILITIES
+   ============================================ */
+
+/* Prevent accidental double-tap zoom on buttons and links */
+button,
+a,
+[role="button"],
+[type="button"],
+[type="submit"],
+input,
+textarea {
+  touch-action: manipulation;
+}
+
+/* Better momentum scrolling for modals and menus */
+.modal-scroll,
+.menu-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Prevent overscroll on containers */
+.overscroll-prevent {
+  overscroll-behavior: none;
+}
+
+/* Enhanced card interactions for mobile */
+@media (max-width: 768px) {
+  .mobile-card-interaction {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .mobile-card-interaction:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Better button active states for mobile */
+@media (max-width: 768px) {
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Mobile-optimized grid gaps */
+@media (max-width: 640px) {
+  .grid-mobile-compact {
+    gap: 0.75rem;
+  }
+  
+  .grid-mobile-comfortable {
+    gap: 1rem;
+  }
+}
 
 /* ============================================
    iOS/ANDROID SPECIFIC FIXES

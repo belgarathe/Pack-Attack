@@ -66,22 +66,25 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
   return (
     <>
       {/* Filter Bar */}
-      <div className="mb-8 flex flex-wrap items-center gap-4">
-        <div className="relative">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="relative w-full sm:w-auto">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 px-5 py-3.5 rounded-xl text-white font-semibold transition-all min-w-[240px] border border-gray-700/50 hover:border-blue-500/50"
+            className="flex items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 rounded-xl text-white font-semibold transition-all w-full sm:min-w-[240px] border border-gray-700/50 active:border-blue-500/50 touch-target min-h-[52px]"
             style={{
               background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
               backdropFilter: 'blur(12px)',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             }}
+            aria-label="Filter by game"
+            aria-expanded={isDropdownOpen}
+            aria-controls="game-filter-dropdown"
           >
-            <Filter className="w-4 h-4 text-blue-400" />
-            <span className="flex-1 text-left">
+            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
+            <span className="flex-1 text-left text-sm sm:text-base">
               {selectedGame === 'all' ? 'All Games' : getGameDisplayName(selectedGame)}
             </span>
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {/* Dropdown Menu */}
@@ -89,23 +92,28 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
             <>
               {/* Backdrop */}
               <div 
-                className="fixed inset-0 z-40" 
+                className="fixed inset-0 z-40 bg-black/40" 
                 onClick={() => setIsDropdownOpen(false)} 
+                onTouchEnd={() => setIsDropdownOpen(false)}
               />
               
               {/* Dropdown with premium styling */}
               <div 
+                id="game-filter-dropdown"
                 className="absolute top-full left-0 mt-3 w-full min-w-[280px] rounded-2xl overflow-hidden z-50 border-2 border-gray-700/80 shadow-2xl"
                 style={{
                   background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
                   backdropFilter: 'blur(16px)',
                   boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 }}
+                role="listbox"
+                aria-label="Game filter options"
               >
-                <div className="max-h-[420px] overflow-y-auto py-2"
+                <div className="max-h-[420px] overflow-y-auto py-2 overscroll-contain"
                      style={{
                        scrollbarWidth: 'thin',
                        scrollbarColor: 'rgba(59, 130, 246, 0.3) rgba(0, 0, 0, 0.2)',
+                       WebkitOverflowScrolling: 'touch',
                      }}
                 >
                   {/* All Games option */}
@@ -114,15 +122,17 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                       setSelectedGame('all');
                       setIsDropdownOpen(false);
                     }}
-                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 border-l-4 ${
+                    className={`w-full px-4 py-4 text-left flex items-center gap-3 transition-all duration-200 border-l-4 touch-target min-h-[56px] ${
                       selectedGame === 'all' 
                         ? 'bg-blue-600/20 text-blue-400 border-blue-500' 
-                        : 'text-gray-300 hover:bg-gray-800/50 border-transparent hover:border-blue-500/30'
+                        : 'text-gray-300 active:bg-gray-800/50 border-transparent active:border-blue-500/30'
                     }`}
+                    role="option"
+                    aria-selected={selectedGame === 'all'}
                   >
-                    <Package className="w-4 h-4" />
+                    <Package className="w-4 h-4 shrink-0" />
                     <span className="font-semibold">All Games</span>
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium">{boxes.length}</span>
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium shrink-0">{boxes.length}</span>
                   </button>
 
                   {/* Divider */}
@@ -138,18 +148,20 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
                           setSelectedGame(game);
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-all duration-200 border-l-4 ${
+                        className={`w-full px-4 py-4 text-left flex items-center gap-3 transition-all duration-200 border-l-4 touch-target min-h-[56px] ${
                           selectedGame === game 
                             ? 'bg-blue-600/20 text-blue-400 border-blue-500' 
-                            : 'text-gray-300 hover:bg-gray-800/50 border-transparent hover:border-blue-500/30'
+                            : 'text-gray-300 active:bg-gray-800/50 border-transparent active:border-blue-500/30'
                         }`}
+                        role="option"
+                        aria-selected={selectedGame === game}
                       >
                         <span 
-                          className={`w-2.5 h-2.5 rounded-full ${getGameBadgeColor(game)}`} 
+                          className={`w-2.5 h-2.5 rounded-full ${getGameBadgeColor(game)} shrink-0`} 
                           style={{ boxShadow: `0 0 8px currentColor` }}
                         />
                         <span className="font-semibold">{getGameDisplayName(game)}</span>
-                        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium">{gameBoxCount}</span>
+                        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-medium shrink-0">{gameBoxCount}</span>
                       </button>
                     );
                   })}
@@ -161,11 +173,12 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
 
         {/* Active filter pill */}
         {selectedGame !== 'all' && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-400 text-sm">
-            <span>{getGameDisplayName(selectedGame)}</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-blue-500/20 text-blue-400 text-sm min-h-[40px] w-full sm:w-auto">
+            <span className="flex-1 sm:flex-initial">{getGameDisplayName(selectedGame)}</span>
             <button 
               onClick={() => setSelectedGame('all')}
-              className="ml-1 hover:text-white transition-colors"
+              className="ml-1 active:text-white transition-colors p-1 min-w-[32px] min-h-[32px] flex items-center justify-center"
+              aria-label="Clear filter"
             >
               ✕
             </button>
@@ -173,34 +186,34 @@ export default function BoxesClient({ boxes, availableGames }: BoxesClientProps)
         )}
 
         {/* Results count */}
-        <span className="text-gray-400 text-sm ml-auto">
+        <span className="text-gray-400 text-sm sm:ml-auto order-first sm:order-none w-full sm:w-auto text-center sm:text-left py-2 sm:py-0">
           Showing {filteredBoxes.length} of {boxes.length} boxes
         </span>
       </div>
 
       {/* Boxes Grid */}
       {filteredBoxes.length === 0 ? (
-        <div className="glass-strong rounded-2xl p-12 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-            <Package className="w-10 h-10 text-blue-400" />
+        <div className="glass-strong rounded-2xl p-8 sm:p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+            <Package className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">No Boxes Found</h2>
-          <p className="text-gray-400 mb-6">No boxes available for {getGameDisplayName(selectedGame)}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">No Boxes Found</h2>
+          <p className="text-gray-400 mb-6 text-sm sm:text-base">No boxes available for {getGameDisplayName(selectedGame)}</p>
           <button 
             onClick={() => setSelectedGame('all')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105"
+            className="inline-flex items-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold rounded-xl transition-all active:scale-95 touch-target min-h-[52px]"
           >
             <Sparkles className="w-5 h-5" />
             Show All Boxes
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredBoxes.map((box) => (
             <Link 
               key={box.id} 
               href={`/open/${box.id}`}
-              className="group relative rounded-2xl overflow-hidden card-lift transition-all duration-300 hover:scale-[1.02]"
+              className="group relative rounded-2xl overflow-hidden mobile-card-interaction transition-all duration-300 active:scale-[0.97] sm:hover:scale-[1.02]"
               style={{
                 background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%)',
                 backdropFilter: 'blur(12px)',
