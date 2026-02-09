@@ -29,6 +29,9 @@ export async function GET(request: Request) {
 
   // Default: Use Pokemon TCG API
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
     const searchQuery = query.includes('*') ? query : `*${query}*`;
     const apiUrl = `https://api.pokemontcg.io/v2/cards?q=name:${encodeURIComponent(searchQuery)}&pageSize=200`;
     
@@ -38,11 +41,23 @@ export async function GET(request: Request) {
         'User-Agent': 'Pack-Attack/1.0',
       },
       cache: 'no-store',
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Pokemon API error:', response.status, errorText);
+      
+      // Fallback to JustTCG on error
+      if (isJustTCGConfigured()) {
+        const result = await searchJustTCG('pokemon', query, 20);
+        if (result.success) {
+          return NextResponse.json(result);
+        }
+      }
+
       return NextResponse.json({ 
         error: `Pokémon TCG API error (${response.status})`,
         details: errorText.substring(0, 200)
@@ -84,6 +99,15 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Pokémon TCG API error:', error);
+    
+    // Fallback to JustTCG on timeout/error
+    if (isJustTCGConfigured()) {
+      const result = await searchJustTCG('pokemon', query, 20);
+      if (result.success) {
+        return NextResponse.json(result);
+      }
+    }
+
     return NextResponse.json({ 
       error: 'Failed to search cards',
       details: error instanceof Error ? error.message : 'Unknown error'

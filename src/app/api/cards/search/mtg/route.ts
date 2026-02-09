@@ -29,6 +29,9 @@ export async function GET(request: Request) {
 
   // Default: Use Scryfall API
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     const response = await fetch(
       `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`,
       {
@@ -36,13 +39,25 @@ export async function GET(request: Request) {
           'User-Agent': 'PackAttack/1.0',
           'Accept': 'application/json',
         },
+        signal: controller.signal,
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 404) {
         return NextResponse.json({ success: true, cards: [], message: 'No cards found' });
       }
+      
+      // Fallback to JustTCG on Scryfall error
+      if (isJustTCGConfigured()) {
+        const result = await searchJustTCG('mtg', query, 20);
+        if (result.success) {
+          return NextResponse.json(result);
+        }
+      }
+
       return NextResponse.json({ error: 'Scryfall API error' }, { status: response.status });
     }
 
@@ -70,6 +85,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, cards, total: data.total_cards || cards.length });
   } catch (error) {
     console.error('Scryfall API error:', error);
+    
+    // Fallback to JustTCG on timeout/error
+    if (isJustTCGConfigured()) {
+      const result = await searchJustTCG('mtg', query, 20);
+      if (result.success) {
+        return NextResponse.json(result);
+      }
+    }
+
     return NextResponse.json({ error: 'Failed to search cards' }, { status: 500 });
   }
 }

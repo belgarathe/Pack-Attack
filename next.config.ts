@@ -50,7 +50,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https: http:",
       "font-src 'self' https://fonts.gstatic.com",
       "frame-src 'self' https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com",
-      "connect-src 'self' https://api.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://api.scryfall.com https://api.pokemontcg.io https://db.ygoprodeck.com https://api.lorcana-api.com wss:",
+      "connect-src 'self' https://api.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://api.scryfall.com https://api.pokemontcg.io https://db.ygoprodeck.com https://api.lorcana-api.com https://optcgapi.com https://api.justtcg.com https://api.fabdb.net wss:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -82,6 +82,7 @@ const allowedImageDomains = [
   { hostname: 'lorcana-api.com' },
   { hostname: 'static.justtcg.com' },
   { hostname: 'product-images.tcgplayer.com' },
+  { hostname: 'optcgapi.com' },
   // User uploads and CDN
   { hostname: 'res.cloudinary.com' },
   { hostname: 'uploadthing.com' },

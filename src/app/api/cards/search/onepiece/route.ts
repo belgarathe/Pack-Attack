@@ -12,48 +12,35 @@ async function fetchAllOnePieceCards(): Promise<any[]> {
     return cachedCards;
   }
 
-  // Try multiple sources
-  const sources = [
-    {
-      name: 'OPTCG API',
-      url: 'https://optcgapi.com/api/allSetCards/',
-    },
-    {
-      name: 'OPTCG API v2',
-      url: 'https://optcgapi.com/api/cards/',
-    },
-  ];
+  // OPTCG API - use ?format=json to get pure JSON (not the browsable API HTML)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s - response is large
 
-  for (const source of sources) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const response = await fetch('https://optcgapi.com/api/allSetCards/?format=json', {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Pack-Attack/1.0',
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
 
-      const response = await fetch(source.url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Pack-Attack/1.0',
-        },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
+    clearTimeout(timeoutId);
 
-      clearTimeout(timeoutId);
+    if (response.ok) {
+      const data = await response.json();
+      const cards = Array.isArray(data) ? data : (data.cards || data.data || []);
 
-      if (response.ok) {
-        const data = await response.json();
-        const cards = Array.isArray(data) ? data : (data.cards || data.data || []);
-        
-        if (cards.length > 0) {
-          console.log(`Loaded ${cards.length} One Piece cards from ${source.name}`);
-          cachedCards = cards;
-          cacheTime = Date.now();
-          return cards;
-        }
+      if (cards.length > 0) {
+        console.log(`Loaded ${cards.length} One Piece cards from OPTCG API`);
+        cachedCards = cards;
+        cacheTime = Date.now();
+        return cards;
       }
-    } catch (error) {
-      console.warn(`Failed to fetch from ${source.name}:`, error);
     }
+  } catch (error) {
+    console.warn('Failed to fetch from OPTCG API:', error);
   }
 
   return [];
@@ -79,7 +66,7 @@ export async function GET(request: Request) {
   // Use OPTCG API with local filtering
   try {
     const allCards = await fetchAllOnePieceCards();
-    
+
     if (allCards.length === 0) {
       // If we couldn't fetch cards, try JustTCG as last resort
       if (isJustTCGConfigured()) {
@@ -88,7 +75,7 @@ export async function GET(request: Request) {
           return NextResponse.json(result);
         }
       }
-      
+
       return NextResponse.json({
         success: false,
         error: 'One Piece card search unavailable',
@@ -97,16 +84,21 @@ export async function GET(request: Request) {
     }
 
     const searchTerm = query.toLowerCase().trim();
-    
+
     // Filter cards matching the search term
+    // OPTCG API uses: card_name, set_name, card_set_id, card_color, card_type
     const filteredCards = allCards.filter((card: any) => {
-      const cardName = (card.name || card.card_name || card.title || '').toLowerCase();
+      const cardName = (card.card_name || card.name || card.title || '').toLowerCase();
       const setName = (card.set_name || card.set || card.extSet || '').toLowerCase();
-      const cardId = (card.id || card.card_id || '').toLowerCase();
-      
-      return cardName.includes(searchTerm) || 
-             setName.includes(searchTerm) || 
-             cardId.includes(searchTerm);
+      const cardId = (card.card_set_id || card.id || card.card_id || '').toLowerCase();
+      const cardColor = (card.card_color || card.color || '').toLowerCase();
+      const subTypes = (card.sub_types || '').toLowerCase();
+
+      return cardName.includes(searchTerm) ||
+             setName.includes(searchTerm) ||
+             cardId.includes(searchTerm) ||
+             cardColor.includes(searchTerm) ||
+             subTypes.includes(searchTerm);
     });
 
     if (filteredCards.length === 0) {
@@ -118,44 +110,52 @@ export async function GET(request: Request) {
     }
 
     // Map to standard format
+    // OPTCG fields: card_name, set_name, set_id, card_set_id, rarity, card_image,
+    //               card_color, card_type, card_cost, card_power, market_price, inventory_price
     const mappedCards = filteredCards.slice(0, 50).map((card: any) => {
-      // Get the best image URL available
-      const imageUrl = card.image || 
-                      card.image_url || 
-                      card.card_image || 
-                      card.img || 
+      // OPTCG provides card_image as full URL
+      const imageUrl = card.card_image ||
+                      card.image ||
+                      card.image_url ||
+                      card.img ||
                       card.imageUrl ||
                       card.art ||
                       '';
-      
-      const setCode = card.set_code || 
-                     card.set_id || 
-                     card.set || 
+
+      const setCode = card.set_id ||
+                     card.set_code ||
+                     card.set ||
                      card.extSet ||
                      'OP';
-      
+
       const collectorNum = String(
-        card.card_number || 
-        card.number || 
-        card.collector_number || 
+        card.card_set_id ||
+        card.card_number ||
+        card.number ||
+        card.collector_number ||
         card.extCardNumber ||
-        card.id || 
+        card.id ||
         ''
       );
-      
+
+      // Use market_price or inventory_price from OPTCG
+      const price = card.market_price || card.inventory_price || card.price || null;
+
       return {
         id: `op-${setCode}-${collectorNum}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        name: card.name || card.card_name || card.title || 'Unknown Card',
+        name: card.card_name || card.name || card.title || 'Unknown Card',
         setName: card.set_name || card.set || card.extSet || '',
         setCode: setCode,
         collectorNumber: collectorNum,
         rarity: (card.rarity || card.card_rarity || 'common').toLowerCase(),
         imageUrl: imageUrl,
-        colors: card.color 
-          ? (Array.isArray(card.color) ? card.color : [card.color]) 
-          : (card.colors || []),
-        type: card.type || card.card_type || card.category || '',
-        price: card.price || null,
+        colors: card.card_color
+          ? (Array.isArray(card.card_color) ? card.card_color : [card.card_color])
+          : (card.color
+            ? (Array.isArray(card.color) ? card.color : [card.color])
+            : (card.colors || [])),
+        type: card.card_type || card.type || card.category || '',
+        price: price,
       };
     });
 
@@ -167,7 +167,7 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('One Piece API error:', error);
-    
+
     // Try JustTCG as last resort
     if (isJustTCGConfigured()) {
       const result = await searchJustTCG('onepiece', query, 20);
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
         return NextResponse.json(result);
       }
     }
-    
+
     return NextResponse.json({
       success: false,
       error: 'One Piece card search failed',

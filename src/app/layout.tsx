@@ -194,6 +194,10 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.pokemontcg.io" />
         <link rel="dns-prefetch" href="https://db.ygoprodeck.com" />
         <link rel="dns-prefetch" href="https://api.lorcana-api.com" />
+        <link rel="dns-prefetch" href="https://optcgapi.com" />
+        <link rel="dns-prefetch" href="https://api.justtcg.com" />
+        <link rel="dns-prefetch" href="https://api.fabdb.net" />
+        <link rel="preconnect" href="https://optcgapi.com" crossOrigin="anonymous" />
         
         {/* Touch icons for iOS devices */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
