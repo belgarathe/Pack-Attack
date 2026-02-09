@@ -15,6 +15,24 @@
  *   - Windows Task Scheduler
  */
 
+// Load .env file
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Parse .env file manually
+const envPath = join(process.cwd(), '.env');
+try {
+  const envContent = readFileSync(envPath, 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const match = line.match(/^([^=:#]+)=["']?([^"'\r\n]*)["']?$/);
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2];
+    }
+  });
+} catch (e) {
+  console.log('[AUTO-START] Warning: Could not load .env file');
+}
+
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
