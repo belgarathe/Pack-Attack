@@ -15,17 +15,15 @@ export async function POST(request: Request) {
 
     // Find battles that are:
     // 1. Still in WAITING status
-    // 2. Have been full for at least 30 minutes
-    // 3. Have all participants joined (fullAt is set)
+    // 2. Have been full for at least 30 minutes (OR created 30+ mins ago if fullAt not set)
+    // 3. Have all participants joined
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-    const battlesToStart = await withRetry(
+    // Get ALL waiting battles and filter by full status
+    const allWaitingBattles = await withRetry(
       () => prisma.battle.findMany({
         where: {
           status: 'WAITING',
-          fullAt: {
-            lte: thirtyMinutesAgo,
-          },
         },
         include: {
           participants: {
@@ -38,6 +36,18 @@ export async function POST(request: Request) {
       }),
       'auto-start:findBattles'
     );
+
+    // Filter to only FULL battles that have been waiting 30+ minutes
+    const battlesToStart = allWaitingBattles.filter(battle => {
+      // Must be full
+      if (battle.participants.length < battle.maxParticipants) {
+        return false;
+      }
+      
+      // Check if 30 minutes have passed since fullAt OR createdAt (fallback)
+      const timeToCheck = battle.fullAt || battle.createdAt;
+      return timeToCheck <= thirtyMinutesAgo;
+    });
 
     console.log(`[AUTO-START] Found ${battlesToStart.length} battles to auto-start`);
 
