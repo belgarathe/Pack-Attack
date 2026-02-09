@@ -1,7 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { Outfit, Syne } from "next/font/google";
 import { Providers } from "./providers";
 import { Navigation } from "@/components/Navigation";
 import "./globals.css";
+
+// Next.js font optimization - self-hosted, no render-blocking external requests
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-outfit",
+  preload: true,
+});
+
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-syne",
+  preload: true,
+});
 
 /**
  * Viewport configuration optimized for all devices
@@ -165,21 +183,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="scroll-smooth">
+    <html lang="en" suppressHydrationWarning className={`scroll-smooth ${outfit.variable} ${syne.variable}`}>
       <head>
-        {/* Preconnect to critical external resources */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        
         {/* Preconnect to card image CDNs for faster loading */}
         <link rel="preconnect" href="https://cards.scryfall.io" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://images.pokemontcg.io" crossOrigin="anonymous" />
-        
-        {/* Custom fonts with display=swap for better perceived performance */}
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Syne:wght@400;500;600;700;800&display=swap" 
-          rel="stylesheet" 
-        />
         
         {/* DNS prefetch for external APIs - improves connection time */}
         <link rel="dns-prefetch" href="https://api.scryfall.com" />

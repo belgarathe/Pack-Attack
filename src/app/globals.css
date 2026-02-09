@@ -4,13 +4,13 @@
    CUSTOM FONTS & DESIGN SYSTEM
    ============================================ */
 
-/* Font display class */
+/* Font display class - uses next/font CSS variables for optimized loading */
 .font-display {
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-outfit), 'Outfit', system-ui, -apple-system, sans-serif;
 }
 
 .font-heading {
-  font-family: 'Syne', 'Outfit', system-ui, sans-serif;
+  font-family: var(--font-syne), 'Syne', var(--font-outfit), 'Outfit', system-ui, sans-serif;
 }
 
 /* ============================================

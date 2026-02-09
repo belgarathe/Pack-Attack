@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /shop-dashboard/
+
+Sitemap: https://pack-attack.de/sitemap.xml

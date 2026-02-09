@@ -73,17 +73,18 @@ export async function GET() {
     healthStatus.status = 'unhealthy';
   }
 
-  // Check memory usage (Node.js process)
+  // Check memory usage - use RSS (actual system memory) not heap percentage
+  // Heap percentage is misleading (Node reuses ~90% of small heaps normally)
   const memoryUsage = process.memoryUsage();
-  const heapUsed = memoryUsage.heapUsed;
-  const heapTotal = memoryUsage.heapTotal;
-  const memoryPercentage = Math.round((heapUsed / heapTotal) * 100);
+  const rssMB = Math.round(memoryUsage.rss / 1024 / 1024);
+  // Use RSS against a 1GB limit as the meaningful metric
+  const memoryPercentage = Math.round((rssMB / 1024) * 100);
 
   healthStatus.checks.memory = {
-    used: Math.round(heapUsed / 1024 / 1024), // MB
-    total: Math.round(heapTotal / 1024 / 1024), // MB
+    used: rssMB, // RSS in MB (actual memory footprint)
+    total: 1024, // 1GB reference limit
     percentage: memoryPercentage,
-    rss: Math.round(memoryUsage.rss / 1024 / 1024), // Total RSS in MB
+    rss: rssMB,
   };
 
   // Get cache statistics
@@ -98,8 +99,8 @@ export async function GET() {
     // Cache stats are optional
   }
 
-  // Auto-cleanup if memory is critically high
-  if (memoryPercentage > 92) {
+  // Auto-cleanup if RSS memory is critically high (>800MB of 1GB limit)
+  if (rssMB > 800) {
     try {
       globalMemoryPressureCleanup();
     } catch {
@@ -107,8 +108,8 @@ export async function GET() {
     }
   }
 
-  // Mark as degraded if memory usage is high
-  if (memoryPercentage > 85) {
+  // Mark as degraded if RSS exceeds 700MB
+  if (rssMB > 700) {
     healthStatus.status = healthStatus.status === 'unhealthy' ? 'unhealthy' : 'degraded';
   }
 
