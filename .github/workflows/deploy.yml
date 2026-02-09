@@ -1,0 +1,49 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: packattack
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/packattack/app
+            git pull origin main
+            npm ci
+            npx prisma generate
+            npx prisma db push --accept-data-loss
+
+            # Ensure JUSTTCG_API_KEY is set
+            if grep -q "JUSTTCG_API_KEY" .env; then
+              sed -i 's|JUSTTCG_API_KEY=.*|JUSTTCG_API_KEY=tcg_535ca86172ab4c53a3a56a69279191b2|' .env
+            else
+              echo 'JUSTTCG_API_KEY=tcg_535ca86172ab4c53a3a56a69279191b2' >> .env
+            fi
+
+            # Add CRON_SECRET if not exists
+            if ! grep -q "CRON_SECRET" .env; then
+              echo "CRON_SECRET=\"$(openssl rand -base64 32)\"" >> .env
+            fi
+
+            npm run build
+            pm2 reload packattack --update-env
+
+            # Start auto-start scheduler
+            pm2 stop battle-auto-start-scheduler || true
+            pm2 delete battle-auto-start-scheduler || true
+            pm2 start ecosystem.battle-scheduler.config.cjs || true
+            pm2 save
+
+            # Show status
+            sleep 3
+            pm2 status
+            echo "Deployment complete!"
