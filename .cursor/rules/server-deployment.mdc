@@ -1,0 +1,125 @@
+---
+description: Pack Attack production server SSH keys, deployment, and infrastructure. ALWAYS READ THIS BEFORE ANY SERVER OR DEPLOYMENT TASK.
+alwaysApply: true
+---
+
+# Pack Attack Server Infrastructure
+
+## CRITICAL: SSH Key Location
+
+| Item | Value |
+|------|-------|
+| **PRIVATE KEY** | `C:\Users\tim\.ssh\packattack-server` |
+| **PUBLIC KEY** | `C:\Users\tim\.ssh\packattack-server.pub` |
+| **Key Type** | ED25519 |
+| **Key Fingerprint** | `SHA256:Z4jsudDiI1ZtyiGwQzwIRbFEU52oOt48aCV0jRBOmrQ` |
+| **Key Comment** | `packattack-server-deploy-2026-02-09` |
+| **Created** | February 9, 2026 |
+
+### PUBLIC KEY (for adding to servers)
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKNvuPdMybMnoJzFUqW9jxsFo3PtY87hnBOwJN+P3Ih0 packattack-server-deploy-2026-02-09
+```
+
+### ABSOLUTE RULES - NEVER BREAK THESE
+1. **NEVER delete, rename, move, or modify** the SSH key files
+2. **NEVER overwrite** the private key with a public key or any other content
+3. **NEVER run "security audits"** that touch SSH key files
+4. **NEVER change permissions** on the SSH key files
+5. **ALWAYS use `-i` flag** with the exact path when SSHing: `ssh -i C:\Users\tim\.ssh\packattack-server`
+6. If SSH fails, **CHECK THE KEY FILE EXISTS AND IS 432 BYTES** before doing anything else
+
+---
+
+## Server Connection
+
+| Property | Value |
+|----------|-------|
+| **Server IP** | `82.165.66.236` |
+| **Domain** | `pack-attack.de` |
+| **Hosting** | Strato |
+| **OS** | Ubuntu 24.04.3 LTS |
+| **SSH User (root)** | `root` |
+| **SSH User (app)** | `packattack` |
+| **App Directory** | `/var/www/packattack/app` |
+
+### SSH Commands
+
+```powershell
+# Connect as root (from Windows PowerShell)
+ssh -i "$env:USERPROFILE\.ssh\packattack-server" root@82.165.66.236
+
+# Connect as packattack user
+ssh -i "$env:USERPROFILE\.ssh\packattack-server" packattack@82.165.66.236
+```
+
+---
+
+## Deployment
+
+### Quick Deploy (from local machine)
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\packattack-server" root@82.165.66.236 "cd /var/www/packattack/app && git pull origin main && npm ci && npx prisma generate && npm run build && pm2 reload packattack --update-env && pm2 status"
+```
+
+### On-Server Deploy
+```bash
+cd /var/www/packattack/app
+sudo -u packattack git fetch origin main
+sudo -u packattack git reset --hard origin/main
+sudo -u packattack npm ci --production=false
+sudo -u packattack npx prisma generate
+sudo -u packattack npx prisma db push --accept-data-loss
+sudo -u packattack npm run build
+sudo -u packattack pm2 reload packattack --update-env
+```
+
+### Health Check
+```bash
+curl https://pack-attack.de/api/health
+```
+
+---
+
+## Application Management (PM2)
+
+```bash
+pm2 status                          # View status
+pm2 logs packattack                 # View logs
+pm2 reload packattack --update-env  # Reload (zero-downtime)
+pm2 restart packattack              # Hard restart
+pm2 monit                           # Monitor
+```
+
+---
+
+## Database
+
+| Property | Value |
+|----------|-------|
+| **Provider** | Neon PostgreSQL |
+| **Host** | `ep-patient-resonance-ahmtm2jq-pooler.c-3.us-east-1.aws.neon.tech` |
+| **Database** | `neondb` |
+| **SSL** | Required |
+
+---
+
+## File Locations
+
+| Path | Description |
+|------|-------------|
+| `/var/www/packattack/app` | Application root |
+| `/var/www/packattack/app/.env` | Environment config |
+| `/var/log/packattack/` | Application logs |
+| `/var/log/pm2/` | PM2 logs |
+| `/etc/nginx/sites-available/packattack` | Nginx config |
+
+---
+
+## API Keys (Environment)
+
+| Key | Value |
+|-----|-------|
+| **JUSTTCG_API_KEY** | `tcg_535ca86172ab4c53a3a56a69279191b2` |
+
+This must be set in `/var/www/packattack/app/.env` on the server.
