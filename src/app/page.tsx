@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { Package, Trophy, Users, Swords, Coins, Clock, ChevronRight, Sparkles } from 'lucide-react';
+import { Package, Trophy, Users, Swords, Coins, Clock, ChevronRight, Sparkles, Star, Flame, Zap } from 'lucide-react';
 import type { Metadata } from 'next';
 
 // SEO Metadata
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 // Enable ISR for homepage
-export const revalidate = 60; // Revalidate every 60 seconds
+export const revalidate = 60;
 
 // Fetch stats from database
 async function getStats() {
@@ -38,29 +38,59 @@ async function getStats() {
   }
 }
 
+// Fetch the best pull from the last 24 hours (hit of the day)
+async function getHitOfTheDay() {
+  try {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const pull = await prisma.pull.findFirst({
+      where: {
+        timestamp: { gte: yesterday },
+        cardValue: { not: null },
+        card: { isNot: null },
+      },
+      orderBy: { cardValue: 'desc' },
+      include: {
+        card: true,
+        user: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!pull || !pull.card) {
+      // Fallback: get the best pull ever if nothing today
+      const bestEver = await prisma.pull.findFirst({
+        where: {
+          cardValue: { not: null },
+          card: { isNot: null },
+        },
+        orderBy: { cardValue: 'desc' },
+        include: {
+          card: true,
+          user: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+      return bestEver;
+    }
+
+    return pull;
+  } catch {
+    return null;
+  }
+}
+
 // Fetch featured boxes from database
 async function getFeaturedBoxes() {
   try {
     const boxes = await prisma.box.findMany({
-      where: {
-        featured: true,
-        isActive: true,
-      },
-      orderBy: {
-        popularity: 'desc',
-      },
+      where: { featured: true, isActive: true },
+      orderBy: { popularity: 'desc' },
       take: 6,
-      include: {
-        _count: {
-          select: { cards: true }
-        }
-      }
+      include: { _count: { select: { cards: true } } },
     });
-    // Convert Decimal to Number
-    return boxes.map(box => ({
-      ...box,
-      price: Number(box.price),
-    }));
+    return boxes.map(box => ({ ...box, price: Number(box.price) }));
   } catch {
     return [];
   }
@@ -70,45 +100,49 @@ async function getFeaturedBoxes() {
 async function getActiveBattles() {
   try {
     const battles = await prisma.battle.findMany({
-      where: {
-        status: {
-          in: ['WAITING', 'IN_PROGRESS'],
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { status: { in: ['WAITING', 'IN_PROGRESS'] } },
+      orderBy: { createdAt: 'desc' },
       take: 3,
       include: {
         box: true,
         participants: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            user: { select: { id: true, name: true } },
           },
         },
       },
     });
-    // Convert Decimal to Number
     return battles.map(battle => ({
       ...battle,
-      box: {
-        ...battle.box,
-        price: Number(battle.box.price),
-      },
+      box: { ...battle.box, price: Number(battle.box.price) },
     }));
   } catch {
     return [];
   }
 }
 
+// Rarity color helper
+function getRarityColor(rarity: string) {
+  const r = rarity.toLowerCase();
+  if (r.includes('mythic') || r.includes('secret') || r.includes('legendary')) return 'text-amber-400';
+  if (r.includes('rare') || r.includes('ultra')) return 'text-blue-400';
+  if (r.includes('uncommon') || r.includes('super')) return 'text-green-400';
+  if (r.includes('epic') || r.includes('holo')) return 'text-purple-400';
+  return 'text-gray-400';
+}
+
+function getRarityGlow(rarity: string) {
+  const r = rarity.toLowerCase();
+  if (r.includes('mythic') || r.includes('secret') || r.includes('legendary')) return 'shadow-amber-500/30';
+  if (r.includes('rare') || r.includes('ultra')) return 'shadow-blue-500/30';
+  if (r.includes('epic') || r.includes('holo')) return 'shadow-purple-500/30';
+  return 'shadow-gray-500/10';
+}
+
 export default async function HomePage() {
-  const [stats, featuredBoxes, activeBattles] = await Promise.all([
+  const [stats, hitOfTheDay, featuredBoxes, activeBattles] = await Promise.all([
     getStats(),
+    getHitOfTheDay(),
     getFeaturedBoxes(),
     getActiveBattles(),
   ]);
@@ -118,51 +152,51 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
       {/* Background Effects */}
-      <div className="fixed inset-0 bg-grid opacity-30" />
+      <div className="fixed inset-0 bg-grid opacity-20" />
       <div className="fixed inset-0 radial-gradient" />
-      
-      {/* Floating decorative elements */}
-      <div className="fixed top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float hidden lg:block" />
-      <div className="fixed bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float hidden lg:block" style={{ animationDelay: '2s' }} />
+      <div className="fixed top-20 left-10 w-72 h-72 bg-blue-500/8 rounded-full blur-3xl hidden lg:block" />
+      <div className="fixed bottom-20 right-10 w-96 h-96 bg-purple-500/8 rounded-full blur-3xl hidden lg:block" />
 
-      {/* Hero Section */}
-      <section className="relative container pt-12 sm:pt-20 pb-12 sm:pb-16 text-center px-4">
+      {/* ============================================ */}
+      {/* HERO SECTION */}
+      {/* ============================================ */}
+      <section className="relative container pt-16 sm:pt-24 pb-8 sm:pb-12 text-center px-4">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 mb-6 sm:mb-8 rounded-full glass border border-blue-500/20">
-          <Sparkles className="w-3 sm:w-4 h-3 sm:h-4 text-blue-400" />
-          <span className="text-xs sm:text-sm text-gray-300">The Ultimate TCG Experience</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 sm:mb-10 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm">
+          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-xs sm:text-sm text-gray-400 font-medium tracking-wide uppercase">The Ultimate TCG Experience</span>
         </div>
 
         {/* Main Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-4 sm:mb-6 tracking-tight px-2">
-          <span className="text-white">PACK </span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient">
+        <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black mb-6 sm:mb-8 tracking-tighter leading-[0.9]">
+          <span className="text-white">PACK</span>
+          <br className="sm:hidden" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
             ATTACK
           </span>
         </h1>
 
-        {/* Subheadline */}
-        <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-3 sm:mb-4 font-light px-2">
-          Open Packs. Battle. Win Real Cards.
+        {/* Tagline */}
+        <p className="text-xl sm:text-2xl md:text-3xl text-gray-300 mb-3 font-semibold tracking-tight">
+          Play. Rumble. Collect.
         </p>
-        <p className="mx-auto max-w-2xl text-gray-400 mb-8 sm:mb-10 text-base sm:text-lg px-4">
-          Experience the thrill of opening trading card packs and battling other Players.
-          Every pack is a chance at glory.
+        <p className="mx-auto max-w-lg text-gray-500 mb-10 sm:mb-12 text-base sm:text-lg">
+          Open packs. Battle other players. Win real cards shipped to your door.
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 px-4">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-6 px-4">
           <Link 
             href="/boxes" 
-            className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 active:from-blue-500 active:to-blue-400 sm:hover:from-blue-500 sm:hover:to-blue-400 text-white font-semibold rounded-xl transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-lg sm:hover:shadow-blue-500/25 shimmer touch-target min-h-[56px]"
+            className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25 active:scale-95 touch-target min-h-[56px] text-base"
           >
             <Package className="w-5 h-5" />
-            Start Opening
+            Get a Pack!
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link 
             href="/battles" 
-            className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 active:scale-95 sm:hover:scale-105 gradient-border bg-gray-900/50 active:bg-gray-800/50 sm:hover:bg-gray-800/50 touch-target min-h-[56px]"
+            className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl font-bold text-white transition-all duration-300 hover:scale-105 active:scale-95 border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.15] touch-target min-h-[56px] text-base"
           >
             <Swords className="w-5 h-5" />
             View Battles
@@ -170,65 +204,125 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Stats Bar */}
-      <section className="relative container mb-12 sm:mb-16 px-4">
-        <div className="glass-strong rounded-2xl p-4 sm:p-6 md:p-8">
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 mb-2 sm:mb-3 rounded-xl bg-blue-500/20">
-                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
+      {/* ============================================ */}
+      {/* STATS BAR */}
+      {/* ============================================ */}
+      <section className="relative container mb-16 sm:mb-20 px-4">
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-6 sm:p-8">
+          <div className="grid grid-cols-3 gap-4 md:gap-8">
+            {[
+              { icon: Package, value: stats.boxesOpened, label: 'Packs Opened', color: 'blue' },
+              { icon: Swords, value: stats.battlesRun, label: 'Battles Complete', color: 'purple' },
+              { icon: Users, value: stats.usersOnline, label: 'Players', color: 'green' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className={`inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 mb-3 rounded-xl bg-${stat.color}-500/15`}>
+                  <stat.icon className={`w-5 h-5 sm:w-5.5 sm:h-5.5 text-${stat.color}-400`} />
+                </div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-black text-white tabular-nums">{stat.value.toLocaleString()}</div>
+                <div className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">{stat.label}</div>
               </div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-mono">{stats.boxesOpened.toLocaleString()}</div>
-              <div className="text-xs sm:text-sm text-gray-400 mt-1">Packs Opened</div>
-            </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 mb-2 sm:mb-3 rounded-xl bg-purple-500/20">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-              </div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-mono">{stats.battlesRun.toLocaleString()}</div>
-              <div className="text-xs sm:text-sm text-gray-400 mt-1">Battles Complete</div>
-            </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 mb-2 sm:mb-3 rounded-xl bg-green-500/20">
-                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
-              </div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-mono">{stats.usersOnline.toLocaleString()}</div>
-              <div className="text-xs sm:text-sm text-gray-400 mt-1">Players</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* ============================================ */}
+      {/* HIT OF THE DAY */}
+      {/* ============================================ */}
+      {hitOfTheDay && hitOfTheDay.card && (
+        <section className="relative container mb-16 sm:mb-20 px-4">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-3 rounded-full border border-amber-500/20 bg-amber-500/5">
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-sm text-amber-400 font-semibold">Hit of the Day</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Today&apos;s Best Pull</h2>
+          </div>
+
+          <div className="max-w-sm mx-auto">
+            {/* Card with glow */}
+            <div className={`relative rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.02] p-4 shadow-2xl ${getRarityGlow(hitOfTheDay.card.rarity)}`}>
+              {/* Card image */}
+              <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-4 bg-gray-900">
+                {hitOfTheDay.card.imageUrlScryfall || hitOfTheDay.card.imageUrlGatherer ? (
+                  <img
+                    src={hitOfTheDay.card.imageUrlScryfall || hitOfTheDay.card.imageUrlGatherer}
+                    alt={hitOfTheDay.card.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-16 h-16 text-gray-700" />
+                  </div>
+                )}
+              </div>
+
+              {/* Card info */}
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-white mb-1">{hitOfTheDay.card.name}</h3>
+                <p className="text-sm text-gray-500 mb-3">{hitOfTheDay.card.setName}</p>
+                
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-white/[0.06] bg-white/[0.03] ${getRarityColor(hitOfTheDay.card.rarity)}`}>
+                    <Flame className="w-3 h-3" />
+                    {hitOfTheDay.card.rarity}
+                  </span>
+                  {hitOfTheDay.cardValue && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-amber-400 border border-amber-500/20 bg-amber-500/5">
+                      <Coins className="w-3 h-3" />
+                      {Number(hitOfTheDay.cardValue).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Pulled by */}
+                <div className="flex items-center justify-center gap-2 pt-3 border-t border-white/[0.06]">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-[11px] font-bold text-white">
+                    {hitOfTheDay.user.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <span className="text-sm text-gray-400">Pulled by</span>
+                  <span className="text-sm font-semibold text-white">{hitOfTheDay.user.name || 'Anonymous'}</span>
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ============================================ */}
+      {/* FEATURED BOXES */}
+      {/* ============================================ */}
       {hasContent ? (
         <>
-          {/* Featured Boxes */}
           {featuredBoxes.length > 0 && (
-            <section className="relative container mb-12 sm:mb-16 px-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
+            <section className="relative container mb-16 sm:mb-20 px-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-3">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full glass text-sm">
-                    <Package className="w-4 h-4 text-blue-400" />
-                    <span className="text-gray-300">Featured Packs</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-2 rounded-full border border-blue-500/20 bg-blue-500/5">
+                    <Flame className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Featured Packs</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Hot Boxes</h2>
                 </div>
                 <Link 
                   href="/boxes" 
-                  className="group inline-flex items-center gap-1 text-blue-400 active:text-blue-300 sm:hover:text-blue-300 transition-colors touch-target"
+                  className="group inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium touch-target"
                 >
                   View All
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {featuredBoxes.map((box) => (
                   <Link 
                     key={box.id} 
                     href={`/open/${box.id}`}
-                    className="group glass rounded-2xl overflow-hidden mobile-card-interaction active:scale-[0.97] sm:hover:scale-[1.02]"
+                    className="group rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <div className="aspect-[4/3] relative bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                    <div className="aspect-[4/3] relative bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center overflow-hidden">
                       {box.imageUrl ? (
                         <img 
                           src={box.imageUrl} 
@@ -236,25 +330,24 @@ export default async function HomePage() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <Package className="w-16 h-16 text-gray-600" />
+                        <Package className="w-16 h-16 text-gray-700" />
                       )}
-                      {/* Game badge */}
                       {box.games && box.games[0] && (
-                        <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold badge-${box.games[0].toLowerCase()}`}>
-                          {box.games[0]}
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-black/60 backdrop-blur-sm text-white border border-white/[0.1]">
+                          {box.games[0].replace(/_/g, ' ')}
                         </div>
                       )}
                     </div>
-                    <div className="p-5">
-                      <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
+                    <div className="p-4 sm:p-5">
+                      <h3 className="text-base font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
                         {box.name}
                       </h3>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-amber-400">
+                        <div className="flex items-center gap-1.5 text-amber-400">
                           <Coins className="w-4 h-4" />
-                          <span className="font-semibold">{box.price}</span>
+                          <span className="font-bold">{box.price}</span>
                         </div>
-                        <span className="text-sm text-gray-500">{box._count.cards} cards</span>
+                        <span className="text-xs text-gray-600 font-medium">{box._count.cards} cards</span>
                       </div>
                     </div>
                   </Link>
@@ -263,38 +356,40 @@ export default async function HomePage() {
             </section>
           )}
 
-          {/* Live Battles */}
+          {/* ============================================ */}
+          {/* ACTIVE BATTLES */}
+          {/* ============================================ */}
           {activeBattles.length > 0 && (
-            <section className="relative container pb-16 sm:pb-20 px-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
+            <section className="relative container mb-16 sm:mb-20 px-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-3">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full glass text-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-500 pulse-live" />
-                    <span className="text-gray-300">Live Now</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-2 rounded-full border border-green-500/20 bg-green-500/5">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs text-green-400 font-semibold uppercase tracking-wide">Live Now</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Active Battles</h2>
                 </div>
                 <Link 
                   href="/battles" 
-                  className="group inline-flex items-center gap-1 text-purple-400 active:text-purple-300 sm:hover:text-purple-300 transition-colors touch-target"
+                  className="group inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium touch-target"
                 >
                   View All
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {activeBattles.map((battle) => (
                   <Link 
                     key={battle.id} 
                     href={`/battles/${battle.id}`}
-                    className="group glass rounded-2xl p-4 sm:p-5 mobile-card-interaction active:scale-[0.97] sm:hover:scale-[1.02]"
+                    className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04] p-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide ${
                         battle.status === 'WAITING' 
-                          ? 'bg-yellow-500/20 text-yellow-400' 
-                          : 'bg-green-500/20 text-green-400'
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' 
+                          : 'bg-green-500/10 text-green-400 border border-green-500/20'
                       }`}>
                         {battle.status === 'WAITING' ? (
                           <>
@@ -303,43 +398,41 @@ export default async function HomePage() {
                           </>
                         ) : (
                           <>
-                            <div className="w-2 h-2 rounded-full bg-green-500 pulse-live" />
+                            <Zap className="w-3 h-3" />
                             In Progress
                           </>
                         )}
                       </span>
-                      <span className="text-sm text-gray-500">{battle.maxParticipants} players</span>
+                      <span className="text-xs text-gray-600 font-medium">{battle.maxParticipants} players</span>
                     </div>
 
-                    <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-purple-400 transition-colors">
+                    <h3 className="text-base font-semibold text-white mb-3 group-hover:text-purple-400 transition-colors">
                       {battle.box.name} Battle
                     </h3>
 
                     {/* Participants */}
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center mb-4">
                       {battle.participants.slice(0, 4).map((p, i) => (
                         <div 
                           key={p.id}
-                          className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold text-white"
-                          style={{ marginLeft: i > 0 ? '-8px' : '0' }}
+                          className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-[11px] font-bold text-white border-2 border-gray-950"
+                          style={{ marginLeft: i > 0 ? '-6px' : '0', zIndex: 4 - i }}
                         >
-                          {p.user.name?.[0] || '?'}
+                          {p.user.name?.[0]?.toUpperCase() || '?'}
                         </div>
                       ))}
                       {battle.participants.length > 4 && (
-                        <span className="text-sm text-gray-400 ml-2">
-                          +{battle.participants.length - 4} more
-                        </span>
+                        <span className="text-xs text-gray-500 ml-2">+{battle.participants.length - 4}</span>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-                      <div className="flex items-center gap-1 text-amber-400">
-                        <Coins className="w-4 h-4" />
-                        <span className="font-semibold">{battle.box.price} entry</span>
+                    <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                      <div className="flex items-center gap-1.5 text-amber-400">
+                        <Coins className="w-3.5 h-3.5" />
+                        <span className="text-sm font-bold">{battle.box.price} entry</span>
                       </div>
-                      <span className="text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                        Join <ChevronRight className="w-4 h-4" />
+                      <span className="text-purple-400 text-xs font-semibold group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                        Join <ChevronRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
                   </Link>
@@ -349,20 +442,20 @@ export default async function HomePage() {
           )}
         </>
       ) : (
-        /* Coming Soon Section */
-        <section className="relative container pb-16 sm:pb-20 px-4">
-          <div className="glass-strong rounded-2xl p-8 sm:p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+        /* Coming Soon */
+        <section className="relative container mb-16 sm:mb-20 px-4">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 sm:p-12 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/15 to-purple-500/15">
               <Package className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400" />
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">Coming Soon</h2>
-            <p className="text-gray-400 mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base px-2">
-              We&apos;re preparing amazing boxes and battles for you. 
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">Coming Soon</h2>
+            <p className="text-gray-500 mb-8 max-w-md mx-auto">
+              We&apos;re preparing amazing boxes and battles for you.
               Create an account to be notified when we launch!
             </p>
             <Link 
               href="/register" 
-              className="inline-flex items-center gap-2 px-6 sm:px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 active:from-blue-500 active:to-purple-500 sm:hover:from-blue-500 sm:hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 active:scale-95 sm:hover:scale-105 touch-target min-h-[56px]"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 touch-target min-h-[56px]"
             >
               <Sparkles className="w-5 h-5" />
               Get Notified
@@ -370,6 +463,27 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ============================================ */}
+      {/* BOTTOM CTA */}
+      {/* ============================================ */}
+      <section className="relative container pb-20 sm:pb-28 px-4">
+        <div className="text-center">
+          <p className="text-xl sm:text-2xl md:text-3xl text-gray-300 mb-2 font-semibold tracking-tight">
+            Play. Rumble. Collect.
+          </p>
+          <p className="text-lg sm:text-xl text-gray-500 mb-8">
+            Get the cards. With <span className="text-white font-bold">PACK</span><span className="text-blue-400 font-bold">ATTACK</span>.
+          </p>
+          <Link 
+            href="/boxes" 
+            className="inline-flex items-center gap-2.5 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25 active:scale-95 touch-target min-h-[56px] text-base"
+          >
+            <Zap className="w-5 h-5" />
+            Start Now
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
