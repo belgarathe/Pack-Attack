@@ -83,6 +83,8 @@ const allowedImageDomains = [
   { hostname: 'static.justtcg.com' },
   { hostname: 'product-images.tcgplayer.com' },
   { hostname: 'optcgapi.com' },
+  // Twitch profile images
+  { hostname: 'static-cdn.jtvnw.net' },
   // User uploads and CDN
   { hostname: 'res.cloudinary.com' },
   { hostname: 'uploadthing.com' },

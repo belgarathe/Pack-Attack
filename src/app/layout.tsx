@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Outfit, Syne } from "next/font/google";
 import { Providers } from "./providers";
 import { Navigation } from "@/components/Navigation";
+import { ChatPanel } from "@/components/ChatPanel";
 import "./globals.css";
 
 // Next.js font optimization - self-hosted, no render-blocking external requests
@@ -253,6 +254,7 @@ export default function RootLayout({
           >
             {children}
           </main>
+          <ChatPanel />
         </Providers>
       </body>
     </html>

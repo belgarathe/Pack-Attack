@@ -26,6 +26,7 @@
     "test:report": "playwright show-report"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.7.4",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-dialog": "^1.1.15",
