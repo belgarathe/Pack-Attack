@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 // SSE endpoint for real-time chat messages
 export async function GET() {
   const encoder = new TextEncoder();
-  let lastMessageId: string | null = null;
+  let lastMessageTime: Date | null = null;
   let closed = false;
 
   const stream = new ReadableStream({
@@ -11,23 +11,18 @@ export async function GET() {
       // Send initial connection event
       controller.enqueue(encoder.encode('event: connected\ndata: {}\n\n'));
 
-      // Get the latest message ID to avoid sending old messages
-      try {
-        const latest = await prisma.chatMessage.findFirst({
-          orderBy: { createdAt: 'desc' },
-          select: { id: true },
-        });
-        lastMessageId = latest?.id || null;
-      } catch {
-        // If DB fails, start from scratch
-      }
+      // Get the current time as baseline to avoid sending old messages
+      lastMessageTime = new Date();
 
       // Poll for new messages every 2 seconds
       const poll = async () => {
         if (closed) return;
 
         try {
-          const query: any = {
+          const newMessages = await prisma.chatMessage.findMany({
+            where: lastMessageTime
+              ? { createdAt: { gt: lastMessageTime } }
+              : {},
             orderBy: { createdAt: 'asc' },
             take: 50,
             include: {
@@ -41,17 +36,10 @@ export async function GET() {
                 },
               },
             },
-          };
-
-          if (lastMessageId) {
-            query.cursor = { id: lastMessageId };
-            query.skip = 1;
-          }
-
-          const newMessages = await prisma.chatMessage.findMany(query);
+          });
 
           if (newMessages.length > 0) {
-            lastMessageId = newMessages[newMessages.length - 1].id;
+            lastMessageTime = newMessages[newMessages.length - 1].createdAt;
 
             for (const msg of newMessages) {
               const data = JSON.stringify({
