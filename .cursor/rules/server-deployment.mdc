@@ -120,6 +120,6 @@ pm2 monit                           # Monitor
 
 | Key | Value |
 |-----|-------|
-| **JUSTTCG_API_KEY** | `tcg_535ca86172ab4c53a3a56a69279191b2` |
+| **JUSTTCG_API_KEY** | Stored in GitHub Secrets and server `.env` -- NEVER commit this value |
 
-This must be set in `/var/www/packattack/app/.env` on the server.
+This must be set in `/var/www/packattack/app/.env` on the server and in GitHub repo secrets.

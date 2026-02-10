@@ -22,11 +22,11 @@ jobs:
             npx prisma generate
             npx prisma db push --accept-data-loss
 
-            # Ensure JUSTTCG_API_KEY is set
+            # Ensure JUSTTCG_API_KEY is set (from GitHub secret)
             if grep -q "JUSTTCG_API_KEY" .env; then
-              sed -i 's|JUSTTCG_API_KEY=.*|JUSTTCG_API_KEY=tcg_535ca86172ab4c53a3a56a69279191b2|' .env
+              sed -i "s|JUSTTCG_API_KEY=.*|JUSTTCG_API_KEY=${{ secrets.JUSTTCG_API_KEY }}|" .env
             else
-              echo 'JUSTTCG_API_KEY=tcg_535ca86172ab4c53a3a56a69279191b2' >> .env
+              echo "JUSTTCG_API_KEY=${{ secrets.JUSTTCG_API_KEY }}" >> .env
             fi
 
             # Add CRON_SECRET if not exists
