@@ -173,7 +173,7 @@ export function Navigation() {
   }, [session]);
 
   return (
-    <nav ref={navRef} className="sticky top-0 z-50 border-b border-white/[0.08] bg-gray-950/80 backdrop-blur-xl" id="main-navigation">
+    <nav ref={navRef} className="relative z-50 border-b border-white/[0.08] bg-gray-950" id="main-navigation">
       <div className="container flex h-16 items-center gap-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0 touch-target group">
