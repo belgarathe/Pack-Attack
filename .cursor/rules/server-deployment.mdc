@@ -116,10 +116,38 @@ pm2 monit                           # Monitor
 
 ---
 
-## API Keys (Environment)
+## API Keys & Secrets Policy
 
-| Key | Value |
-|-----|-------|
-| **JUSTTCG_API_KEY** | Stored in GitHub Secrets and server `.env` -- NEVER commit this value |
+### ABSOLUTE RULE: NEVER hardcode API keys, secrets, passwords, or tokens in code or config files that get committed to git.
 
-This must be set in `/var/www/packattack/app/.env` on the server and in GitHub repo secrets.
+ALL secrets must be stored in:
+1. **GitHub Secrets** (for CI/CD workflows) -- `https://github.com/belgarathe/Pack-Attack/settings/secrets/actions`
+2. **Server `.env` file** (`/var/www/packattack/app/.env`) -- set directly on server, never committed
+3. **Local `.env.local`** -- gitignored, never committed
+
+### Known Secrets (stored in GitHub Secrets + server .env)
+
+| Secret Name | Purpose | Where Used |
+|-------------|---------|------------|
+| `JUSTTCG_API_KEY` | Card search API | Server .env + GitHub Secret |
+| `RESEND_API_KEY` | Email sending | Server .env |
+| `NEXTAUTH_SECRET` | Session encryption | Server .env |
+| `DATABASE_URL` | Neon PostgreSQL | Server .env |
+| `TWITCH_CLIENT_ID` | Twitch OAuth for chat | Server .env + GitHub Secret |
+| `TWITCH_CLIENT_SECRET` | Twitch OAuth for chat | Server .env + GitHub Secret |
+| `SERVER_IP` | Deployment target | GitHub Secret |
+| `SSH_PRIVATE_KEY` | Deployment SSH key | GitHub Secret |
+
+### In GitHub Actions workflows, ALWAYS reference secrets like:
+```yaml
+${{ secrets.JUSTTCG_API_KEY }}
+${{ secrets.TWITCH_CLIENT_ID }}
+```
+
+### NEVER do this:
+```yaml
+# BAD - hardcoded secret
+JUSTTCG_API_KEY=tcg_abc123
+# BAD - secret in curl/sed commands
+sed -i 's|KEY=.*|KEY=actual_secret_value|' .env
+```
