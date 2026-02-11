@@ -27,11 +27,6 @@ jobs:
               echo "CRON_SECRET=\"$(openssl rand -base64 32)\"" >> .env
             fi
             
-            # Run test data cleanup
-            echo "Running test data cleanup..."
-            npx tsx scripts/cleanup-test-data.ts
-            echo "Cleanup finished."
-            
             npm run build
             pm2 reload packattack --update-env
             
