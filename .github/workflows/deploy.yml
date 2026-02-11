@@ -21,29 +21,25 @@ jobs:
             npm ci
             npx prisma generate
             npx prisma db push --accept-data-loss
-
-            # Ensure JUSTTCG_API_KEY is set (from GitHub secret)
-            if grep -q "JUSTTCG_API_KEY" .env; then
-              sed -i "s|JUSTTCG_API_KEY=.*|JUSTTCG_API_KEY=${{ secrets.JUSTTCG_API_KEY }}|" .env
-            else
-              echo "JUSTTCG_API_KEY=${{ secrets.JUSTTCG_API_KEY }}" >> .env
-            fi
-
+            
             # Add CRON_SECRET if not exists
             if ! grep -q "CRON_SECRET" .env; then
               echo "CRON_SECRET=\"$(openssl rand -base64 32)\"" >> .env
             fi
-
+            
+            # ONE-TIME: Remove all test data from production
+            npx tsx scripts/cleanup-test-data.ts || echo "Cleanup script failed or already run"
+            
             npm run build
             pm2 reload packattack --update-env
-
+            
             # Start auto-start scheduler
             pm2 stop battle-auto-start-scheduler || true
             pm2 delete battle-auto-start-scheduler || true
-            pm2 start ecosystem.battle-scheduler.config.cjs || true
+            pm2 start ecosystem.battle-scheduler.config.cjs
             pm2 save
-
+            
             # Show status
             sleep 3
             pm2 status
-            echo "Deployment complete!"
+            echo "✓ Deployment complete!"
