@@ -3,6 +3,7 @@ import { getCurrentSession } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/prisma';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
+import { sendBattleNotificationWebhook } from '@/lib/discord-webhook';
 
 const battleSchema = z.object({
   boxId: z.string(),
@@ -107,6 +108,20 @@ export async function POST(request: NextRequest) {
           include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
+    });
+
+    sendBattleNotificationWebhook({
+      battleId: battle.id,
+      boxName: box.name,
+      boxImageUrl: box.imageUrl || undefined,
+      players: data.maxParticipants,
+      rounds: data.rounds,
+      winCondition: data.shareMode ? 'SHARE' : data.battleMode,
+      privacy: 'PUBLIC', // Falls du das später aus dem Request body holst: data.privacy
+      entryCost: data.entryFee || (Number(box.price) * data.rounds),
+      creatorUsername: user.name || user.email || 'Anonymous',
+    }).catch((error) => {
+      console.error('Failed to send Discord notification:', error);
     });
 
     // Convert Decimal values to numbers
