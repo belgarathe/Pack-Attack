@@ -39,7 +39,7 @@ export async function sendBattleNotificationWebhook(battle: BattleNotification) 
     const embed = {
         title: `⚔️ Neues Battle erstellt! #${battleIdShort}`,
         description: `**${battle.creatorUsername}** hat ein neues Battle gestartet!\n\n🎮 **[Jetzt beitreten!](${battleUrl})**`,
-        color: 0x8b5cf6, // Purple
+        color: 0x8b5cf6,
         fields: [
             { name: '📦 Box', value: battle.boxName, inline: true },
             { name: '👥 Spieler', value: `${battle.players} Spieler`, inline: true },
@@ -54,13 +54,12 @@ export async function sendBattleNotificationWebhook(battle: BattleNotification) 
         ],
         timestamp: new Date().toISOString(),
         footer: { text: 'Klicke auf den Link um beizutreten!' },
-        // Kein thumbnail mehr
     };
 
     const payload = {
         username: 'Pack-Attack Bot',
+        content: '<@&1471928307904807035>',
         embeds: [embed],
-        // Webhooks unterstützen keine Components/Buttons - Link ist im Embed
     };
 
     try {
