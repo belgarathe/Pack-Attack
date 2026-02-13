@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       players: data.maxParticipants,
       rounds: data.rounds,
       winCondition: data.shareMode ? 'SHARE' : data.battleMode,
-      privacy: 'PUBLIC', // Falls du das später aus dem Request body holst: data.privacy
+      privacy: 'PUBLIC',
       entryCost: data.entryFee || (Number(box.price) * data.rounds),
       creatorUsername: user.name || user.email || 'Anonymous',
     }).catch((error) => {
