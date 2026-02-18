@@ -5,16 +5,82 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { Adapter } from 'next-auth/adapters';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { cookies } from 'next/headers';
 import { prisma, withRetry } from './prisma';
 
-export const authOptions: NextAuthOptions = {
-  // Ensure secret is set
-  secret: process.env.NEXTAUTH_SECRET,
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Adapter
+//
+// NextAuth's PrismaAdapter assumes emailVerified is DateTime? (null | Date).
+// Our schema uses Boolean instead. We override createUser and updateUser
+// to translate the value correctly so Twitch OAuth can create/find users.
+// ─────────────────────────────────────────────────────────────────────────────
+function buildAdapter(): Adapter {
+  const base = PrismaAdapter(prisma) as Adapter;
 
-  // Use PrismaAdapter for OAuth providers (Twitch)
-  // CredentialsProvider bypasses the adapter, so existing email/password flow is unaffected
-  adapter: PrismaAdapter(prisma) as Adapter,
-  
+  return {
+    ...base,
+
+    // Called when a brand-new OAuth user signs up (no existing account found).
+    // NextAuth passes emailVerified as a Date or null; we convert to boolean.
+    createUser: async (data: any) => {
+      const { emailVerified, id, ...rest } = data;
+      const user = await prisma.user.create({
+        data: {
+          ...rest,
+          // Treat any truthy emailVerified (Date) from OAuth as verified=true
+          emailVerified: emailVerified ? true : false,
+          passwordHash: null,
+        },
+      });
+      // NextAuth expects emailVerified back as Date | null
+      return { ...user, emailVerified: user.emailVerified ? new Date() : null };
+    },
+
+    // Called occasionally to update user data (e.g. refresh token rotation).
+    updateUser: async (data: any) => {
+      const { emailVerified, id, ...rest } = data;
+      const user = await prisma.user.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(emailVerified !== undefined
+              ? { emailVerified: emailVerified ? true : false }
+              : {}),
+        },
+      });
+      return { ...user, emailVerified: user.emailVerified ? new Date() : null };
+    },
+
+    // Called when looking up a user – normalize emailVerified back to Date|null
+    getUser: async (id: string) => {
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) return null;
+      return { ...user, emailVerified: user.emailVerified ? new Date() : null };
+    },
+
+    getUserByEmail: async (email: string) => {
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) return null;
+      return { ...user, emailVerified: user.emailVerified ? new Date() : null };
+    },
+
+    getUserByAccount: async ({ provider, providerAccountId }) => {
+      const account = await prisma.account.findUnique({
+        where: { provider_providerAccountId: { provider, providerAccountId } },
+        include: { user: true },
+      });
+      if (!account) return null;
+      const { user } = account;
+      return { ...user, emailVerified: user.emailVerified ? new Date() : null };
+    },
+  };
+}
+
+export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  adapter: buildAdapter(),
+
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -23,36 +89,19 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
-        // Use withRetry for database resilience during authentication
         const user = await withRetry(
-          () => prisma.user.findUnique({
-            where: { email: credentials.email },
-          }),
-          'auth:findUser'
+            () => prisma.user.findUnique({ where: { email: credentials.email } }),
+            'auth:findUser'
         );
 
-        if (!user) {
-          return null;
-        }
-
-        // OAuth users don't have passwords
-        if (!user.passwordHash) {
-          return null;
-        }
+        if (!user || !user.passwordHash) return null;
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) return null;
 
-        if (!isValid) {
-          return null;
-        }
-
-        // SECURITY: Enforce email verification before login
         if (!user.emailVerified) {
-          // Log for monitoring but don't reveal to user why login failed
           console.warn(`[Auth] Login attempt with unverified email: ${user.email}`);
           return null;
         }
@@ -68,36 +117,32 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Twitch OAuth provider (for chat)
     ...(process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET
-      ? [
+        ? [
           TwitchProvider({
             clientId: process.env.TWITCH_CLIENT_ID,
             clientSecret: process.env.TWITCH_CLIENT_SECRET,
           }),
         ]
-      : []),
+        : []),
   ],
-  
-  // SECURITY: Session configuration with expiration
-  // Must use JWT strategy since CredentialsProvider doesn't support database sessions
+
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days absolute maximum
-    updateAge: 24 * 60 * 60,   // Refresh token every 24 hours
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
   },
-  
-  // SECURITY: JWT configuration with expiration
+
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
-  
-  // SECURITY: Cookie settings for production
+
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' 
-        ? '__Secure-next-auth.session-token' 
-        : 'next-auth.session-token',
+      name:
+          process.env.NODE_ENV === 'production'
+              ? '__Secure-next-auth.session-token'
+              : 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
@@ -106,11 +151,136 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
-  
+
   callbacks: {
+    // ─────────────────────────────────────────────────────────────────────
+    // signIn callback
+    //
+    // CASE A – Connect flow (logged-in user adds Twitch):
+    //   /api/user/connections/twitch/prepare sets cookie `twitch_link_uid`.
+    //   We read it here (with await), create the Account row manually and
+    //   return a redirect URL → existing JWT session is preserved.
+    //
+    // CASE B – Login/Register flow:
+    //   Normal Twitch OAuth. If the email matches an existing credentials-
+    //   user we auto-merge to avoid duplicate accounts.
+    // ─────────────────────────────────────────────────────────────────────
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== 'twitch') return true;
+
+      const twitchProfile = profile as any;
+      const twitchUsername =
+          twitchProfile?.preferred_username ||
+          twitchProfile?.login ||
+          twitchProfile?.display_name ||
+          null;
+      const twitchImage =
+          twitchProfile?.picture || twitchProfile?.profile_image_url || null;
+
+      // ── CASE A: Connect flow ─────────────────────────────────────────────
+      let connectUserId: string | null = null;
+      try {
+        // Next.js 15+ cookies() returns a Promise
+        const cookieStore = await cookies();
+        connectUserId = cookieStore.get('twitch_link_uid')?.value ?? null;
+      } catch {
+        // Fallback for environments where cookies() isn't available here
+      }
+
+      if (connectUserId) {
+        // Clear cookie immediately (one-time use)
+        try {
+          const cookieStore = await cookies();
+          cookieStore.set('twitch_link_uid', '', { maxAge: 0, path: '/' });
+        } catch { /* ignore */ }
+
+        const targetUser = await prisma.user.findUnique({
+          where: { id: connectUserId },
+          include: { accounts: true },
+        });
+
+        if (!targetUser) {
+          return '/dashboard?tab=connections&error=user_not_found';
+        }
+
+        const existingBinding = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: 'twitch',
+              providerAccountId: account.providerAccountId,
+            },
+          },
+        });
+
+        if (existingBinding && existingBinding.userId !== targetUser.id) {
+          return '/dashboard?tab=connections&error=twitch_already_used';
+        }
+
+        if (!existingBinding) {
+          await prisma.account.create({
+            data: {
+              userId: targetUser.id,
+              type: account.type,
+              provider: 'twitch',
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token ?? null,
+              refresh_token: account.refresh_token ?? null,
+              expires_at: account.expires_at ?? null,
+              token_type: account.token_type ?? null,
+              scope: account.scope ?? null,
+            },
+          });
+
+          await prisma.user.update({
+            where: { id: targetUser.id },
+            data: {
+              twitchUsername,
+              ...(twitchImage && !targetUser.image ? { image: twitchImage } : {}),
+            },
+          });
+        }
+
+        // Redirect back without replacing the existing session
+        return '/dashboard?tab=connections&success=twitch_connected';
+      }
+
+      // ── CASE B: Normal login / auto-merge ────────────────────────────────
+      if (user.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+          include: { accounts: true },
+        });
+
+        if (existingUser) {
+          const alreadyLinked = existingUser.accounts.some(
+              (a) => a.provider === 'twitch'
+          );
+
+          if (!alreadyLinked) {
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                type: account.type,
+                provider: 'twitch',
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token ?? null,
+                refresh_token: account.refresh_token ?? null,
+                expires_at: account.expires_at ?? null,
+                token_type: account.token_type ?? null,
+                scope: account.scope ?? null,
+              },
+            });
+          }
+
+          user.id = existingUser.id;
+        }
+      }
+
+      return true;
+    },
+
     async jwt({ token, user, trigger, account, profile }) {
       if (user) {
-        // SECURITY: Session fixation protection - regenerate token on login
         token.id = user.id;
         token.role = (user as any).role || 'USER';
         token.iat = Math.floor(Date.now() / 1000);
@@ -119,39 +289,35 @@ export const authOptions: NextAuthOptions = {
         token.twitchUsername = (user as any).twitchUsername || null;
       }
 
-      // On Twitch OAuth login, store the Twitch username
       if (account?.provider === 'twitch' && profile) {
-        const twitchProfile = profile as any;
-        const twitchUsername = twitchProfile.preferred_username || twitchProfile.login || twitchProfile.display_name || null;
-        const twitchImage = twitchProfile.picture || twitchProfile.profile_image_url || null;
-        
+        const p = profile as any;
+        const twitchUsername =
+            p.preferred_username || p.login || p.display_name || null;
+        const twitchImage = p.picture || p.profile_image_url || null;
+
         token.twitchUsername = twitchUsername;
         token.image = twitchImage;
-        token.role = 'USER';
+        token.role = token.role || 'USER';
 
-        // Update user record with Twitch info
         if (token.id) {
           try {
             await prisma.user.update({
               where: { id: token.id as string },
-              data: {
-                twitchUsername: twitchUsername,
-                image: twitchImage,
-              },
+              data: { twitchUsername, image: twitchImage },
             });
-          } catch (error) {
-            console.error('[Auth] Failed to update Twitch user info:', error);
+          } catch (err) {
+            console.error('[Auth] Failed to update Twitch user info:', err);
           }
         }
       }
-      
-      // Refresh timestamp on token update
+
       if (trigger === 'update') {
         token.iat = Math.floor(Date.now() / 1000);
       }
-      
+
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
@@ -162,6 +328,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+
   pages: {
     signIn: '/login',
   },

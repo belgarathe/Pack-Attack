@@ -12,8 +12,8 @@ model User {
   id                  String              @id @default(cuid())
   email               String              @unique
   name                String?
-  passwordHash        String?             // Optional for OAuth users (Twitch)
-  coins               Decimal             @db.Decimal(12, 2) @default(0)
+  passwordHash        String? // Optional for OAuth users (Twitch)
+  coins               Decimal             @default(0) @db.Decimal(12, 2)
   role                Role                @default(USER)
   isBot               Boolean             @default(false)
   emailVerified       Boolean             @default(false)
@@ -21,9 +21,9 @@ model User {
   verificationExpires DateTime?
   // Profile fields
   avatar              String?
-  image               String?             // OAuth profile image (Twitch avatar)
+  image               String? // OAuth profile image (Twitch avatar)
   bio                 String?
-  twitchUsername       String?             // Twitch display name for chat
+  twitchUsername      String? // Twitch display name for chat
   // Default shipping address
   shippingName        String?
   shippingAddress     String?
@@ -32,7 +32,7 @@ model User {
   shippingCountry     String?
   shippingPhone       String?
   // Relations
-  accounts            Account[]           // OAuth accounts (Twitch, etc.)
+  accounts            Account[] // OAuth accounts (Twitch, etc.)
   pulls               Pull[]
   transactions        Transaction[]
   sales               SaleHistory[]
@@ -47,7 +47,7 @@ model User {
   shop                Shop?
   shopOrders          ShopOrder[]
   shopCart            ShopCart?
-  shopBoxOrders       ShopBoxOrder[]      // Orders from shop-created boxes
+  shopBoxOrders       ShopBoxOrder[] // Orders from shop-created boxes
   // Achievement relations
   achievements        UserAchievement[]
   // Chat relations
@@ -56,29 +56,42 @@ model User {
   updatedAt           DateTime            @updatedAt
 
   // PERFORMANCE: Indexes for common query patterns
-  @@index([role])             // Admin queries filtering by role
-  @@index([isBot])            // Bot filtering
-  @@index([emailVerified])    // Email verification queries
+  @@index([role]) // Admin queries filtering by role
+  @@index([isBot]) // Bot filtering
+  @@index([emailVerified]) // Email verification queries
 }
 
 // OAuth Account model (for Twitch and future OAuth providers)
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?  @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+model TwitchLinkToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Global chat messages
@@ -94,32 +107,32 @@ model ChatMessage {
 }
 
 model Box {
-  id              String          @id @default(cuid())
+  id              String         @id @default(cuid())
   name            String
-  description     String          @db.Text
+  description     String         @db.Text
   imageUrl        String
-  price           Decimal         @db.Decimal(10, 2)
+  price           Decimal        @db.Decimal(10, 2)
   cardsPerPack    Int
-  games           CardGame[]      @default([MAGIC_THE_GATHERING])
-  isActive        Boolean         @default(true)
-  featured        Boolean         @default(false)
-  popularity      Int             @default(0)
+  games           CardGame[]     @default([MAGIC_THE_GATHERING])
+  isActive        Boolean        @default(true)
+  featured        Boolean        @default(false)
+  popularity      Int            @default(0)
   // Shop owner who created this box (null = admin-created)
   createdByShopId String?
-  createdByShop   Shop?           @relation(fields: [createdByShopId], references: [id], onDelete: SetNull)
+  createdByShop   Shop?          @relation(fields: [createdByShopId], references: [id], onDelete: SetNull)
   cards           Card[]
   pulls           Pull[]
   battles         Battle[]
   shopBoxOrders   ShopBoxOrder[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   // PERFORMANCE: Indexes for common query patterns
   @@index([createdByShopId])
   @@index([isActive])
   @@index([featured])
   @@index([popularity])
-  @@index([isActive, featured, popularity, createdAt])  // Box listing queries
+  @@index([isActive, featured, popularity, createdAt]) // Box listing queries
 }
 
 model Card {
@@ -135,43 +148,43 @@ model Card {
   colors           String[]
   type             String
   pullRate         Decimal  @db.Decimal(6, 3)
-  coinValue        Decimal  @db.Decimal(10, 2) @default(1)
+  coinValue        Decimal  @default(1) @db.Decimal(10, 2)
   sourceGame       CardGame @default(MAGIC_THE_GATHERING)
   boxId            String
   box              Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
   pulls            Pull[]
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([scryfallId, boxId])
   // PERFORMANCE: Indexes for common query patterns
   @@index([boxId])
   @@index([name])
-  @@index([rarity])           // Rarity-based filtering
-  @@index([sourceGame])       // Game filtering
-  @@index([boxId, rarity])    // Combined box + rarity queries
-  @@index([coinValue])        // Card value sorting
+  @@index([rarity]) // Rarity-based filtering
+  @@index([sourceGame]) // Game filtering
+  @@index([boxId, rarity]) // Combined box + rarity queries
+  @@index([coinValue]) // Card value sorting
 }
 
 model Pull {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  boxId     String
-  box       Box         @relation(fields: [boxId], references: [id], onDelete: Cascade)
-  cardId    String?
-  card      Card?       @relation(fields: [cardId], references: [id], onDelete: SetNull)
-  cardValue Decimal?    @db.Decimal(10, 2)
-  timestamp DateTime    @default(now())
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  boxId      String
+  box        Box         @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  cardId     String?
+  card       Card?       @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  cardValue  Decimal?    @db.Decimal(10, 2)
+  timestamp  DateTime    @default(now())
   battlePull BattlePull?
-  cartItem  CartItem?
+  cartItem   CartItem?
 
   // PERFORMANCE: Indexes for common query patterns
   @@index([userId])
   @@index([timestamp])
   @@index([userId, timestamp]) // User stats queries
-  @@index([cardId])            // Card lookup queries
-  @@index([boxId])             // Box-related queries
+  @@index([cardId]) // Card lookup queries
+  @@index([boxId]) // Box-related queries
 }
 
 model Cart {
@@ -208,8 +221,8 @@ model Transaction {
 
   @@index([userId])
   @@index([paypalOrderId])
-  @@index([status])                   // Payment status filtering
-  @@index([timestamp])                // Date-range queries
+  @@index([status]) // Payment status filtering
+  @@index([timestamp]) // Date-range queries
   @@index([userId, status, timestamp]) // User transaction history
 }
 
@@ -236,38 +249,38 @@ enum PaymentStatus {
 }
 
 model Battle {
-  id                String              @id @default(cuid())
-  creatorId         String
-  creator           User                @relation("BattleCreator", fields: [creatorId], references: [id])
-  boxId             String
-  box               Box                 @relation(fields: [boxId], references: [id], onDelete: Cascade)
-  entryFee          Int                 @default(0)
-  maxParticipants   Int                 @default(4)
-  rounds            Int                 @default(1)
-  battleMode        BattleMode          @default(NORMAL)
-  shareMode         Boolean             @default(false)
-  status            BattleStatus        @default(WAITING)
-  winnerId          String?
-  winner            User?               @relation("BattleWinner", fields: [winnerId], references: [id])
-  totalPrize        Int                 @default(0)
-  participants      BattleParticipant[]
-  pulls             BattlePull[]
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  startedAt         DateTime?
-  finishedAt        DateTime?
-  fullAt            DateTime?           // Timestamp when battle became full
+  id              String              @id @default(cuid())
+  creatorId       String
+  creator         User                @relation("BattleCreator", fields: [creatorId], references: [id])
+  boxId           String
+  box             Box                 @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  entryFee        Int                 @default(0)
+  maxParticipants Int                 @default(4)
+  rounds          Int                 @default(1)
+  battleMode      BattleMode          @default(NORMAL)
+  shareMode       Boolean             @default(false)
+  status          BattleStatus        @default(WAITING)
+  winnerId        String?
+  winner          User?               @relation("BattleWinner", fields: [winnerId], references: [id])
+  totalPrize      Int                 @default(0)
+  participants    BattleParticipant[]
+  pulls           BattlePull[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  fullAt          DateTime? // Timestamp when battle became full
 
   // PERFORMANCE: Indexes for common query patterns
   @@index([status])
   @@index([creatorId])
   @@index([battleMode])
-  @@index([winnerId])              // Winner queries
-  @@index([finishedAt])            // Leaderboard date range queries
-  @@index([status, createdAt])     // Battle list queries
-  @@index([winnerId, status])      // User win statistics
-  @@index([status, finishedAt])    // Leaderboard queries
-  @@index([status, fullAt])        // Auto-start queries
+  @@index([winnerId]) // Winner queries
+  @@index([finishedAt]) // Leaderboard date range queries
+  @@index([status, createdAt]) // Battle list queries
+  @@index([winnerId, status]) // User win statistics
+  @@index([status, finishedAt]) // Leaderboard queries
+  @@index([status, fullAt]) // Auto-start queries
 }
 
 model BattleParticipant {
@@ -285,7 +298,7 @@ model BattleParticipant {
   @@unique([battleId, userId])
   @@index([battleId])
   @@index([userId])
-  @@index([battleId, isReady])  // Battle start queries
+  @@index([battleId, isReady]) // Battle start queries
 }
 
 model BattlePull {
@@ -329,7 +342,7 @@ model SaleHistory {
   cardId        String?
   cardName      String
   cardImage     String?
-  coinsReceived Decimal       @db.Decimal(10, 2)
+  coinsReceived Decimal  @db.Decimal(10, 2)
   timestamp     DateTime @default(now())
 
   @@index([userId])
@@ -337,16 +350,16 @@ model SaleHistory {
 }
 
 model EmailLog {
-  id        String      @id @default(cuid())
-  userId    String?
-  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  toEmail   String
-  subject   String
-  type      EmailType
-  status    EmailStatus @default(SENT)
-  resendId  String?
-  error     String?
-  sentAt    DateTime    @default(now())
+  id       String      @id @default(cuid())
+  userId   String?
+  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  toEmail  String
+  subject  String
+  type     EmailType
+  status   EmailStatus @default(SENT)
+  resendId String?
+  error    String?
+  sentAt   DateTime    @default(now())
 
   @@index([userId])
   @@index([toEmail])
@@ -370,11 +383,11 @@ enum EmailStatus {
 }
 
 model Order {
-  id              String              @id @default(cuid())
+  id              String                @id @default(cuid())
   userId          String
-  user            User                @relation(fields: [userId], references: [id])
-  status          OrderStatus         @default(PENDING)
-  totalCoins      Decimal             @db.Decimal(10, 2)
+  user            User                  @relation(fields: [userId], references: [id])
+  status          OrderStatus           @default(PENDING)
+  totalCoins      Decimal               @db.Decimal(10, 2)
   shippingName    String
   shippingEmail   String
   shippingAddress String
@@ -382,26 +395,26 @@ model Order {
   shippingZip     String
   shippingCountry String
   shippingMethod  ShippingPaymentMethod @default(COINS)
-  shippingCost    Decimal             @db.Decimal(10, 2) @default(5.00)
+  shippingCost    Decimal               @default(5.00) @db.Decimal(10, 2)
   notes           String?
   // Shop assignment - admin can assign order to a shop for fulfillment
   assignedShopId  String?
-  assignedShop    Shop?               @relation(fields: [assignedShopId], references: [id], onDelete: SetNull)
+  assignedShop    Shop?                 @relation(fields: [assignedShopId], references: [id], onDelete: SetNull)
   assignedAt      DateTime?
   // Tracking info (can be filled by shop or admin)
   trackingNumber  String?
   trackingUrl     String?
-  shopNotes       String?             // Notes from the assigned shop
+  shopNotes       String? // Notes from the assigned shop
   items           OrderItem[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   // PERFORMANCE: Indexes for common query patterns
   @@index([userId])
   @@index([status])
   @@index([assignedShopId])
-  @@index([userId, status])        // User order filtering
-  @@index([createdAt])             // Date-based queries
+  @@index([userId, status]) // User order filtering
+  @@index([createdAt]) // Date-based queries
   @@index([assignedShopId, status]) // Shop order filtering
 }
 
@@ -431,20 +444,20 @@ enum OrderStatus {
 }
 
 model BattleLeaderboard {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  month           Int      // 1-12
-  year            Int      // e.g., 2026
-  points          Int      @default(0)
-  battlesWon      Int      @default(0)
-  battlesPlayed   Int      @default(0)
-  totalCoinsWon   Decimal  @db.Decimal(12, 2) @default(0)
-  prizeAwarded    Boolean  @default(false)
-  prizeAmount     Decimal  @db.Decimal(10, 2) @default(0)
-  rank            Int?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month         Int // 1-12
+  year          Int // e.g., 2026
+  points        Int      @default(0)
+  battlesWon    Int      @default(0)
+  battlesPlayed Int      @default(0)
+  totalCoinsWon Decimal  @default(0) @db.Decimal(12, 2)
+  prizeAwarded  Boolean  @default(false)
+  prizeAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  rank          Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([userId, month, year])
   @@index([month, year])
@@ -456,52 +469,52 @@ model BattleLeaderboard {
 // ============================================
 
 model Shop {
-  id              String        @id @default(cuid())
-  ownerId         String        @unique
-  owner           User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?       @db.Text
-  logo            String?
-  banner          String?
-  isActive        Boolean       @default(true)
-  products        ShopProduct[]
-  orders          ShopOrder[]
-  boxes           Box[]
-  boxOrders       ShopBoxOrder[]
-  assignedOrders  Order[]       // Regular orders assigned to this shop by admin
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id             String         @id @default(cuid())
+  ownerId        String         @unique
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?        @db.Text
+  logo           String?
+  banner         String?
+  isActive       Boolean        @default(true)
+  products       ShopProduct[]
+  orders         ShopOrder[]
+  boxes          Box[]
+  boxOrders      ShopBoxOrder[]
+  assignedOrders Order[] // Regular orders assigned to this shop by admin
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@index([isActive])
 }
 
 model ShopProduct {
-  id            String          @id @default(cuid())
-  shopId        String
-  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?         @db.Text
-  price         Decimal         @db.Decimal(10, 2)
-  comparePrice  Decimal?        @db.Decimal(10, 2) // Original price for showing discounts
-  images        String[]        // Array of image URLs
-  category      ProductCategory
-  game          CardGame?       // Which TCG this product belongs to
-  condition     CardCondition   @default(NEAR_MINT)
-  stock         Int             @default(0)
-  sku           String?
-  isActive      Boolean         @default(true)
-  featured      Boolean         @default(false)
-  cartItems     ShopCartItem[]
-  orderItems    ShopOrderItem[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id           String          @id @default(cuid())
+  shopId       String
+  shop         Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?         @db.Text
+  price        Decimal         @db.Decimal(10, 2)
+  comparePrice Decimal?        @db.Decimal(10, 2) // Original price for showing discounts
+  images       String[] // Array of image URLs
+  category     ProductCategory
+  game         CardGame? // Which TCG this product belongs to
+  condition    CardCondition   @default(NEAR_MINT)
+  stock        Int             @default(0)
+  sku          String?
+  isActive     Boolean         @default(true)
+  featured     Boolean         @default(false)
+  cartItems    ShopCartItem[]
+  orderItems   ShopOrderItem[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([shopId])
   @@index([category])
   @@index([game])
   @@index([isActive])
   @@index([featured])
-  @@index([shopId, isActive, featured])  // Shop product filtering
+  @@index([shopId, isActive, featured]) // Shop product filtering
 }
 
 enum ProductCategory {
@@ -560,7 +573,7 @@ model ShopOrder {
   shop            Shop            @relation(fields: [shopId], references: [id])
   status          ShopOrderStatus @default(PENDING)
   subtotal        Decimal         @db.Decimal(10, 2)
-  shippingCost    Decimal         @db.Decimal(10, 2) @default(0)
+  shippingCost    Decimal         @default(0) @db.Decimal(10, 2)
   total           Decimal         @db.Decimal(10, 2)
   // Shipping info
   shippingName    String
@@ -586,20 +599,20 @@ model ShopOrder {
   @@index([shopId])
   @@index([status])
   @@index([orderNumber])
-  @@index([shopId, status, createdAt])  // Shop dashboard queries
+  @@index([shopId, status, createdAt]) // Shop dashboard queries
 }
 
 model ShopOrderItem {
-  id          String      @id @default(cuid())
-  orderId     String
-  order       ShopOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     ShopProduct @relation(fields: [productId], references: [id])
-  productName String      // Snapshot of product name at time of order
-  productImage String?    // Snapshot of product image
-  price       Decimal     @db.Decimal(10, 2) // Price at time of order
-  quantity    Int
-  createdAt   DateTime    @default(now())
+  id           String      @id @default(cuid())
+  orderId      String
+  order        ShopOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      ShopProduct @relation(fields: [productId], references: [id])
+  productName  String // Snapshot of product name at time of order
+  productImage String? // Snapshot of product image
+  price        Decimal     @db.Decimal(10, 2) // Price at time of order
+  quantity     Int
+  createdAt    DateTime    @default(now())
 
   @@index([orderId])
   @@index([productId])
@@ -620,22 +633,22 @@ enum ShopOrderStatus {
 // ============================================
 
 model ShopBoxOrder {
-  id              String              @id @default(cuid())
-  orderNumber     String              @unique @default(cuid())
+  id              String                @id @default(cuid())
+  orderNumber     String                @unique @default(cuid())
   // The shop that created the box (fulfills the order)
   shopId          String
-  shop            Shop                @relation(fields: [shopId], references: [id])
+  shop            Shop                  @relation(fields: [shopId], references: [id])
   // The box that was opened
   boxId           String
-  box             Box                 @relation(fields: [boxId], references: [id])
+  box             Box                   @relation(fields: [boxId], references: [id])
   // The user who placed the order
   userId          String
-  user            User                @relation(fields: [userId], references: [id])
-  status          ShopBoxOrderStatus  @default(PENDING)
+  user            User                  @relation(fields: [userId], references: [id])
+  status          ShopBoxOrderStatus    @default(PENDING)
   // Card details (snapshot at order time)
   cardName        String
   cardImage       String?
-  cardValue       Decimal             @db.Decimal(10, 2)
+  cardValue       Decimal               @db.Decimal(10, 2)
   cardRarity      String?
   // Shipping info
   shippingName    String
@@ -646,21 +659,21 @@ model ShopBoxOrder {
   shippingCountry String
   shippingPhone   String?
   shippingMethod  ShippingPaymentMethod @default(COINS)
-  shippingCost    Decimal             @db.Decimal(10, 2) @default(5.00)
+  shippingCost    Decimal               @default(5.00) @db.Decimal(10, 2)
   // Tracking
   trackingNumber  String?
   trackingUrl     String?
   notes           String?
-  shopNotes       String?             // Internal notes from shop
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  shopNotes       String? // Internal notes from shop
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@index([shopId])
   @@index([userId])
   @@index([boxId])
   @@index([status])
   @@index([orderNumber])
-  @@index([shopId, status, createdAt])  // Shop dashboard queries
+  @@index([shopId, status, createdAt]) // Shop dashboard queries
 }
 
 enum ShopBoxOrderStatus {
@@ -676,32 +689,32 @@ enum ShopBoxOrderStatus {
 // ============================================
 
 model BoxPreset {
-  id              String     @id @default(cuid())
-  name            String
-  description     String?    @db.Text
-  
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+
   // Box configuration snapshot
-  boxName         String
-  boxDescription  String     @db.Text
-  price           Decimal    @db.Decimal(10, 2)
-  cardsPerPack    Int
-  games           CardGame[]
-  
+  boxName        String
+  boxDescription String     @db.Text
+  price          Decimal    @db.Decimal(10, 2)
+  cardsPerPack   Int
+  games          CardGame[]
+
   // Cards configuration stored as JSON
   // Array of: { scryfallId, name, setName, setCode, collectorNumber, rarity, imageUrl, pullRate, coinValue, sourceGame }
-  cardsConfig     Json
-  
+  cardsConfig Json
+
   // Preview images
-  thumbnailUrl    String?    // Main preview image (highest value card)
-  previewImages   String[]   // Array of card images for gallery preview
-  
+  thumbnailUrl  String? // Main preview image (highest value card)
+  previewImages String[] // Array of card images for gallery preview
+
   // Metadata
-  cardCount       Int        @default(0)
-  totalPullRate   Decimal    @db.Decimal(6, 3) @default(100)
-  
+  cardCount     Int     @default(0)
+  totalPullRate Decimal @default(100) @db.Decimal(6, 3)
+
   // Shared among all admins
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([name])
   @@index([createdAt])
@@ -712,21 +725,21 @@ model BoxPreset {
 // ============================================
 
 model Achievement {
-  id              String            @id @default(cuid())
-  code            String            @unique // Unique identifier like "FIRST_PULL", "BATTLE_MASTER"
-  name            String
-  description     String
-  category        AchievementCategory
-  icon            String            // Icon name from lucide-react
-  rarity          AchievementRarity @default(COMMON)
-  requirement     Int               // Number needed to unlock (e.g., 10 pulls)
-  coinReward      Decimal           @db.Decimal(10, 2) @default(0)
-  isSecret        Boolean           @default(false) // Hidden until unlocked
-  sortOrder       Int               @default(0)
-  isActive        Boolean           @default(true)
+  id               String              @id @default(cuid())
+  code             String              @unique // Unique identifier like "FIRST_PULL", "BATTLE_MASTER"
+  name             String
+  description      String
+  category         AchievementCategory
+  icon             String // Icon name from lucide-react
+  rarity           AchievementRarity   @default(COMMON)
+  requirement      Int // Number needed to unlock (e.g., 10 pulls)
+  coinReward       Decimal             @default(0) @db.Decimal(10, 2)
+  isSecret         Boolean             @default(false) // Hidden until unlocked
+  sortOrder        Int                 @default(0)
+  isActive         Boolean             @default(true)
   userAchievements UserAchievement[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([category])
   @@index([rarity])
@@ -740,7 +753,7 @@ model UserAchievement {
   achievementId String
   achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
   progress      Int         @default(0) // Current progress towards requirement
-  unlockedAt    DateTime?   // Null if not yet unlocked
+  unlockedAt    DateTime? // Null if not yet unlocked
   rewardClaimed Boolean     @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -752,18 +765,18 @@ model UserAchievement {
 }
 
 enum AchievementCategory {
-  PULLS       // Pack opening achievements
-  BATTLES     // Battle-related achievements
-  COLLECTION  // Collection milestones
-  ECONOMY     // Coins/sales achievements
-  SOCIAL      // Community achievements
-  SPECIAL     // Limited/event achievements
+  PULLS // Pack opening achievements
+  BATTLES // Battle-related achievements
+  COLLECTION // Collection milestones
+  ECONOMY // Coins/sales achievements
+  SOCIAL // Community achievements
+  SPECIAL // Limited/event achievements
 }
 
 enum AchievementRarity {
-  COMMON      // Easy to get
-  UNCOMMON    // Moderate effort
-  RARE        // Significant effort
-  EPIC        // Hard to achieve
-  LEGENDARY   // Extremely difficult
+  COMMON // Easy to get
+  UNCOMMON // Moderate effort
+  RARE // Significant effort
+  EPIC // Hard to achieve
+  LEGENDARY // Extremely difficult
 }
