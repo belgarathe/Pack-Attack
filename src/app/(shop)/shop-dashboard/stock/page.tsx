@@ -5,12 +5,9 @@ import Link from 'next/link';
 import { 
   Database, 
   ArrowLeft, 
-  Store, 
-  Plug, 
-  FileText,
-  Clock,
-  Sparkles
+  Package,
 } from 'lucide-react';
+import { StockImportClient } from './StockImportClient';
 
 export default async function ShopStockPage() {
   const session = await getCurrentSession();
@@ -29,6 +26,15 @@ export default async function ShopStockPage() {
 
   const shop = user.shop;
   const isAdmin = user.role === 'ADMIN';
+
+  const productCount = shop ? await prisma.shopProduct.count({
+    where: { shopId: shop.id, isActive: true },
+  }) : 0;
+
+  const totalStock = shop ? await prisma.shopProduct.aggregate({
+    where: { shopId: shop.id, isActive: true },
+    _sum: { stock: true },
+  }) : null;
 
   return (
     <div className="min-h-screen font-display">
@@ -60,56 +66,38 @@ export default async function ShopStockPage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400">Stock</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl">
-            Manage your card inventory and connect external stock sources via API.
+            Import and manage your card inventory. Add items via text list or CSV/Excel file.
           </p>
         </div>
 
-        {/* Coming Soon Card */}
-        <div className="glass-strong rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 ring-1 ring-teal-500/30">
-            <Sparkles className="w-10 h-10 text-teal-400" />
-          </div>
-          
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            Coming Soon
-          </h2>
-          
-          <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
-            The Stock Management feature is currently in development. Soon you'll be able to:
-          </p>
-
-          {/* Feature Preview */}
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
-            <div className="glass rounded-xl p-4">
-              <div className="p-3 rounded-lg bg-teal-500/10 w-fit mx-auto mb-3">
-                <Plug className="w-6 h-6 text-teal-400" />
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-8 max-w-lg">
+          <div className="glass-strong rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-teal-500/10">
+                <Package className="w-5 h-5 text-teal-400" />
               </div>
-              <h3 className="font-semibold text-white mb-1">API Integration</h3>
-              <p className="text-sm text-gray-500">Connect your external inventory systems</p>
-            </div>
-            
-            <div className="glass rounded-xl p-4">
-              <div className="p-3 rounded-lg bg-cyan-500/10 w-fit mx-auto mb-3">
-                <FileText className="w-6 h-6 text-cyan-400" />
+              <div>
+                <p className="text-2xl font-bold text-white">{productCount}</p>
+                <p className="text-xs text-gray-400">Products</p>
               </div>
-              <h3 className="font-semibold text-white mb-1">Text Import</h3>
-              <p className="text-sm text-gray-500">Import card lists in text format</p>
-            </div>
-            
-            <div className="glass rounded-xl p-4">
-              <div className="p-3 rounded-lg bg-blue-500/10 w-fit mx-auto mb-3">
-                <Clock className="w-6 h-6 text-blue-400" />
-              </div>
-              <h3 className="font-semibold text-white mb-1">Auto Sync</h3>
-              <p className="text-sm text-gray-500">Real-time inventory synchronization</p>
             </div>
           </div>
-
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 text-teal-400 text-sm">
-            <Clock className="w-4 h-4" />
-            <span>Feature in development</span>
+          <div className="glass-strong rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-cyan-500/10">
+                <Database className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{totalStock?._sum?.stock || 0}</p>
+                <p className="text-xs text-gray-400">Total Stock</p>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Import Section */}
+        <StockImportClient />
       </div>
     </div>
   );
