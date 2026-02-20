@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -50,12 +50,32 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   const [editValues, setEditValues] = useState<{ pullRate: number; coinValue: number }>({ pullRate: 0, coinValue: 1 });
   const [savingCard, setSavingCard] = useState(false);
   
-  // Bulk editing state - allows editing all cards at once
-  const [bulkEditMode, setBulkEditMode] = useState(false);
-  const [bulkEditValues, setBulkEditValues] = useState<Record<string, { pullRate: number; coinValue: number }>>({});
+  // Bulk editing state - default to edit mode when cards exist
+  const [bulkEditMode, setBulkEditMode] = useState(existingCards.length > 0);
+  const [bulkEditValues, setBulkEditValues] = useState<Record<string, { pullRate: number; coinValue: number }>>(() => {
+    const initial: Record<string, { pullRate: number; coinValue: number }> = {};
+    existingCards.forEach(card => {
+      initial[card.id] = { pullRate: card.pullRate, coinValue: card.coinValue };
+    });
+    return initial;
+  });
   const [savingBulk, setSavingBulk] = useState(false);
 
-  // Initialize bulk edit values when entering bulk edit mode
+  // Sync bulk edit values when existingCards changes (after add/remove)
+  useEffect(() => {
+    if (existingCards.length > 0) {
+      const values: Record<string, { pullRate: number; coinValue: number }> = {};
+      existingCards.forEach(card => {
+        values[card.id] = { pullRate: card.pullRate, coinValue: card.coinValue };
+      });
+      setBulkEditValues(values);
+      if (!bulkEditMode) {
+        setBulkEditMode(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingCards]);
+
   const enterBulkEditMode = () => {
     const values: Record<string, { pullRate: number; coinValue: number }> = {};
     existingCards.forEach(card => {
@@ -927,7 +947,7 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                       onClick={exitBulkEditMode}
                       disabled={savingBulk}
                     >
-                      Cancel
+                      Card View
                     </Button>
                   </>
                 ) : (
@@ -938,7 +958,7 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       <Edit2 className="h-4 w-4 mr-2" />
-                      Edit All Rates
+                      Edit Rates
                     </Button>
                     <Button 
                       size="sm" 
