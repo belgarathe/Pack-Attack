@@ -61,17 +61,15 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
   });
   const [savingBulk, setSavingBulk] = useState(false);
 
-  // Sync bulk edit values when existingCards changes (after add/remove)
+  // Sync bulk edit values when existingCards changes (after save refresh or add/remove)
   useEffect(() => {
-    if (existingCards.length > 0) {
+    if (existingCards.length > 0 && !savingBulk) {
       const values: Record<string, { pullRate: number; coinValue: number }> = {};
       existingCards.forEach(card => {
         values[card.id] = { pullRate: card.pullRate, coinValue: card.coinValue };
       });
       setBulkEditValues(values);
-      if (!bulkEditMode) {
-        setBulkEditMode(true);
-      }
+      setBulkEditMode(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingCards]);
@@ -117,11 +115,11 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           setSavingBulk(false);
           return;
         }
-        if (values.coinValue < 1) {
+        if (values.coinValue < 0.01) {
           const card = existingCards.find(c => c.id === cardId);
           addToast({
             title: 'Validation Error',
-            description: `Coin value for "${card?.name || 'Unknown'}" must be at least 1`,
+            description: `Coin value for "${card?.name || 'Unknown'}" must be at least 0.01`,
             variant: 'destructive',
           });
           setSavingBulk(false);
@@ -141,7 +139,7 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               pullRate: Math.max(0.001, values.pullRate),
-              coinValue: Math.max(1, values.coinValue),
+              coinValue: Math.max(0.01, values.coinValue),
             }),
           });
 
@@ -173,7 +171,6 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
         });
       }
 
-      exitBulkEditMode();
       onCardsChange();
     } catch (error) {
       console.error('Bulk save error:', error);
