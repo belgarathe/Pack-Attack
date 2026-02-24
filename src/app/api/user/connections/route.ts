@@ -74,11 +74,18 @@ export async function DELETE(request: Request) {
         where: { userId: session.user.id, provider },
     });
 
-    // If disconnecting Twitch, clear the cached username on the user row
+    // Clear cached username on the user row when provider is disconnected
     if (provider === 'twitch') {
         await prisma.user.update({
             where: { id: session.user.id },
             data: { twitchUsername: null },
+        });
+    }
+
+    if (provider === 'discord') {
+        await prisma.user.update({
+            where: { id: session.user.id },
+            data: { discordUsername: null },
         });
     }
 

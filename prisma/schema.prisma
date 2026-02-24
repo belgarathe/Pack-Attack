@@ -24,6 +24,7 @@ model User {
   image               String? // OAuth profile image (Twitch avatar)
   bio                 String?
   twitchUsername      String? // Twitch display name for chat
+  discordUsername     String? // Discord username for integrations
   // Default shipping address
   shippingName        String?
   shippingAddress     String?

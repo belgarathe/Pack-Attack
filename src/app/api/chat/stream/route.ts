@@ -32,6 +32,7 @@ export async function GET() {
                   name: true,
                   image: true,
                   twitchUsername: true,
+                  discordUsername: true,
                   role: true,
                 },
               },
@@ -48,9 +49,10 @@ export async function GET() {
                 createdAt: msg.createdAt.toISOString(),
                 user: {
                   id: msg.user.id,
-                  name: msg.user.twitchUsername || msg.user.name || 'Anonymous',
+                  name: msg.user.twitchUsername || msg.user.discordUsername || msg.user.name || 'Anonymous',
                   image: msg.user.image,
                   isTwitch: !!msg.user.twitchUsername,
+                  isDiscord: !!msg.user.discordUsername,
                   role: msg.user.role,
                 },
               });
