@@ -1,4 +1,6 @@
 import type { NextConfig } from 'next';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Security Headers Configuration
@@ -104,6 +106,10 @@ const allowedImageDomains = [
 ];
 
 const nextConfig: NextConfig = {
+  // Pin Turbopack root to this project directory (avoids conflict with parent lockfile)
+  turbopack: {
+    root: dirname(fileURLToPath(import.meta.url)),
+  },
   // Output standalone for optimized Docker deployments
   output: 'standalone',
   // Enable React strict mode for better development
@@ -202,7 +208,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize package imports for smaller bundle
     optimizePackageImports: [
-      'lucide-react',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-select',

@@ -8,7 +8,7 @@ import { CheckoutClient } from './CheckoutClient';
 async function getCart() {
   const session = await getCurrentSession();
   if (!session?.user?.email) {
-    return { items: [], total: 0 };
+    return { items: [], total: 0, upsellCartItems: [] };
   }
 
   const user = await prisma.user.findUnique({
@@ -16,7 +16,7 @@ async function getCart() {
   });
 
   if (!user) {
-    return { items: [], total: 0 };
+    return { items: [], total: 0, upsellCartItems: [] };
   }
 
   const cart = await prisma.cart.findUnique({
@@ -31,11 +31,16 @@ async function getCart() {
           },
         },
       },
+      upsellItems: {
+        include: {
+          upsellItem: true,
+        },
+      },
     },
   });
 
   if (!cart) {
-    return { items: [], total: 0, userEmail: user.email, userName: user.name };
+    return { items: [], total: 0, userEmail: user.email, userName: user.name, upsellCartItems: [] };
   }
 
   const serializedItems = cart.items.map(item => ({
@@ -55,7 +60,18 @@ async function getCart() {
     return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
   }, 0);
 
-  return { items: serializedItems, total, userEmail: user.email, userName: user.name };
+  const upsellCartItems = cart.upsellItems.map(ui => ({
+    id: ui.id,
+    quantity: ui.quantity,
+    upsellItem: {
+      id: ui.upsellItem.id,
+      name: ui.upsellItem.name,
+      imageUrl: ui.upsellItem.imageUrl,
+      price: Number(ui.upsellItem.price),
+    },
+  }));
+
+  return { items: serializedItems, total, userEmail: user.email, userName: user.name, upsellCartItems };
 }
 
 export default async function CheckoutPage() {
@@ -64,9 +80,9 @@ export default async function CheckoutPage() {
     redirect('/login');
   }
 
-  const { items, total, userEmail, userName } = await getCart();
+  const { items, total, userEmail, userName, upsellCartItems } = await getCart();
 
-  if (items.length === 0) {
+  if (items.length === 0 && (!upsellCartItems || upsellCartItems.length === 0)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
         <div className="fixed inset-0 bg-grid opacity-30" />
@@ -103,6 +119,7 @@ export default async function CheckoutPage() {
           total={total} 
           userEmail={userEmail || ''} 
           userName={userName || ''} 
+          upsellCartItems={upsellCartItems || []}
         />
       </div>
     </div>

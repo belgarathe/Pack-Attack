@@ -75,10 +75,15 @@ export async function POST(request: NextRequest) {
             },
           },
         },
+        upsellItems: {
+          include: {
+            upsellItem: true,
+          },
+        },
       },
     });
 
-    if (!cart || cart.items.length === 0) {
+    if (!cart || (cart.items.length === 0 && cart.upsellItems.length === 0)) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
@@ -86,6 +91,15 @@ export async function POST(request: NextRequest) {
     const totalCoins = cart.items.reduce((sum, item) => {
       return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
     }, 0);
+
+    // Build upsell items note if any
+    const upsellNote = cart.upsellItems.length > 0
+      ? '\n--- Add-on Items ---\n' + cart.upsellItems.map(ui =>
+          `${ui.upsellItem.name} x${ui.quantity} @ ${Number(ui.upsellItem.price).toFixed(2)}€`
+        ).join('\n')
+      : '';
+
+    const combinedNotes = ((notes || '') + upsellNote).trim() || null;
 
     // Separate items from shop-created boxes vs regular admin boxes
     const shopBoxItems = cart.items.filter(item => item.pull.box?.createdByShopId);
@@ -122,7 +136,7 @@ export async function POST(request: NextRequest) {
             shippingCountry,
             shippingMethod: shippingMethod as 'COINS' | 'EUROS',
             shippingCost: new Decimal(shippingCost),
-            notes: notes || null,
+            notes: combinedNotes,
             items: {
               create: regularItems.map((item) => ({
                 cardName: item.pull.card?.name || 'Unknown Card',
@@ -159,7 +173,7 @@ export async function POST(request: NextRequest) {
             shippingCountry,
             shippingMethod: shippingMethod as 'COINS' | 'EUROS',
             shippingCost: new Decimal(shippingCost / Math.max(shopBoxItems.length, 1)), // Split shipping among shop orders
-            notes: notes || null,
+            notes: combinedNotes,
             status: 'PENDING',
           },
         });
@@ -167,13 +181,18 @@ export async function POST(request: NextRequest) {
       }
 
       // Delete the pulls (cards are being shipped, so remove from user's collection)
-      const pullIds = cart.items.map((item) => item.pull.id);
-      await tx.pull.deleteMany({
-        where: { id: { in: pullIds } },
-      });
+      if (cart.items.length > 0) {
+        const pullIds = cart.items.map((item) => item.pull.id);
+        await tx.pull.deleteMany({
+          where: { id: { in: pullIds } },
+        });
+      }
 
-      // Clear the cart
+      // Clear the cart (items + upsell items)
       await tx.cartItem.deleteMany({
+        where: { cartId: cart.id },
+      });
+      await tx.cartUpsellItem.deleteMany({
         where: { cartId: cart.id },
       });
 

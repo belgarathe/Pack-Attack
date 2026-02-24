@@ -8,7 +8,7 @@ import { CartClient } from './CartClient';
 async function getCart() {
   const session = await getCurrentSession();
   if (!session?.user?.email) {
-    return { items: [], total: 0 };
+    return { items: [], total: 0, upsellCartItems: [] };
   }
 
   const user = await prisma.user.findUnique({
@@ -16,7 +16,7 @@ async function getCart() {
   });
 
   if (!user) {
-    return { items: [], total: 0 };
+    return { items: [], total: 0, upsellCartItems: [] };
   }
 
   const cart = await prisma.cart.findUnique({
@@ -31,11 +31,16 @@ async function getCart() {
           },
         },
       },
+      upsellItems: {
+        include: {
+          upsellItem: true,
+        },
+      },
     },
   });
 
   if (!cart) {
-    return { items: [], total: 0 };
+    return { items: [], total: 0, upsellCartItems: [] };
   }
 
   const serializedItems = cart.items.map(item => ({
@@ -55,7 +60,18 @@ async function getCart() {
     return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
   }, 0);
 
-  return { items: serializedItems, total };
+  const upsellCartItems = cart.upsellItems.map(ui => ({
+    id: ui.id,
+    quantity: ui.quantity,
+    upsellItem: {
+      id: ui.upsellItem.id,
+      name: ui.upsellItem.name,
+      imageUrl: ui.upsellItem.imageUrl,
+      price: Number(ui.upsellItem.price),
+    },
+  }));
+
+  return { items: serializedItems, total, upsellCartItems };
 }
 
 export default async function CartPage() {
@@ -64,7 +80,7 @@ export default async function CartPage() {
     redirect('/login');
   }
 
-  const { items, total } = await getCart();
+  const { items, total, upsellCartItems } = await getCart();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 font-display">
@@ -86,7 +102,7 @@ export default async function CartPage() {
           <p className="text-gray-400 text-lg">Review your items before checkout</p>
         </div>
 
-        {items.length === 0 ? (
+        {items.length === 0 && upsellCartItems.length === 0 ? (
           <div className="glass-strong rounded-2xl p-12 text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
               <ShoppingCart className="w-10 h-10 text-blue-400" />
@@ -102,7 +118,7 @@ export default async function CartPage() {
             </Link>
           </div>
         ) : (
-          <CartClient items={items} total={total} />
+          <CartClient items={items} total={total} upsellCartItems={upsellCartItems} />
         )}
       </div>
     </div>

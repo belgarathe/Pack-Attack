@@ -20,17 +20,29 @@ type CartItem = {
   };
 };
 
+type UpsellCartItem = {
+  id: string;
+  quantity: number;
+  upsellItem: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    price: number;
+  };
+};
+
 type CheckoutClientProps = {
   items: CartItem[];
   total: number;
   userEmail: string;
   userName: string;
+  upsellCartItems: UpsellCartItem[];
 };
 
 const SHIPPING_COST_EUROS = 5.00;
 const SHIPPING_COST_COINS = 5.00;
 
-export function CheckoutClient({ items, total, userEmail, userName }: CheckoutClientProps) {
+export function CheckoutClient({ items, total, userEmail, userName, upsellCartItems }: CheckoutClientProps) {
   const router = useRouter();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -407,17 +419,37 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
               <h3 className="text-lg font-bold text-white mb-4">Order Summary</h3>
               
               <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Items</span>
-                  <span className="text-white">{items.length} cards</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Card Value</span>
-                  <div className="flex items-center gap-1">
-                    <Coins className="h-4 w-4 text-amber-400" />
-                    <span className="text-white">{total.toFixed(2)}</span>
-                  </div>
-                </div>
+                {items.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Items</span>
+                      <span className="text-white">{items.length} cards</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Card Value</span>
+                      <div className="flex items-center gap-1">
+                        <Coins className="h-4 w-4 text-amber-400" />
+                        <span className="text-white">{total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {upsellCartItems.length > 0 && (
+                  <>
+                    {upsellCartItems.map(ui => (
+                      <div key={ui.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">{ui.upsellItem.name} x{ui.quantity}</span>
+                        <span className="text-amber-400">{(ui.upsellItem.price * ui.quantity).toFixed(2)} €</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span className="text-gray-300">Add-ons Total</span>
+                      <span className="text-amber-400">
+                        {upsellCartItems.reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0).toFixed(2)} €
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">Shipping</span>
                   <div className="flex items-center gap-1">
@@ -435,14 +467,24 @@ export function CheckoutClient({ items, total, userEmail, userName }: CheckoutCl
                   </div>
                 </div>
                 <div className="h-px bg-gray-700" />
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-white">Total</span>
-                  <span className="text-xl font-bold text-white">{items.length} Cards</span>
-                </div>
+                {items.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white">Total</span>
+                    <span className="text-xl font-bold text-white">{items.length} Cards</span>
+                  </div>
+                )}
                 {shippingMethod === 'COINS' && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-400">Coins to deduct</span>
                     <span className="text-amber-400 font-semibold">{SHIPPING_COST_COINS.toFixed(2)}</span>
+                  </div>
+                )}
+                {upsellCartItems.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">EUR Total</span>
+                    <span className="text-xl font-bold text-amber-400">
+                      {(upsellCartItems.reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0) + (shippingMethod === 'EUROS' ? SHIPPING_COST_EUROS : 0)).toFixed(2)} €
+                    </span>
                   </div>
                 )}
               </div>

@@ -188,12 +188,26 @@ model Pull {
 }
 
 model Cart {
-  id        String     @id @default(cuid())
-  userId    String     @unique
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        CartItem[]
+  upsellItems  CartUpsellItem[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model CartUpsellItem {
+  id           String     @id @default(cuid())
+  cartId       String
+  cart         Cart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  upsellItemId String
+  upsellItem   UpsellItem @relation(fields: [upsellItemId], references: [id], onDelete: Cascade)
+  quantity     Int        @default(1)
+  createdAt    DateTime   @default(now())
+
+  @@unique([cartId, upsellItemId])
+  @@index([cartId])
 }
 
 model CartItem {
@@ -779,4 +793,18 @@ enum AchievementRarity {
   RARE // Significant effort
   EPIC // Hard to achieve
   LEGENDARY // Extremely difficult
+}
+
+model UpsellItem {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String
+  price       Decimal          @db.Decimal(10, 2)
+  externalUrl String?
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  cartItems   CartUpsellItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

@@ -23,7 +23,7 @@ function drawCard(cards: Card[]): Card {
 
 async function main() {
   const boxName = process.argv[2] || 'One Piece Treasures';
-  const iterations = parseInt(process.argv[3] || '10000');
+  const packOpenings = parseInt(process.argv[3] || '10000');
   
   const box = await prisma.box.findFirst({
     where: { name: { contains: boxName, mode: 'insensitive' } },
@@ -32,8 +32,9 @@ async function main() {
 
   if (!box) {
     console.log('Box not found: ' + boxName);
-    const boxes = await prisma.box.findMany({ select: { name: true } });
-    console.log('Available boxes:', boxes.map(b => b.name));
+    const boxes = await prisma.box.findMany({ select: { name: true, id: true } });
+    console.log('Available boxes:');
+    boxes.forEach(b => console.log('  - ' + b.name + ' (id: ' + b.id + ')'));
     await prisma.$disconnect();
     return;
   }
@@ -46,46 +47,90 @@ async function main() {
     rarity: c.rarity || 'Unknown'
   }));
 
-  console.log('\n🎴 PULL RATE SIMULATION - ' + box.name);
-  console.log('═'.repeat(60));
-  console.log('Box Price: ' + Number(box.price).toFixed(2) + ' coins');
-  console.log('Cards: ' + cards.length);
-  console.log('Iterations: ' + iterations.toLocaleString());
+  const boxPrice = Number(box.price);
+  const cardsPerPack = box.cardsPerPack;
+  const totalCardsPulled = packOpenings * cardsPerPack;
+  const totalSpent = packOpenings * boxPrice;
+
+  console.log('\n' + '═'.repeat(80));
+  console.log('  PACK OPENING SIMULATION - ' + box.name);
+  console.log('═'.repeat(80));
+  console.log('Box Price:        ' + boxPrice.toFixed(2) + ' coins per pack');
+  console.log('Cards Per Pack:   ' + cardsPerPack);
+  console.log('Unique Cards:     ' + cards.length);
+  console.log('Pack Openings:    ' + packOpenings.toLocaleString());
+  console.log('Total Cards Pull: ' + totalCardsPulled.toLocaleString());
+  console.log('Total Spent:      ' + totalSpent.toLocaleString() + ' coins');
 
   const totalPullRate = cards.reduce((sum, c) => sum + c.pullRate, 0);
   const pullCounts: Record<string, number> = {};
   cards.forEach(c => pullCounts[c.id] = 0);
-  const allPullValues: number[] = [];
 
-  console.log('\nRunning simulation...');
-  for (let i = 0; i < iterations; i++) {
-    const pulled = drawCard(cards);
-    pullCounts[pulled.id]++;
-    allPullValues.push(pulled.coinValue);
+  // Track per-pack data for detailed analysis
+  const packValues: number[] = [];     // Total coin value per pack
+  const packProfits: number[] = [];    // Profit/loss per pack
+  let winningPacks = 0;
+  let losingPacks = 0;
+  let breakEvenPacks = 0;
+  let bestPackValue = -Infinity;
+  let worstPackValue = Infinity;
+  let totalCoinsWon = 0;
+
+  // Distribution buckets for pack outcomes
+  const profitBuckets: Record<string, number> = {};
+
+  console.log('\nRunning ' + packOpenings.toLocaleString() + ' pack simulations...');
+  
+  for (let i = 0; i < packOpenings; i++) {
+    let packValue = 0;
+    for (let j = 0; j < cardsPerPack; j++) {
+      const pulled = drawCard(cards);
+      pullCounts[pulled.id]++;
+      packValue += pulled.coinValue;
+    }
+    
+    const packProfit = packValue - boxPrice;
+    packValues.push(packValue);
+    packProfits.push(packProfit);
+    totalCoinsWon += packValue;
+    
+    if (packProfit > 0) winningPacks++;
+    else if (packProfit < 0) losingPacks++;
+    else breakEvenPacks++;
+    
+    if (packValue > bestPackValue) bestPackValue = packValue;
+    if (packValue < worstPackValue) worstPackValue = packValue;
   }
+
   console.log('Done!\n');
 
-  console.log('═'.repeat(130));
-  console.log('DETAILED CARD RESULTS');
-  console.log('═'.repeat(130));
+  // ─────────────────────────────────────────────────────────────
+  // DETAILED CARD RESULTS
+  // ─────────────────────────────────────────────────────────────
+  console.log('═'.repeat(140));
+  console.log('  DETAILED CARD PULL RESULTS');
+  console.log('═'.repeat(140));
   console.log(
-    'Card Name'.padEnd(45) + 
+    'Card Name'.padEnd(40) + 
     'Rarity'.padEnd(18) + 
+    'Pull Rate'.padEnd(12) +
     'Expected%'.padEnd(12) + 
     'Actual%'.padEnd(12) + 
     'Deviation'.padEnd(14) + 
-    'Pulls'.padEnd(10) + 
-    'CoinVal'.padEnd(12) + 
-    'TotalCoins'
+    'Times Pulled'.padEnd(14) + 
+    'CoinValue'.padEnd(12) + 
+    'Total Coins'
   );
-  console.log('─'.repeat(130));
+  console.log('─'.repeat(140));
 
   const results = cards.map(card => {
     const expected = (card.pullRate / totalPullRate) * 100;
-    const actual = (pullCounts[card.id] / iterations) * 100;
+    const actual = (pullCounts[card.id] / totalCardsPulled) * 100;
     return {
+      id: card.id,
       name: card.name,
       rarity: card.rarity,
+      pullRateRaw: card.pullRate,
       expected,
       actual,
       deviation: actual - expected,
@@ -99,121 +144,186 @@ async function main() {
   results.forEach(r => {
     totalDev += Math.abs(r.deviation);
     const dev = r.deviation >= 0 ? '+' + r.deviation.toFixed(2) + '%' : r.deviation.toFixed(2) + '%';
-    const marker = Math.abs(r.deviation) < 1 ? '✓' : Math.abs(r.deviation) < 2 ? '~' : '⚠';
+    const marker = Math.abs(r.deviation) < 0.5 ? '✓' : Math.abs(r.deviation) < 1 ? '~' : '⚠';
     console.log(
-      r.name.substring(0, 44).padEnd(45) +
+      r.name.substring(0, 39).padEnd(40) +
       r.rarity.substring(0, 17).padEnd(18) +
+      r.pullRateRaw.toFixed(3).padStart(8) + '    ' +
       r.expected.toFixed(2).padStart(8) + '%   ' +
       r.actual.toFixed(2).padStart(8) + '%   ' +
       (dev + ' ' + marker).padEnd(14) +
-      String(r.pulls).padEnd(10) +
-      String(r.coinValue).padEnd(12) +
-      r.totalCoins.toLocaleString()
+      String(r.pulls).padStart(10) + '    ' +
+      r.coinValue.toFixed(2).padStart(8) + '    ' +
+      r.totalCoins.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     );
   });
 
-  console.log('─'.repeat(130));
+  console.log('─'.repeat(140));
+  console.log(
+    'TOTALS'.padEnd(40) +
+    ''.padEnd(18) +
+    totalPullRate.toFixed(3).padStart(8) + '    ' +
+    '100.00'.padStart(8) + '%   ' +
+    '100.00'.padStart(8) + '%   ' +
+    ''.padEnd(14) +
+    String(totalCardsPulled).padStart(10) + '    ' +
+    ''.padStart(8) + '    ' +
+    totalCoinsWon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
 
-  // Coin statistics
-  const totalCoins = allPullValues.reduce((s, v) => s + v, 0);
-  const avg = totalCoins / iterations;
-  const sorted = [...allPullValues].sort((a, b) => a - b);
-  const median = sorted[Math.floor(iterations / 2)];
-  const minVal = Math.min(...allPullValues);
-  const maxVal = Math.max(...allPullValues);
+  // ─────────────────────────────────────────────────────────────
+  // RARITY BREAKDOWN
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n' + '═'.repeat(100));
+  console.log('  RARITY BREAKDOWN');
+  console.log('═'.repeat(100));
+  console.log(
+    'Rarity'.padEnd(22) + 
+    '# Cards'.padEnd(10) + 
+    'Expected%'.padEnd(12) + 
+    'Actual%'.padEnd(12) + 
+    'Times Pulled'.padEnd(14) + 
+    'Total Coins'.padEnd(16) + 
+    'Avg Value/Pull'
+  );
+  console.log('─'.repeat(100));
   
-  // Theoretical expected value
-  const theoretical = cards.reduce((s, c) => s + (c.pullRate / totalPullRate) * c.coinValue, 0);
-  
-  // Standard deviation
-  const variance = allPullValues.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / iterations;
-  const stdDev = Math.sqrt(variance);
-  
-  // Value frequency for mode
-  const valueFreq: Record<number, number> = {};
-  allPullValues.forEach(v => valueFreq[v] = (valueFreq[v] || 0) + 1);
-  const modeEntry = Object.entries(valueFreq).sort((a, b) => b[1] - a[1])[0];
-
-  console.log('\n' + '═'.repeat(60));
-  console.log('💰 COIN VALUE STATISTICS');
-  console.log('═'.repeat(60));
-  console.log('Total Coins Won:            ' + totalCoins.toLocaleString() + ' coins');
-  console.log('Average Coin Value/Pull:    ' + avg.toFixed(2) + ' coins');
-  console.log('Median Coin Value/Pull:     ' + median + ' coins');
-  console.log('Mode (Most Common):         ' + modeEntry[0] + ' coins (' + modeEntry[1] + ' times)');
-  console.log('Min Value Pulled:           ' + minVal + ' coins');
-  console.log('Max Value Pulled:           ' + maxVal + ' coins');
-  console.log('Standard Deviation:         ' + stdDev.toFixed(2) + ' coins');
-  console.log('─'.repeat(60));
-  console.log('Theoretical Expected Value: ' + theoretical.toFixed(2) + ' coins');
-  console.log('Actual Average Value:       ' + avg.toFixed(2) + ' coins');
-  const diff = avg - theoretical;
-  console.log('Difference:                 ' + (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' coins (' + ((avg / theoretical - 1) * 100).toFixed(2) + '%)');
-  
-  console.log('─'.repeat(60));
-  const boxPrice = Number(box.price);
-  console.log('Box Price:                  ' + boxPrice.toFixed(2) + ' coins');
-  console.log('Expected Return/Pull:       ' + ((theoretical / boxPrice) * 100).toFixed(2) + '%');
-  console.log('Actual Return/Pull:         ' + ((avg / boxPrice) * 100).toFixed(2) + '%');
-  const profitLoss = avg - boxPrice;
-  console.log('Avg Profit/Loss per Pull:   ' + (profitLoss >= 0 ? '+' : '') + profitLoss.toFixed(2) + ' coins');
-
-  // Pull rate analysis
-  const avgDev = totalDev / cards.length;
-  const maxDev = Math.max(...results.map(r => Math.abs(r.deviation)));
-
-  console.log('\n' + '═'.repeat(60));
-  console.log('📊 PULL RATE STATISTICS');
-  console.log('═'.repeat(60));
-  console.log('Average Absolute Deviation: ' + avgDev.toFixed(3) + '%');
-  console.log('Maximum Deviation:          ' + maxDev.toFixed(3) + '%');
-  console.log('Total Pulls:                ' + iterations.toLocaleString());
-
-  console.log('\n🎯 RANDOMIZER ANALYSIS');
-  console.log('─'.repeat(60));
-  if (avgDev < 0.5) {
-    console.log('✅ EXCELLENT: Pull rates very accurately match expected values.');
-  } else if (avgDev < 1.0) {
-    console.log('✅ GOOD: Pull rates are within acceptable variance.');
-  } else if (avgDev < 2.0) {
-    console.log('⚠️  FAIR: Some variance detected, within statistical norms.');
-  } else {
-    console.log('❌ WARNING: Significant deviation detected.');
-  }
-
-  // Rarity breakdown
-  console.log('\n📦 RARITY BREAKDOWN');
-  console.log('─'.repeat(70));
-  console.log('Rarity'.padEnd(20) + 'Expected%'.padEnd(12) + 'Actual%'.padEnd(12) + 'Pulls'.padEnd(10) + 'Total Coins');
-  console.log('─'.repeat(70));
-  
-  const rarityGroups = new Map<string, { expected: number; actual: number; pulls: number; totalCoins: number }>();
+  const rarityGroups = new Map<string, { 
+    expected: number; actual: number; pulls: number; totalCoins: number; cardCount: number 
+  }>();
   results.forEach(r => {
     if (!rarityGroups.has(r.rarity)) {
-      rarityGroups.set(r.rarity, { expected: 0, actual: 0, pulls: 0, totalCoins: 0 });
+      rarityGroups.set(r.rarity, { expected: 0, actual: 0, pulls: 0, totalCoins: 0, cardCount: 0 });
     }
     const g = rarityGroups.get(r.rarity)!;
     g.expected += r.expected;
     g.actual += r.actual;
     g.pulls += r.pulls;
     g.totalCoins += r.totalCoins;
+    g.cardCount++;
   });
 
   Array.from(rarityGroups.entries())
     .sort((a, b) => a[1].expected - b[1].expected)
     .forEach(([rarity, data]) => {
+      const avgPerPull = data.pulls > 0 ? data.totalCoins / data.pulls : 0;
       console.log(
-        rarity.padEnd(20) +
+        rarity.padEnd(22) +
+        String(data.cardCount).padEnd(10) +
         (data.expected.toFixed(2) + '%').padEnd(12) +
         (data.actual.toFixed(2) + '%').padEnd(12) +
-        String(data.pulls).padEnd(10) +
-        data.totalCoins.toLocaleString()
+        String(data.pulls).padStart(10) + '    ' +
+        data.totalCoins.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).padStart(12) + '    ' +
+        avgPerPull.toFixed(2)
       );
     });
 
-  console.log('\n' + '═'.repeat(60));
-  console.log('Legend: ✓ = <1% deviation, ~ = 1-2% deviation, ⚠ = >2% deviation');
-  console.log('═'.repeat(60));
+  // ─────────────────────────────────────────────────────────────
+  // ECONOMICS: PROFIT / LOSS ANALYSIS
+  // ─────────────────────────────────────────────────────────────
+  const avgPackValue = totalCoinsWon / packOpenings;
+  const avgPackProfit = avgPackValue - boxPrice;
+  const totalProfit = totalCoinsWon - totalSpent;
+  const ROI = ((totalCoinsWon / totalSpent) - 1) * 100;
+
+  // Theoretical expected value per pack
+  const theoreticalEVPerCard = cards.reduce((s, c) => s + (c.pullRate / totalPullRate) * c.coinValue, 0);
+  const theoreticalEVPerPack = theoreticalEVPerCard * cardsPerPack;
+  const theoreticalPackProfit = theoreticalEVPerPack - boxPrice;
+  const theoreticalROI = ((theoreticalEVPerPack / boxPrice) - 1) * 100;
+
+  // Standard deviation of pack profits
+  const packProfitVariance = packProfits.reduce((s, v) => s + Math.pow(v - avgPackProfit, 2), 0) / packOpenings;
+  const packProfitStdDev = Math.sqrt(packProfitVariance);
+  
+  // Sorted pack values for percentiles
+  const sortedPV = [...packValues].sort((a, b) => a - b);
+  const percentile = (p: number) => sortedPV[Math.floor(p / 100 * packOpenings)];
+  const medianPackValue = sortedPV[Math.floor(packOpenings / 2)];
+
+  console.log('\n' + '═'.repeat(80));
+  console.log('  ECONOMICS: PROFIT / LOSS ANALYSIS');
+  console.log('═'.repeat(80));
+  
+  console.log('\n--- Theoretical (Mathematical) ---');
+  console.log('Expected Value per Card:    ' + theoreticalEVPerCard.toFixed(2) + ' coins');
+  console.log('Expected Value per Pack:    ' + theoreticalEVPerPack.toFixed(2) + ' coins  (' + cardsPerPack + ' cards x ' + theoreticalEVPerCard.toFixed(2) + ')');
+  console.log('Pack Cost:                  ' + boxPrice.toFixed(2) + ' coins');
+  console.log('Theoretical Profit/Pack:    ' + (theoreticalPackProfit >= 0 ? '+' : '') + theoreticalPackProfit.toFixed(2) + ' coins');
+  console.log('Theoretical ROI:            ' + (theoreticalROI >= 0 ? '+' : '') + theoreticalROI.toFixed(2) + '%');
+  console.log('House Edge:                 ' + (theoreticalROI >= 0 ? 'PLAYER ADVANTAGE ' + theoreticalROI.toFixed(2) + '%' : 'HOUSE EDGE ' + Math.abs(theoreticalROI).toFixed(2) + '%'));
+
+  console.log('\n--- Actual Simulation Results (' + packOpenings.toLocaleString() + ' packs) ---');
+  console.log('Total Coins Spent:          ' + totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins');
+  console.log('Total Coins Won:            ' + totalCoinsWon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins');
+  console.log('Net Profit/Loss:            ' + (totalProfit >= 0 ? '+' : '') + totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins');
+  console.log('ROI:                        ' + (ROI >= 0 ? '+' : '') + ROI.toFixed(2) + '%');
+  console.log('');
+  console.log('Avg Pack Value:             ' + avgPackValue.toFixed(2) + ' coins');
+  console.log('Median Pack Value:          ' + medianPackValue.toFixed(2) + ' coins');
+  console.log('Avg Profit/Loss per Pack:   ' + (avgPackProfit >= 0 ? '+' : '') + avgPackProfit.toFixed(2) + ' coins');
+  console.log('Std Dev (per pack):         ' + packProfitStdDev.toFixed(2) + ' coins');
+  console.log('');
+  console.log('Best Pack:                  ' + bestPackValue.toFixed(2) + ' coins (profit: +' + (bestPackValue - boxPrice).toFixed(2) + ')');
+  console.log('Worst Pack:                 ' + worstPackValue.toFixed(2) + ' coins (profit: ' + (worstPackValue - boxPrice).toFixed(2) + ')');
+
+  console.log('\n--- Win / Loss Breakdown ---');
+  console.log('Winning Packs (profit>0):   ' + winningPacks.toLocaleString() + ' (' + (winningPacks / packOpenings * 100).toFixed(2) + '%)');
+  console.log('Losing Packs (profit<0):    ' + losingPacks.toLocaleString() + ' (' + (losingPacks / packOpenings * 100).toFixed(2) + '%)');
+  console.log('Break-Even Packs:           ' + breakEvenPacks.toLocaleString() + ' (' + (breakEvenPacks / packOpenings * 100).toFixed(2) + '%)');
+
+  console.log('\n--- Pack Value Distribution ---');
+  console.log('10th Percentile:            ' + percentile(10).toFixed(2) + ' coins');
+  console.log('25th Percentile:            ' + percentile(25).toFixed(2) + ' coins');
+  console.log('50th Percentile (Median):   ' + medianPackValue.toFixed(2) + ' coins');
+  console.log('75th Percentile:            ' + percentile(75).toFixed(2) + ' coins');
+  console.log('90th Percentile:            ' + percentile(90).toFixed(2) + ' coins');
+  console.log('95th Percentile:            ' + percentile(95).toFixed(2) + ' coins');
+  console.log('99th Percentile:            ' + percentile(99).toFixed(2) + ' coins');
+
+  // ─────────────────────────────────────────────────────────────
+  // TOP HITS - Lucky Packs
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n' + '═'.repeat(80));
+  console.log('  PULL RATE ACCURACY');
+  console.log('═'.repeat(80));
+  const avgDev = totalDev / cards.length;
+  const maxDeviation = Math.max(...results.map(r => Math.abs(r.deviation)));
+  console.log('Total Individual Card Draws:  ' + totalCardsPulled.toLocaleString());
+  console.log('Average Absolute Deviation:   ' + avgDev.toFixed(3) + '%');
+  console.log('Maximum Deviation:            ' + maxDeviation.toFixed(3) + '%');
+  
+  if (avgDev < 0.5) {
+    console.log('Verdict:                      EXCELLENT - Pull rates match expected values');
+  } else if (avgDev < 1.0) {
+    console.log('Verdict:                      GOOD - Pull rates within acceptable variance');
+  } else if (avgDev < 2.0) {
+    console.log('Verdict:                      FAIR - Some variance detected');
+  } else {
+    console.log('Verdict:                      WARNING - Significant deviation detected');
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CASH SUMMARY
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n' + '═'.repeat(80));
+  console.log('  FINAL CASH SUMMARY');
+  console.log('═'.repeat(80));
+  const separator = totalProfit >= 0 ? '  >>>  NET GAIN' : '  >>>  NET LOSS';
+  console.log('');
+  console.log('  Packs Opened:     ' + packOpenings.toLocaleString());
+  console.log('  Cost per Pack:    ' + boxPrice.toFixed(2) + ' coins');
+  console.log('  Cards per Pack:   ' + cardsPerPack);
+  console.log('');
+  console.log('  Total Invested:   ' + totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins');
+  console.log('  Total Returns:    ' + totalCoinsWon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins');
+  console.log('  ─────────────────────────────────────────────');
+  console.log('  ' + (totalProfit >= 0 ? 'PROFIT' : 'LOSS') + ':           ' + (totalProfit >= 0 ? '+' : '') + totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' coins' + separator);
+  console.log('  ROI:              ' + (ROI >= 0 ? '+' : '') + ROI.toFixed(2) + '%');
+  console.log('');
+  console.log('═'.repeat(80));
+  console.log('Legend: ✓ = <0.5% dev, ~ = 0.5-1% dev, ⚠ = >1% dev');
+  console.log('═'.repeat(80));
 
   await prisma.$disconnect();
 }
