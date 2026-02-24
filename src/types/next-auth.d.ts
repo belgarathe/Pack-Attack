@@ -9,6 +9,7 @@ declare module 'next-auth' {
       role: string;
       image?: string | null;
       twitchUsername?: string | null;
+      discordUsername?: string | null;
     };
   }
 
@@ -19,6 +20,7 @@ declare module 'next-auth' {
     role: string;
     image?: string | null;
     twitchUsername?: string | null;
+    discordUsername?: string | null;
   }
 }
 
@@ -28,5 +30,6 @@ declare module 'next-auth/jwt' {
     role: string;
     image?: string | null;
     twitchUsername?: string | null;
+    discordUsername?: string | null;
   }
 }

@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import TwitchProvider from 'next-auth/providers/twitch';
+import DiscordProvider from 'next-auth/providers/discord';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { Adapter } from 'next-auth/adapters';
 import bcrypt from 'bcrypt';
@@ -113,6 +114,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           image: user.image,
           twitchUsername: user.twitchUsername,
+          discordUsername: user.discordUsername,
         };
       },
     }),
@@ -122,6 +124,17 @@ export const authOptions: NextAuthOptions = {
           TwitchProvider({
             clientId: process.env.TWITCH_CLIENT_ID,
             clientSecret: process.env.TWITCH_CLIENT_SECRET,
+          }),
+        ]
+        : []),
+
+    ...(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET
+        ? [
+          DiscordProvider({
+            clientId: process.env.DISCORD_CLIENT_ID,
+            clientSecret: process.env.DISCORD_CLIENT_SECRET,
+            // 'identify email' are the default scopes – explicitly set for clarity
+            authorization: { params: { scope: 'identify email' } },
           }),
         ]
         : []),
@@ -166,6 +179,101 @@ export const authOptions: NextAuthOptions = {
     //   user we auto-merge to avoid duplicate accounts.
     // ─────────────────────────────────────────────────────────────────────
     async signIn({ user, account, profile }) {
+      // ── DISCORD ─────────────────────────────────────────────────────────────
+      if (account?.provider === 'discord') {
+        const discordProfile = profile as any;
+        const discordUsername = discordProfile?.global_name || discordProfile?.username || null;
+        const discordImage = discordProfile?.image_url ||
+            (discordProfile?.avatar
+                ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
+                : null);
+
+        // Check for connect-flow cookie first
+        let connectUserId: string | null = null;
+        try {
+          const cookieStore = await cookies();
+          connectUserId = cookieStore.get('discord_link_uid')?.value ?? null;
+        } catch { /* ignore */ }
+
+        if (connectUserId) {
+          try {
+            const cookieStore = await cookies();
+            cookieStore.set('discord_link_uid', '', { maxAge: 0, path: '/' });
+          } catch { /* ignore */ }
+
+          const targetUser = await prisma.user.findUnique({
+            where: { id: connectUserId },
+            include: { accounts: true },
+          });
+          if (!targetUser) return '/dashboard?tab=connections&error=user_not_found';
+
+          const existingBinding = await prisma.account.findUnique({
+            where: { provider_providerAccountId: { provider: 'discord', providerAccountId: account.providerAccountId } },
+          });
+          if (existingBinding && existingBinding.userId !== targetUser.id) {
+            return '/dashboard?tab=connections&error=discord_already_used';
+          }
+          if (!existingBinding) {
+            await prisma.account.create({
+              data: {
+                userId: targetUser.id,
+                type: account.type,
+                provider: 'discord',
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token ?? null,
+                refresh_token: account.refresh_token ?? null,
+                expires_at: account.expires_at ?? null,
+                token_type: account.token_type ?? null,
+                scope: account.scope ?? null,
+              },
+            });
+            await prisma.user.update({
+              where: { id: targetUser.id },
+              data: {
+                discordUsername,
+                ...(discordImage && !targetUser.image ? { image: discordImage } : {}),
+              },
+            });
+          }
+          return '/dashboard?tab=connections&success=discord_connected';
+        }
+
+        // ── Case B: Normal login / auto-merge ──
+        if (user.email) {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: { accounts: true },
+          });
+          if (existingUser) {
+            const alreadyLinked = existingUser.accounts.some((a) => a.provider === 'discord');
+            if (!alreadyLinked) {
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: 'discord',
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token ?? null,
+                  refresh_token: account.refresh_token ?? null,
+                  expires_at: account.expires_at ?? null,
+                  token_type: account.token_type ?? null,
+                  scope: account.scope ?? null,
+                },
+              });
+            }
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: {
+                discordUsername,
+                ...(discordImage && !existingUser.image ? { image: discordImage } : {}),
+              },
+            });
+            user.id = existingUser.id;
+          }
+        }
+        return true;
+      }
+
       if (account?.provider !== 'twitch') return true;
 
       const twitchProfile = profile as any;
@@ -180,7 +288,6 @@ export const authOptions: NextAuthOptions = {
       // ── CASE A: Connect flow ─────────────────────────────────────────────
       let connectUserId: string | null = null;
       try {
-        // Next.js 15+ cookies() returns a Promise
         const cookieStore = await cookies();
         connectUserId = cookieStore.get('twitch_link_uid')?.value ?? null;
       } catch {
@@ -200,20 +307,20 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!targetUser) {
-          return '/dashboard?tab=connections&error=user_not_found';
+          return `/dashboard?tab=connections&error=user_not_found`;
         }
 
         const existingBinding = await prisma.account.findUnique({
           where: {
             provider_providerAccountId: {
-              provider: 'twitch',
+              provider: account.provider,
               providerAccountId: account.providerAccountId,
             },
           },
         });
 
         if (existingBinding && existingBinding.userId !== targetUser.id) {
-          return '/dashboard?tab=connections&error=twitch_already_used';
+          return `/dashboard?tab=connections&error=${account.provider}_already_used`;
         }
 
         if (!existingBinding) {
@@ -221,7 +328,7 @@ export const authOptions: NextAuthOptions = {
             data: {
               userId: targetUser.id,
               type: account.type,
-              provider: 'twitch',
+              provider: account.provider,
               providerAccountId: account.providerAccountId,
               access_token: account.access_token ?? null,
               refresh_token: account.refresh_token ?? null,
@@ -231,17 +338,44 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          await prisma.user.update({
-            where: { id: targetUser.id },
-            data: {
-              twitchUsername,
-              ...(twitchImage && !targetUser.image ? { image: twitchImage } : {}),
-            },
-          });
+          // Provider-specific profile data
+          if (account.provider === 'twitch') {
+            const twitchUsername =
+                twitchProfile?.preferred_username ||
+                twitchProfile?.login ||
+                twitchProfile?.display_name ||
+                null;
+            const twitchImage =
+                twitchProfile?.picture || twitchProfile?.profile_image_url || null;
+
+            await prisma.user.update({
+              where: { id: targetUser.id },
+              data: {
+                twitchUsername,
+                ...(twitchImage && !targetUser.image ? { image: twitchImage } : {}),
+              },
+            });
+          }
+
+          if (account.provider === 'discord') {
+            const discordProfile = profile as any;
+            const discordUsername = discordProfile?.global_name || discordProfile?.username || null;
+            const discordImage = discordProfile?.image_url ||
+                (discordProfile?.avatar
+                    ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
+                    : null);
+
+            await prisma.user.update({
+              where: { id: targetUser.id },
+              data: {
+                discordUsername,
+                ...(discordImage && !targetUser.image ? { image: discordImage } : {}),
+              },
+            });
+          }
         }
 
-        // Redirect back without replacing the existing session
-        return '/dashboard?tab=connections&success=twitch_connected';
+        return `/dashboard?tab=connections&success=${account.provider}_connected`;
       }
 
       // ── CASE B: Normal login / auto-merge ────────────────────────────────
@@ -287,6 +421,32 @@ export const authOptions: NextAuthOptions = {
         token.jti = crypto.randomUUID();
         token.image = (user as any).image || null;
         token.twitchUsername = (user as any).twitchUsername || null;
+        token.discordUsername = (user as any).discordUsername || null;
+      }
+
+      if (account?.provider === 'discord' && profile) {
+        const p = profile as any;
+        const discordUsername = p.global_name || p.username || null;
+        const discordImage = p.image_url ||
+            (p.avatar ? `https://cdn.discordapp.com/avatars/${p.id}/${p.avatar}.png` : null);
+
+        token.discordUsername = discordUsername;
+        token.image = token.image || discordImage;
+        token.role = token.role || 'USER';
+
+        if (token.id) {
+          try {
+            await prisma.user.update({
+              where: { id: token.id as string },
+              data: {
+                discordUsername,
+                ...(discordImage ? { image: discordImage } : {}),
+              },
+            });
+          } catch (err) {
+            console.error('[Auth] Failed to update Discord user info:', err);
+          }
+        }
       }
 
       if (account?.provider === 'twitch' && profile) {
@@ -324,6 +484,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.image = token.image as string | null;
         session.user.twitchUsername = token.twitchUsername as string | null;
+        session.user.discordUsername = token.discordUsername as string | null;
       }
       return session;
     },
