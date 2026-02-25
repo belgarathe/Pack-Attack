@@ -16,6 +16,7 @@ type UpsellItem = {
   description: string | null;
   imageUrl: string;
   price: number;
+  coinPrice: number;
   externalUrl: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -28,6 +29,7 @@ type FormData = {
   description: string;
   imageUrl: string;
   price: string;
+  coinPrice: string;
   externalUrl: string;
   isActive: boolean;
   sortOrder: string;
@@ -38,6 +40,7 @@ const emptyForm: FormData = {
   description: '',
   imageUrl: '',
   price: '',
+  coinPrice: '',
   externalUrl: '',
   isActive: true,
   sortOrder: '0',
@@ -66,6 +69,7 @@ export function UpsaleItemsClient({ initialItems }: { initialItems: UpsellItem[]
       description: item.description || '',
       imageUrl: item.imageUrl,
       price: item.price.toString(),
+      coinPrice: item.coinPrice.toString(),
       externalUrl: item.externalUrl || '',
       isActive: item.isActive,
       sortOrder: item.sortOrder.toString(),
@@ -92,6 +96,7 @@ export function UpsaleItemsClient({ initialItems }: { initialItems: UpsellItem[]
         description: formData.description || undefined,
         imageUrl: formData.imageUrl,
         price: parseFloat(formData.price),
+        coinPrice: parseFloat(formData.coinPrice) || 0,
         externalUrl: formData.externalUrl || undefined,
         isActive: formData.isActive,
         sortOrder: parseInt(formData.sortOrder) || 0,
@@ -228,7 +233,7 @@ export function UpsaleItemsClient({ initialItems }: { initialItems: UpsellItem[]
                     className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Price (EUR) *</label>
                     <input
@@ -238,6 +243,18 @@ export function UpsaleItemsClient({ initialItems }: { initialItems: UpsellItem[]
                       value={formData.price}
                       onChange={e => setFormData({ ...formData, price: e.target.value })}
                       placeholder="24.99"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Price (Coins)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.coinPrice}
+                      onChange={e => setFormData({ ...formData, coinPrice: e.target.value })}
+                      placeholder="50"
                       className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
@@ -320,8 +337,15 @@ export function UpsaleItemsClient({ initialItems }: { initialItems: UpsellItem[]
                       {item.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-bold">
-                    {item.price.toFixed(2)} EUR
+                  <div className="absolute top-3 left-3 flex flex-col gap-1">
+                    <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-bold">
+                      {item.price.toFixed(2)} €
+                    </span>
+                    {item.coinPrice > 0 && (
+                      <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-sm font-bold">
+                        {item.coinPrice.toFixed(2)} Coins
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="p-4">

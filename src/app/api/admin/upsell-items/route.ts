@@ -8,6 +8,7 @@ const createSchema = z.object({
   description: z.string().max(500).optional(),
   imageUrl: z.string().url(),
   price: z.number().min(0),
+  coinPrice: z.number().min(0).optional(),
   externalUrl: z.string().url().optional().or(z.literal('')),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
@@ -34,7 +35,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      items: items.map(item => ({ ...item, price: Number(item.price) })),
+      items: items.map(item => ({ ...item, price: Number(item.price), coinPrice: Number(item.coinPrice) })),
     });
   } catch (error) {
     console.error('Error fetching upsell items:', error);
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
         description: data.description || null,
         imageUrl: data.imageUrl,
         price: data.price,
+        coinPrice: data.coinPrice ?? 0,
         externalUrl: data.externalUrl || null,
         isActive: data.isActive ?? true,
         sortOrder: data.sortOrder ?? 0,
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      item: { ...item, price: Number(item.price) },
+      item: { ...item, price: Number(item.price), coinPrice: Number(item.coinPrice) },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

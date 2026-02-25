@@ -235,7 +235,7 @@ export async function POST(request: Request) {
               ...(item.price > 0 ? { price: item.price } : {}),
             },
           });
-          updated.push({ name: item.name, quantity: item.quantity, newStock: updatedProduct.stock });
+          updated.push({ name: item.name, quantity: item.quantity, newStock: updatedProduct.stock, id: existing.id });
         } else {
           const newProduct = await prisma.shopProduct.create({
             data: {

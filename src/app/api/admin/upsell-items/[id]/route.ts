@@ -8,6 +8,7 @@ const updateSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   imageUrl: z.string().url().optional(),
   price: z.number().min(0).optional(),
+  coinPrice: z.number().min(0).optional(),
   externalUrl: z.string().url().optional().nullable().or(z.literal('')),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
@@ -42,6 +43,7 @@ export async function PATCH(
         ...(data.description !== undefined && { description: data.description }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
         ...(data.price !== undefined && { price: data.price }),
+        ...(data.coinPrice !== undefined && { coinPrice: data.coinPrice }),
         ...(data.externalUrl !== undefined && { externalUrl: data.externalUrl || null }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
@@ -50,7 +52,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      item: { ...item, price: Number(item.price) },
+      item: { ...item, price: Number(item.price), coinPrice: Number(item.coinPrice) },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

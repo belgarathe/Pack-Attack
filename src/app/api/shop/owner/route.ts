@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You already have a shop' }, { status: 400 });
     }
 
-    const { name, description, logo, banner } = await request.json();
+    const { name, description, logo, banner, taxId } = await request.json();
 
     if (!name) {
       return NextResponse.json({ error: 'Shop name is required' }, { status: 400 });
@@ -95,6 +95,7 @@ export async function POST(request: Request) {
         description: description || null,
         logo: logo || null,
         banner: banner || null,
+        taxId: taxId || null,
       },
     });
 
@@ -126,7 +127,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'You do not have a shop' }, { status: 404 });
     }
 
-    const { name, description, logo, banner, isActive } = await request.json();
+    const { name, description, logo, banner, isActive, taxId } = await request.json();
 
     const updated = await prisma.shop.update({
       where: { id: user.shop.id },
@@ -136,6 +137,7 @@ export async function PUT(request: Request) {
         ...(logo !== undefined && { logo }),
         ...(banner !== undefined && { banner }),
         ...(isActive !== undefined && { isActive }),
+        ...(taxId !== undefined && { taxId: taxId || null }),
       },
     });
 

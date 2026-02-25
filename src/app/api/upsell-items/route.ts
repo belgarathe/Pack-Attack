@@ -16,6 +16,7 @@ export async function GET() {
         description: item.description,
         imageUrl: item.imageUrl,
         price: Number(item.price),
+        coinPrice: Number(item.coinPrice),
         externalUrl: item.externalUrl,
       })),
     });

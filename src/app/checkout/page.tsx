@@ -63,11 +63,13 @@ async function getCart() {
   const upsellCartItems = cart.upsellItems.map(ui => ({
     id: ui.id,
     quantity: ui.quantity,
+    payWithCoins: ui.payWithCoins,
     upsellItem: {
       id: ui.upsellItem.id,
       name: ui.upsellItem.name,
       imageUrl: ui.upsellItem.imageUrl,
       price: Number(ui.upsellItem.price),
+      coinPrice: Number(ui.upsellItem.coinPrice),
     },
   }));
 

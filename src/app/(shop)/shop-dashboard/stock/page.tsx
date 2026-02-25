@@ -6,6 +6,7 @@ import {
   Database, 
   ArrowLeft, 
   Package,
+  Settings,
 } from 'lucide-react';
 import { StockImportClient } from './StockImportClient';
 
@@ -94,6 +95,17 @@ export default async function ShopStockPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <Link
+            href="/shop/manage/products"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium glass text-teal-400 hover:text-white transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Manage All Products
+          </Link>
         </div>
 
         {/* Import Section */}

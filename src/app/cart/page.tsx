@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import Link from 'next/link';
-import { ShoppingCart, Sparkles } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { CartClient } from './CartClient';
 
 async function getCart() {
@@ -63,11 +62,13 @@ async function getCart() {
   const upsellCartItems = cart.upsellItems.map(ui => ({
     id: ui.id,
     quantity: ui.quantity,
+    payWithCoins: ui.payWithCoins,
     upsellItem: {
       id: ui.upsellItem.id,
       name: ui.upsellItem.name,
       imageUrl: ui.upsellItem.imageUrl,
       price: Number(ui.upsellItem.price),
+      coinPrice: Number(ui.upsellItem.coinPrice),
     },
   }));
 
@@ -102,24 +103,7 @@ export default async function CartPage() {
           <p className="text-gray-400 text-lg">Review your items before checkout</p>
         </div>
 
-        {items.length === 0 && upsellCartItems.length === 0 ? (
-          <div className="glass-strong rounded-2xl p-12 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
-              <ShoppingCart className="w-10 h-10 text-blue-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Cart Empty</h2>
-            <p className="text-gray-400 mb-6">Add cards from your collection to checkout!</p>
-            <Link 
-              href="/collection" 
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-xl transition-all hover:scale-105"
-            >
-              <Sparkles className="w-5 h-5" />
-              View Collection
-            </Link>
-          </div>
-        ) : (
-          <CartClient items={items} total={total} upsellCartItems={upsellCartItems} />
-        )}
+        <CartClient items={items} total={total} upsellCartItems={upsellCartItems} />
       </div>
     </div>
   );

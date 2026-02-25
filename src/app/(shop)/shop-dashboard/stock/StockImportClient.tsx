@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Link from 'next/link';
 import { 
   Upload, 
   FileText, 
@@ -12,6 +13,7 @@ import {
   Info,
   X,
   ChevronDown,
+  Pencil,
 } from 'lucide-react';
 
 type ImportResult = {
@@ -23,7 +25,7 @@ type ImportResult = {
     errors: number;
   };
   created: { name: string; quantity: number; id: string }[];
-  updated: { name: string; quantity: number; newStock: number }[];
+  updated: { name: string; quantity: number; newStock: number; id: string }[];
   errors?: string[];
 };
 
@@ -395,11 +397,20 @@ export function StockImportClient() {
           {result.created.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-teal-400 mb-2">New Products Created</h4>
-              <div className="glass rounded-xl p-3 max-h-40 overflow-y-auto space-y-1">
+              <div className="glass rounded-xl p-3 max-h-48 overflow-y-auto space-y-1">
                 {result.created.map((item, i) => (
-                  <p key={i} className="text-sm text-gray-300">
-                    <span className="text-teal-400">+{item.quantity}x</span> {item.name}
-                  </p>
+                  <div key={i} className="flex items-center justify-between gap-2 py-0.5">
+                    <p className="text-sm text-gray-300 truncate">
+                      <span className="text-teal-400">+{item.quantity}x</span> {item.name}
+                    </p>
+                    <Link
+                      href={`/shop/manage/products/${item.id}/edit`}
+                      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </Link>
+                  </div>
                 ))}
               </div>
             </div>
@@ -408,12 +419,21 @@ export function StockImportClient() {
           {result.updated.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-cyan-400 mb-2">Stock Updated</h4>
-              <div className="glass rounded-xl p-3 max-h-40 overflow-y-auto space-y-1">
+              <div className="glass rounded-xl p-3 max-h-48 overflow-y-auto space-y-1">
                 {result.updated.map((item, i) => (
-                  <p key={i} className="text-sm text-gray-300">
-                    <span className="text-cyan-400">+{item.quantity}</span> {item.name}
-                    <span className="text-gray-500"> (now {item.newStock} in stock)</span>
-                  </p>
+                  <div key={i} className="flex items-center justify-between gap-2 py-0.5">
+                    <p className="text-sm text-gray-300 truncate">
+                      <span className="text-cyan-400">+{item.quantity}</span> {item.name}
+                      <span className="text-gray-500"> (now {item.newStock} in stock)</span>
+                    </p>
+                    <Link
+                      href={`/shop/manage/products/${item.id}/edit`}
+                      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </Link>
+                  </div>
                 ))}
               </div>
             </div>

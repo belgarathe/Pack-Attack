@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Coins, Trash2, CreditCard, Truck, ShoppingBag, Plus, Minus, Check } from 'lucide-react';
+import { Coins, Trash2, CreditCard, Truck, ShoppingBag, Plus, Minus, Check, Euro } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -25,17 +25,20 @@ type UpsellItem = {
   description: string | null;
   imageUrl: string;
   price: number;
+  coinPrice: number;
   externalUrl: string | null;
 };
 
 type UpsellCartItem = {
   id: string;
   quantity: number;
+  payWithCoins: boolean;
   upsellItem: {
     id: string;
     name: string;
     imageUrl: string;
     price: number;
+    coinPrice: number;
   };
 };
 
@@ -113,11 +116,39 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
     }
   };
 
-  const upsellCartTotal = upsellCartItems.reduce((sum, ui) => sum + ui.upsellItem.price * ui.quantity, 0);
+  const handleTogglePayment = async (upsellItemId: string, payWithCoins: boolean) => {
+    setAddingUpsell(upsellItemId);
+    try {
+      await fetch('/api/cart/upsell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upsellItemId, action: 'togglePayment', payWithCoins }),
+      });
+      router.refresh();
+    } catch {
+      addToast({ title: 'Error', description: 'Failed to update payment method', variant: 'destructive' });
+    } finally {
+      setAddingUpsell(null);
+    }
+  };
+
+  const upsellEurTotal = upsellCartItems.filter(ui => !ui.payWithCoins).reduce((sum, ui) => sum + ui.upsellItem.price * ui.quantity, 0);
+  const upsellCoinTotal = upsellCartItems.filter(ui => ui.payWithCoins).reduce((sum, ui) => sum + ui.upsellItem.coinPrice * ui.quantity, 0);
   const inCartUpsellIds = new Set(upsellCartItems.map(ui => ui.upsellItem.id));
+
+  const isEmpty = items.length === 0 && upsellCartItems.length === 0;
 
   return (
     <div className="space-y-10">
+      {isEmpty ? (
+        <div className="glass-strong rounded-2xl p-12 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+            <ShoppingBag className="w-10 h-10 text-blue-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">Cart Empty</h2>
+          <p className="text-gray-400 mb-6">Add cards from your collection to checkout, or browse add-on items below!</p>
+        </div>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Items List */}
         <div className="lg:col-span-2 space-y-4">
@@ -163,8 +194,27 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
                     <span className="text-xs text-amber-400 font-medium">Add-on</span>
                   </div>
                   <h3 className="font-semibold text-white mb-2">{ui.upsellItem.name}</h3>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-amber-400">{ui.upsellItem.price.toFixed(2)} €</span>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {/* Payment method toggle */}
+                    {ui.upsellItem.coinPrice > 0 && (
+                      <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5">
+                        <button
+                          onClick={() => handleTogglePayment(ui.upsellItem.id, false)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${!ui.payWithCoins ? 'bg-green-500/20 text-green-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                          <Euro className="h-3 w-3" /> EUR
+                        </button>
+                        <button
+                          onClick={() => handleTogglePayment(ui.upsellItem.id, true)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${ui.payWithCoins ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                          <Coins className="h-3 w-3" /> Coins
+                        </button>
+                      </div>
+                    )}
+                    <span className="font-bold text-amber-400">
+                      {ui.payWithCoins ? `${ui.upsellItem.coinPrice.toFixed(2)} coins` : `${ui.upsellItem.price.toFixed(2)} €`}
+                    </span>
                     <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-1">
                       <button
                         onClick={() => handleUpsellAction(ui.upsellItem.id, 'decrement')}
@@ -182,7 +232,11 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <span className="text-gray-400 text-sm">= {(ui.upsellItem.price * ui.quantity).toFixed(2)} €</span>
+                    <span className="text-gray-400 text-sm">
+                      = {ui.payWithCoins
+                        ? `${(ui.upsellItem.coinPrice * ui.quantity).toFixed(2)} coins`
+                        : `${(ui.upsellItem.price * ui.quantity).toFixed(2)} €`}
+                    </span>
                   </div>
                 </div>
                 <button
@@ -214,13 +268,25 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
                   {upsellCartItems.map(ui => (
                     <div key={ui.id} className="flex items-center justify-between text-sm">
                       <span className="text-gray-400">{ui.upsellItem.name} x{ui.quantity}</span>
-                      <span className="text-amber-400">{(ui.upsellItem.price * ui.quantity).toFixed(2)} €</span>
+                      <span className={ui.payWithCoins ? 'text-yellow-400' : 'text-amber-400'}>
+                        {ui.payWithCoins
+                          ? `${(ui.upsellItem.coinPrice * ui.quantity).toFixed(2)} coins`
+                          : `${(ui.upsellItem.price * ui.quantity).toFixed(2)} €`}
+                      </span>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between text-sm font-medium">
-                    <span className="text-gray-300">Add-ons Total</span>
-                    <span className="text-amber-400">{upsellCartTotal.toFixed(2)} €</span>
-                  </div>
+                  {upsellEurTotal > 0 && (
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span className="text-gray-300">Add-ons (EUR)</span>
+                      <span className="text-amber-400">{upsellEurTotal.toFixed(2)} €</span>
+                    </div>
+                  )}
+                  {upsellCoinTotal > 0 && (
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span className="text-gray-300">Add-ons (Coins)</span>
+                      <span className="text-yellow-400">{upsellCoinTotal.toFixed(2)} coins</span>
+                    </div>
+                  )}
                 </>
               )}
               <div className="flex items-center justify-between text-sm">
@@ -237,10 +303,19 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
                   </div>
                 </div>
               )}
-              {(upsellCartTotal > 0) && (
+              {upsellCoinTotal > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Add-ons Coins</span>
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-yellow-400" />
+                    <span className="text-lg font-bold text-yellow-400">{upsellCoinTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+              {upsellEurTotal > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Total EUR</span>
-                  <span className="text-xl font-bold text-amber-400">{(upsellCartTotal + 5).toFixed(2)} €</span>
+                  <span className="text-xl font-bold text-amber-400">{(upsellEurTotal + 5).toFixed(2)} €</span>
                 </div>
               )}
             </div>
@@ -261,6 +336,7 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Upsell Recommendations */}
       {upsellItems.length > 0 && (
@@ -293,9 +369,16 @@ export function CartClient({ items, total, upsellCartItems }: Props) {
                       <p className="text-gray-400 text-sm mb-3 line-clamp-2">{item.description}</p>
                     )}
                     <div className="flex items-center justify-between mt-4">
-                      <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
-                        {item.price.toFixed(2)} €
-                      </span>
+                      <div>
+                        <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
+                          {item.price.toFixed(2)} €
+                        </span>
+                        {item.coinPrice > 0 && (
+                          <span className="block text-sm font-medium text-yellow-400 mt-0.5">
+                            or {item.coinPrice.toFixed(2)} coins
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => handleUpsellAction(item.id, 'add')}
                         disabled={addingUpsell === item.id}

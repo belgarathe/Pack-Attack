@@ -45,15 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'All shipping fields are required' }, { status: 400 });
     }
 
-    // If paying with coins, check if user has enough
-    if (shippingMethod === 'COINS') {
-      const userCoins = Number(user.coins);
-      if (userCoins < SHIPPING_COST_COINS) {
-        return NextResponse.json({ 
-          error: `Insufficient coins for shipping. Need ${SHIPPING_COST_COINS.toFixed(2)} coins, have ${userCoins.toFixed(2)}` 
-        }, { status: 400 });
-      }
-    }
+    
 
     // Get user's cart with items, including box info for shop orders
     const cart = await prisma.cart.findUnique({
@@ -92,10 +84,17 @@ export async function POST(request: NextRequest) {
       return sum + (item.pull.card ? Number(item.pull.card.coinValue) : 0);
     }, 0);
 
+    // Calculate upsell coin cost
+    const upsellCoinCost = cart.upsellItems
+      .filter(ui => ui.payWithCoins)
+      .reduce((sum, ui) => sum + Number(ui.upsellItem.coinPrice) * ui.quantity, 0);
+
     // Build upsell items note if any
     const upsellNote = cart.upsellItems.length > 0
       ? '\n--- Add-on Items ---\n' + cart.upsellItems.map(ui =>
-          `${ui.upsellItem.name} x${ui.quantity} @ ${Number(ui.upsellItem.price).toFixed(2)}€`
+          ui.payWithCoins
+            ? `${ui.upsellItem.name} x${ui.quantity} @ ${Number(ui.upsellItem.coinPrice).toFixed(2)} coins`
+            : `${ui.upsellItem.name} x${ui.quantity} @ ${Number(ui.upsellItem.price).toFixed(2)}€`
         ).join('\n')
       : '';
 
@@ -105,13 +104,25 @@ export async function POST(request: NextRequest) {
     const shopBoxItems = cart.items.filter(item => item.pull.box?.createdByShopId);
     const regularItems = cart.items.filter(item => !item.pull.box?.createdByShopId);
 
+    // Check if user has enough coins for shipping + upsell coin items
+    if (shippingMethod === 'COINS' || upsellCoinCost > 0) {
+      const totalCoinCost = (shippingMethod === 'COINS' ? SHIPPING_COST_COINS : 0) + upsellCoinCost;
+      const userCoins = Number(user.coins);
+      if (userCoins < totalCoinCost) {
+        return NextResponse.json({
+          error: `Insufficient coins. Need ${totalCoinCost.toFixed(2)} coins, have ${userCoins.toFixed(2)}`
+        }, { status: 400 });
+      }
+    }
+
     // Create orders in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // If paying with coins, deduct shipping cost
-      if (shippingMethod === 'COINS') {
+      // Deduct coins for shipping + upsell items paid with coins
+      const totalCoinDeduction = (shippingMethod === 'COINS' ? SHIPPING_COST_COINS : 0) + upsellCoinCost;
+      if (totalCoinDeduction > 0) {
         await tx.user.update({
           where: { id: user.id },
-          data: { coins: { decrement: new Decimal(SHIPPING_COST_COINS) } },
+          data: { coins: { decrement: new Decimal(totalCoinDeduction) } },
         });
       }
 
@@ -219,7 +230,7 @@ export async function POST(request: NextRequest) {
       } : null,
       shopOrders: result.shopOrders.length,
       totalItemCount: cart.items.length,
-      coinsDeducted: shippingMethod === 'COINS' ? SHIPPING_COST_COINS : 0,
+      coinsDeducted: (shippingMethod === 'COINS' ? SHIPPING_COST_COINS : 0) + upsellCoinCost,
       newBalance: updatedUser ? Number(updatedUser.coins) : null,
     });
   } catch (error) {

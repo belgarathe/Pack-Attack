@@ -205,6 +205,7 @@ model CartUpsellItem {
   upsellItemId String
   upsellItem   UpsellItem @relation(fields: [upsellItemId], references: [id], onDelete: Cascade)
   quantity     Int        @default(1)
+  payWithCoins Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   @@unique([cartId, upsellItemId])
@@ -491,6 +492,7 @@ model Shop {
   description    String?        @db.Text
   logo           String?
   banner         String?
+  taxId          String?
   isActive       Boolean        @default(true)
   products       ShopProduct[]
   orders         ShopOrder[]
@@ -802,6 +804,7 @@ model UpsellItem {
   description String?
   imageUrl    String
   price       Decimal          @db.Decimal(10, 2)
+  coinPrice   Decimal          @default(0) @db.Decimal(12, 2)
   externalUrl String?
   isActive    Boolean          @default(true)
   sortOrder   Int              @default(0)

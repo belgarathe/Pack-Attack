@@ -24,6 +24,7 @@ export default async function UpsaleItemsPage() {
   const serialized = items.map(item => ({
     ...item,
     price: Number(item.price),
+    coinPrice: Number(item.coinPrice),
   }));
 
   return <UpsaleItemsClient initialItems={serialized} />;

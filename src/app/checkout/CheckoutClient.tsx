@@ -23,11 +23,13 @@ type CartItem = {
 type UpsellCartItem = {
   id: string;
   quantity: number;
+  payWithCoins: boolean;
   upsellItem: {
     id: string;
     name: string;
     imageUrl: string;
     price: number;
+    coinPrice: number;
   };
 };
 
@@ -439,15 +441,29 @@ export function CheckoutClient({ items, total, userEmail, userName, upsellCartIt
                     {upsellCartItems.map(ui => (
                       <div key={ui.id} className="flex items-center justify-between text-sm">
                         <span className="text-gray-400">{ui.upsellItem.name} x{ui.quantity}</span>
-                        <span className="text-amber-400">{(ui.upsellItem.price * ui.quantity).toFixed(2)} €</span>
+                        <span className={ui.payWithCoins ? 'text-yellow-400' : 'text-amber-400'}>
+                          {ui.payWithCoins
+                            ? `${(ui.upsellItem.coinPrice * ui.quantity).toFixed(2)} coins`
+                            : `${(ui.upsellItem.price * ui.quantity).toFixed(2)} €`}
+                        </span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between text-sm font-medium">
-                      <span className="text-gray-300">Add-ons Total</span>
-                      <span className="text-amber-400">
-                        {upsellCartItems.reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0).toFixed(2)} €
-                      </span>
-                    </div>
+                    {upsellCartItems.filter(ui => !ui.payWithCoins).length > 0 && (
+                      <div className="flex items-center justify-between text-sm font-medium">
+                        <span className="text-gray-300">Add-ons (EUR)</span>
+                        <span className="text-amber-400">
+                          {upsellCartItems.filter(ui => !ui.payWithCoins).reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0).toFixed(2)} €
+                        </span>
+                      </div>
+                    )}
+                    {upsellCartItems.filter(ui => ui.payWithCoins).length > 0 && (
+                      <div className="flex items-center justify-between text-sm font-medium">
+                        <span className="text-gray-300">Add-ons (Coins)</span>
+                        <span className="text-yellow-400">
+                          {upsellCartItems.filter(ui => ui.payWithCoins).reduce((s, ui) => s + ui.upsellItem.coinPrice * ui.quantity, 0).toFixed(2)} coins
+                        </span>
+                      </div>
+                    )}
                   </>
                 )}
                 <div className="flex items-center justify-between text-sm">
@@ -479,11 +495,19 @@ export function CheckoutClient({ items, total, userEmail, userName, upsellCartIt
                     <span className="text-amber-400 font-semibold">{SHIPPING_COST_COINS.toFixed(2)}</span>
                   </div>
                 )}
-                {upsellCartItems.length > 0 && (
+                {upsellCartItems.filter(ui => ui.payWithCoins).length > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">Add-ons coins to deduct</span>
+                    <span className="text-yellow-400 font-semibold">
+                      {upsellCartItems.filter(ui => ui.payWithCoins).reduce((s, ui) => s + ui.upsellItem.coinPrice * ui.quantity, 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {upsellCartItems.filter(ui => !ui.payWithCoins).length > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400">EUR Total</span>
                     <span className="text-xl font-bold text-amber-400">
-                      {(upsellCartItems.reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0) + (shippingMethod === 'EUROS' ? SHIPPING_COST_EUROS : 0)).toFixed(2)} €
+                      {(upsellCartItems.filter(ui => !ui.payWithCoins).reduce((s, ui) => s + ui.upsellItem.price * ui.quantity, 0) + (shippingMethod === 'EUROS' ? SHIPPING_COST_EUROS : 0)).toFixed(2)} €
                     </span>
                   </div>
                 )}

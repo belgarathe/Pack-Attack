@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Database
 } from 'lucide-react';
+import { DealerDetailsClient } from './DealerDetailsClient';
 
 export default async function ShopDashboard() {
   const session = await getCurrentSession();
@@ -366,6 +367,13 @@ export default async function ShopDashboard() {
             </div>
           </Link>
         </div>
+
+        {/* Dealer Details Section */}
+        {shop && (
+          <div className="mb-10">
+            <DealerDetailsClient shopId={shop.id} initialTaxId={shop.taxId} />
+          </div>
+        )}
 
         {/* Recent Orders Section */}
         <div className="glass-strong rounded-2xl p-6">

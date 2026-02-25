@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { upsellItemId, action = 'add' } = await request.json();
+    const { upsellItemId, action = 'add', payWithCoins } = await request.json();
 
     if (!upsellItemId) {
       return NextResponse.json({ error: 'upsellItemId is required' }, { status: 400 });
@@ -39,6 +39,21 @@ export async function POST(request: Request) {
       cart = await prisma.cart.create({
         data: { userId: user.id },
       });
+    }
+
+    if (action === 'togglePayment') {
+      const existing = await prisma.cartUpsellItem.findUnique({
+        where: { cartId_upsellItemId: { cartId: cart.id, upsellItemId } },
+      });
+
+      if (existing) {
+        await prisma.cartUpsellItem.update({
+          where: { id: existing.id },
+          data: { payWithCoins: !!payWithCoins },
+        });
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     if (action === 'remove') {
