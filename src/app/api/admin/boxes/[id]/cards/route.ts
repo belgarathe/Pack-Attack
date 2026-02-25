@@ -15,6 +15,7 @@ const cardSchema = z.object({
   pullRate: z.number().min(0).max(100),
   coinValue: z.number().min(0.01),
   sourceGame: z.enum(['MAGIC_THE_GATHERING', 'ONE_PIECE', 'POKEMON', 'LORCANA', 'YUGIOH', 'FLESH_AND_BLOOD']),
+  shopId: z.string().optional().nullable(),
 });
 
 const cardsSchema = z.object({
@@ -140,6 +141,7 @@ export async function POST(
         coinValue: cardData.coinValue,
         sourceGame: cardData.sourceGame,
         boxId: box.id,
+        shopId: cardData.shopId || null,
         colors: [],
         type: '',
       }));

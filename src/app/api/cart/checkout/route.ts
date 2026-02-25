@@ -100,9 +100,9 @@ export async function POST(request: NextRequest) {
 
     const combinedNotes = ((notes || '') + upsellNote).trim() || null;
 
-    // Separate items from shop-created boxes vs regular admin boxes
-    const shopBoxItems = cart.items.filter(item => item.pull.box?.createdByShopId);
-    const regularItems = cart.items.filter(item => !item.pull.box?.createdByShopId);
+    // Separate items: shop items have either a card-level shopId or a box-level createdByShopId
+    const shopBoxItems = cart.items.filter(item => item.pull.card?.shopId || item.pull.box?.createdByShopId);
+    const regularItems = cart.items.filter(item => !item.pull.card?.shopId && !item.pull.box?.createdByShopId);
 
     // Check if user has enough coins for shipping + upsell coin items
     if (shippingMethod === 'COINS' || upsellCoinCost > 0) {
@@ -163,14 +163,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Create individual shop box orders for each shop item
-      // Each card from a shop box gets its own order to the shop
+      // Card-level shopId takes priority over box-level createdByShopId
       for (const item of shopBoxItems) {
-        if (!item.pull.box?.createdByShopId) continue;
+        const resolvedShopId = item.pull.card?.shopId || item.pull.box?.createdByShopId;
+        if (!resolvedShopId) continue;
 
         const shopOrder = await tx.shopBoxOrder.create({
           data: {
-            shopId: item.pull.box.createdByShopId,
-            boxId: item.pull.box.id,
+            shopId: resolvedShopId,
+            boxId: item.pull.box!.id,
             userId: user.id,
             cardName: item.pull.card?.name || 'Unknown Card',
             cardImage: item.pull.card?.imageUrlGatherer || null,

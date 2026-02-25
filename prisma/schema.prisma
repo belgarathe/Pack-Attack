@@ -153,18 +153,20 @@ model Card {
   sourceGame       CardGame @default(MAGIC_THE_GATHERING)
   boxId            String
   box              Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  shopId           String?
+  shop             Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
   pulls            Pull[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   @@unique([scryfallId, boxId])
-  // PERFORMANCE: Indexes for common query patterns
   @@index([boxId])
   @@index([name])
-  @@index([rarity]) // Rarity-based filtering
-  @@index([sourceGame]) // Game filtering
-  @@index([boxId, rarity]) // Combined box + rarity queries
-  @@index([coinValue]) // Card value sorting
+  @@index([rarity])
+  @@index([sourceGame])
+  @@index([boxId, rarity])
+  @@index([coinValue])
+  @@index([shopId])
 }
 
 model Pull {
@@ -189,13 +191,13 @@ model Pull {
 }
 
 model Cart {
-  id           String           @id @default(cuid())
-  userId       String           @unique
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items        CartItem[]
-  upsellItems  CartUpsellItem[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id          String           @id @default(cuid())
+  userId      String           @unique
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       CartItem[]
+  upsellItems CartUpsellItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
 model CartUpsellItem {
@@ -497,6 +499,7 @@ model Shop {
   products       ShopProduct[]
   orders         ShopOrder[]
   boxes          Box[]
+  cards          Card[]
   boxOrders      ShopBoxOrder[]
   assignedOrders Order[] // Regular orders assigned to this shop by admin
   createdAt      DateTime       @default(now())

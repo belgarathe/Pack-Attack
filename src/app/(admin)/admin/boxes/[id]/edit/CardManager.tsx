@@ -4,9 +4,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X, Edit2, Save, XCircle, Check } from 'lucide-react';
+import { Search, Plus, Trash2, X, Edit2, Save, XCircle, Check, Store } from 'lucide-react';
 import Image from 'next/image';
 import { Coins } from 'lucide-react';
+
+type ShopOption = {
+  id: string;
+  name: string;
+};
 
 type CardData = {
   id: string;
@@ -20,6 +25,7 @@ type CardData = {
   coinValue: number;
   sourceGame: 'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD';
   scryfallId?: string;
+  shopId?: string;
 };
 
 type BoxCard = {
@@ -39,6 +45,8 @@ type CardManagerProps = {
 
 export function CardManager({ boxId, existingCards, onCardsChange }: CardManagerProps) {
   const { addToast } = useToast();
+  const [shops, setShops] = useState<ShopOption[]>([]);
+  const [bulkShopId, setBulkShopId] = useState<string>('');
   const [searching, setSearching] = useState(false);
   const [selectedGame, setSelectedGame] = useState<'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD'>('MAGIC_THE_GATHERING');
   const [apiSource, setApiSource] = useState<'default' | 'justtcg'>('default');
@@ -73,6 +81,25 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingCards]);
+
+  useEffect(() => {
+    fetch('/api/admin/shops')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.shops) {
+          setShops(data.shops.map((s: any) => ({ id: s.id, name: s.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const applyBulkShop = () => {
+    if (!bulkShopId) {
+      setNewCards(newCards.map((c) => ({ ...c, shopId: undefined })));
+    } else {
+      setNewCards(newCards.map((c) => ({ ...c, shopId: bulkShopId })));
+    }
+  };
 
   const enterBulkEditMode = () => {
     const values: Record<string, { pullRate: number; coinValue: number }> = {};
@@ -575,9 +602,10 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
         rarity: card.rarity,
         imageUrlGatherer: card.imageUrl || '',
         imageUrlScryfall: card.imageUrl || '',
-        pullRate: Math.max(0.001, card.pullRate || 0.001), // Ensure minimum valid rate
-        coinValue: Math.max(1, card.coinValue || 1), // Ensure minimum valid coin value
+        pullRate: Math.max(0.001, card.pullRate || 0.001),
+        coinValue: Math.max(1, card.coinValue || 1),
         sourceGame: card.sourceGame,
+        shopId: card.shopId || null,
       }));
 
       const res = await fetch(`/api/admin/boxes/${boxId}/cards`, {
@@ -826,7 +854,30 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
           {/* New Cards to Add */}
           {newCards.length > 0 && (
             <div>
-              <p className="text-sm text-gray-400 mb-2">Cards to Add:</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-400">Cards to Add:</p>
+                {shops.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Store className="h-3.5 w-3.5 text-orange-400" />
+                    <select
+                      value={bulkShopId}
+                      onChange={(e) => setBulkShopId(e.target.value)}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-white text-xs focus:border-orange-500 focus:outline-none"
+                    >
+                      <option value="">No Shop</option>
+                      {shops.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={applyBulkShop}
+                      className="px-2 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors"
+                    >
+                      Apply to All
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-2">
                 {newCards.map((card, index) => (
                   <div key={index} className="flex items-center gap-4 p-3 bg-gray-800 rounded-lg">
@@ -868,6 +919,21 @@ export function CardManager({ boxId, existingCards, onCardsChange }: CardManager
                             className="w-full px-2 py-1 rounded bg-gray-900 border border-gray-700 text-white text-sm"
                           />
                         </div>
+                        {shops.length > 0 && (
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-400">Shop</label>
+                            <select
+                              value={card.shopId || ''}
+                              onChange={(e) => updateNewCard(index, 'shopId', e.target.value || undefined)}
+                              className="w-full px-2 py-1 rounded bg-gray-900 border border-gray-700 text-white text-sm focus:border-orange-500 focus:outline-none"
+                            >
+                              <option value="">None</option>
+                              {shops.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <Button
