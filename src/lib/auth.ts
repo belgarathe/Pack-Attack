@@ -4,7 +4,7 @@ import TwitchProvider from 'next-auth/providers/twitch';
 import DiscordProvider from 'next-auth/providers/discord';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { Adapter } from 'next-auth/adapters';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { prisma, withRetry } from './prisma';
