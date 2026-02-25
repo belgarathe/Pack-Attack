@@ -6,10 +6,15 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Plus, Trash2, X, Check, Loader2, FolderOpen, Save, Sparkles } from 'lucide-react';
+import { Search, Plus, Trash2, X, Check, Loader2, FolderOpen, Save, Sparkles, Store } from 'lucide-react';
 import Image from 'next/image';
 import { PresetGallery } from '@/components/admin/PresetGallery';
 import { SavePresetModal } from '@/components/admin/SavePresetModal';
+
+type ShopOption = {
+  id: string;
+  name: string;
+};
 
 type CardData = {
   id: string;
@@ -23,6 +28,7 @@ type CardData = {
   coinValue: number;
   sourceGame: 'MAGIC_THE_GATHERING' | 'ONE_PIECE' | 'POKEMON' | 'LORCANA' | 'YUGIOH' | 'FLESH_AND_BLOOD';
   scryfallId?: string;
+  shopId?: string;
 };
 
 export default function CreateBoxPage() {
@@ -45,9 +51,33 @@ export default function CreateBoxPage() {
     cardsPerPack: '',
   });
   
+  // Shop assignment state
+  const [shops, setShops] = useState<ShopOption[]>([]);
+  const [bulkShopId, setBulkShopId] = useState<string>('');
+  
   // Preset state
   const [showPresetGallery, setShowPresetGallery] = useState(false);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+
+  // Fetch shops for card assignment
+  useEffect(() => {
+    fetch('/api/admin/shops')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.shops) {
+          setShops(data.shops.map((s: any) => ({ id: s.id, name: s.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const applyBulkShop = () => {
+    if (!bulkShopId) {
+      setBoxCards(boxCards.map((c) => ({ ...c, shopId: undefined })));
+    } else {
+      setBoxCards(boxCards.map((c) => ({ ...c, shopId: bulkShopId })));
+    }
+  };
 
   // Redirect non-admin users
   useEffect(() => {
@@ -191,7 +221,7 @@ export default function CreateBoxPage() {
     setBoxCards(boxCards.filter((_, i) => i !== index));
   };
 
-  const updateCard = (index: number, field: 'pullRate' | 'coinValue', value: number) => {
+  const updateCard = (index: number, field: 'pullRate' | 'coinValue' | 'shopId', value: any) => {
     const updated = [...boxCards];
     updated[index] = { ...updated[index], [field]: value };
     setBoxCards(updated);
@@ -322,6 +352,7 @@ export default function CreateBoxPage() {
             pullRate: card.pullRate,
             coinValue: card.coinValue,
             sourceGame: card.sourceGame,
+            shopId: card.shopId || null,
           })),
         }),
       });
@@ -576,15 +607,39 @@ export default function CreateBoxPage() {
                 {/* Box Cards List */}
                 {boxCards.length > 0 && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="text-sm text-gray-400">
                         Total Pull Rate: <span className={`font-bold ${Math.abs(totalRate - 100) < 0.001 ? 'text-green-500' : 'text-red-500'}`}>
                           {totalRate.toFixed(3)}%
                         </span>
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={distributeRates}>
-                        Distribute Evenly
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {shops.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Store className="h-3.5 w-3.5 text-orange-400" />
+                            <select
+                              value={bulkShopId}
+                              onChange={(e) => setBulkShopId(e.target.value)}
+                              className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-white text-xs focus:border-orange-500 focus:outline-none"
+                            >
+                              <option value="">No Shop</option>
+                              {shops.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={applyBulkShop}
+                              className="px-2 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors"
+                            >
+                              Apply to All
+                            </button>
+                          </div>
+                        )}
+                        <Button type="button" variant="outline" size="sm" onClick={distributeRates}>
+                          Distribute Evenly
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -604,7 +659,7 @@ export default function CreateBoxPage() {
                             <p className="font-semibold text-white truncate">{card.name}</p>
                             <p className="text-xs text-gray-400">{card.setName} • {card.rarity}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <div>
                               <label className="text-xs text-gray-400">Pull Rate (%)</label>
                               <input
@@ -628,6 +683,21 @@ export default function CreateBoxPage() {
                                 className="w-24 px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:border-primary focus:outline-none"
                               />
                             </div>
+                            {shops.length > 0 && (
+                              <div>
+                                <label className="text-xs text-gray-400">Shop</label>
+                                <select
+                                  value={card.shopId || ''}
+                                  onChange={(e) => updateCard(index, 'shopId', e.target.value || undefined)}
+                                  className="w-32 px-2 py-1 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:border-orange-500 focus:outline-none"
+                                >
+                                  <option value="">None</option>
+                                  {shops.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
