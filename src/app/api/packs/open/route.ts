@@ -3,6 +3,7 @@ import { getCurrentSession } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/prisma';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
+import { awardXp } from '@/lib/level';
 
 const openPackSchema = z.object({
   boxId: z.string(),
@@ -163,11 +164,15 @@ export async function POST(request: NextRequest) {
       } : null,
     }));
 
+    const xpAmount = Math.round(10 * Number(box.price) * quantity);
+    const levelResult = await awardXp(user.id, xpAmount, prisma);
+
     return NextResponse.json({
       success: true,
       pulls: pullsForClient,
       totalCost,
       remainingCoins: userCoins - totalCost,
+      levelResult,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

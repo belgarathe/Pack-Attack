@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/prisma';
+import { awardXp } from '@/lib/level';
 
 async function getRandomCard(boxId: string) {
   // Get all cards for this box
@@ -371,6 +372,14 @@ export async function POST(
           coins: { increment: totalPrize },
         },
       });
+    }
+
+    // Award XP: 150 XP for all participants, +250 bonus for winner (non-share modes)
+    for (const participant of battle.participants) {
+      await awardXp(participant.userId, 150, prisma);
+    }
+    if (!battle.shareMode && winnerId) {
+      await awardXp(winnerId, 250, prisma);
     }
 
     // Serialize battle data - convert all Decimal values to numbers

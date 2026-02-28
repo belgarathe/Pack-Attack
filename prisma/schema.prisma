@@ -53,6 +53,12 @@ model User {
   achievements        UserAchievement[]
   // Chat relations
   chatMessages        ChatMessage[]
+  // Level system
+  xp                        Int      @default(0)
+  level                     Int      @default(1)
+  levelCoinsEarnedThisMonth Int      @default(0)
+  levelCoinsPending         Int      @default(0)
+  levelCoinsMonthStart      DateTime @default(now())
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 

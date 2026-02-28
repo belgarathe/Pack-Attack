@@ -149,5 +149,12 @@ export async function register() {
     console.log('[Server] Global error handlers initialized');
     console.log('[Server] Node.js version:', process.version);
     console.log('[Server] Environment:', process.env.NODE_ENV);
+
+    // Start schedulers
+    const { startBattleAutoStartScheduler } = await import('@/lib/battle-auto-start-scheduler');
+    startBattleAutoStartScheduler();
+
+    const { startLevelRewardScheduler } = await import('@/lib/level-reward-scheduler');
+    startLevelRewardScheduler();
   }
 }

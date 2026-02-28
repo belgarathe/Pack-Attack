@@ -124,6 +124,9 @@ export const authOptions: NextAuthOptions = {
           TwitchProvider({
             clientId: process.env.TWITCH_CLIENT_ID,
             clientSecret: process.env.TWITCH_CLIENT_SECRET,
+            // Allow signing in with Twitch when the same email already exists
+            // as a credentials or other OAuth account – NextAuth links them.
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
         : []),
@@ -135,6 +138,9 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.DISCORD_CLIENT_SECRET,
             // 'identify email' are the default scopes – explicitly set for clarity
             authorization: { params: { scope: 'identify email' } },
+            // Allow signing in with Discord when the same email already exists
+            // as a credentials or other OAuth account – NextAuth links them.
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
         : []),
@@ -198,7 +204,7 @@ export const authOptions: NextAuthOptions = {
         if (connectUserId) {
           try {
             const cookieStore = await cookies();
-            cookieStore.set('discord_link_uid', '', { maxAge: 0, path: '/' });
+            cookieStore.delete('discord_link_uid');
           } catch { /* ignore */ }
 
           const targetUser = await prisma.user.findUnique({
@@ -239,36 +245,25 @@ export const authOptions: NextAuthOptions = {
         }
 
         // ── Case B: Normal login / auto-merge ──
+        // allowDangerousEmailAccountLinking on the provider lets NextAuth handle
+        // account creation/linking automatically. We only need to persist the
+        // Discord-specific fields that NextAuth doesn't know about.
         if (user.email) {
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
-            include: { accounts: true },
           });
           if (existingUser) {
-            const alreadyLinked = existingUser.accounts.some((a) => a.provider === 'discord');
-            if (!alreadyLinked) {
-              await prisma.account.create({
+            try {
+              await prisma.user.update({
+                where: { id: existingUser.id },
                 data: {
-                  userId: existingUser.id,
-                  type: account.type,
-                  provider: 'discord',
-                  providerAccountId: account.providerAccountId,
-                  access_token: account.access_token ?? null,
-                  refresh_token: account.refresh_token ?? null,
-                  expires_at: account.expires_at ?? null,
-                  token_type: account.token_type ?? null,
-                  scope: account.scope ?? null,
+                  discordUsername,
+                  ...(discordImage && !existingUser.image ? { image: discordImage } : {}),
                 },
               });
+            } catch (err) {
+              console.error('[Auth] Discord: failed to update discordUsername', err);
             }
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: {
-                discordUsername,
-                ...(discordImage && !existingUser.image ? { image: discordImage } : {}),
-              },
-            });
-            user.id = existingUser.id;
           }
         }
         return true;
@@ -351,34 +346,25 @@ export const authOptions: NextAuthOptions = {
       }
 
       // ── CASE B: Normal login / auto-merge ────────────────────────────────
+      // allowDangerousEmailAccountLinking on the provider lets NextAuth handle
+      // account creation/linking automatically. We only need to persist the
+      // Twitch-specific fields that NextAuth doesn't know about.
       if (user.email) {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
-          include: { accounts: true },
         });
-
         if (existingUser) {
-          const alreadyLinked = existingUser.accounts.some(
-              (a) => a.provider === 'twitch'
-          );
-
-          if (!alreadyLinked) {
-            await prisma.account.create({
+          try {
+            await prisma.user.update({
+              where: { id: existingUser.id },
               data: {
-                userId: existingUser.id,
-                type: account.type,
-                provider: 'twitch',
-                providerAccountId: account.providerAccountId,
-                access_token: account.access_token ?? null,
-                refresh_token: account.refresh_token ?? null,
-                expires_at: account.expires_at ?? null,
-                token_type: account.token_type ?? null,
-                scope: account.scope ?? null,
+                twitchUsername,
+                ...(twitchImage && !existingUser.image ? { image: twitchImage } : {}),
               },
             });
+          } catch (err) {
+            console.error('[Auth] Twitch: failed to update twitchUsername', err);
           }
-
-          user.id = existingUser.id;
         }
       }
 

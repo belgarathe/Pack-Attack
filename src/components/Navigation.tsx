@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Menu, X, Store } from 'lucide-react';
+import { Package, Swords, Settings, LogIn, LogOut, User, ShoppingCart, Coins, History, Trophy, Menu, X, Store, Zap } from 'lucide-react';
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { subscribeToCoinBalanceUpdates } from '@/lib/coin-events';
 import { usePathname } from 'next/navigation';
@@ -12,6 +12,7 @@ export function Navigation() {
   const { data: session, status } = useSession();
   const [userCoins, setUserCoins] = useState<number | null>(null);
   const [cartCount, setCartCount] = useState(0);
+  const [levelData, setLevelData] = useState<{ level: number; xpInCurrentLevel: number; xpForNextLevel: number; percent: number; title: string } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
@@ -92,6 +93,21 @@ export function Navigation() {
     }
   }, [session]);
 
+  const fetchLevel = useCallback(async () => {
+    if (!session) {
+      setLevelData(null);
+      return;
+    }
+    try {
+      const response = await fetch('/api/user/level');
+      if (!response.ok) return;
+      const data = await response.json();
+      setLevelData(data);
+    } catch {
+      // non-critical, ignore
+    }
+  }, [session]);
+
   useEffect(() => {
     if (!session) {
       setUserCoins(null);
@@ -100,6 +116,7 @@ export function Navigation() {
     }
 
     fetchCoins();
+    fetchLevel();
 
     // Fetch cart count
     fetch('/api/cart')
@@ -116,7 +133,7 @@ export function Navigation() {
       .catch((error) => {
         console.error('Error fetching cart:', error);
       });
-  }, [session, fetchCoins]);
+  }, [session, fetchCoins, fetchLevel]);
 
   useEffect(() => {
     if (!session) {
@@ -221,6 +238,23 @@ export function Navigation() {
                   </span>
                 </div>
               </Link>
+
+              {/* Level Badge */}
+              {levelData && (
+                <Link href="/dashboard" title={`Level ${levelData.level} — ${levelData.title}`}>
+                  <div className="flex items-center gap-1.5 h-9 px-2.5 rounded-lg bg-purple-500/10 border border-purple-500/25 hover:bg-purple-500/20 transition-all duration-150 relative overflow-hidden">
+                    {/* XP fill bar */}
+                    <div
+                      className="absolute inset-0 bg-purple-500/15 origin-left transition-transform duration-500"
+                      style={{ transform: `scaleX(${levelData.percent / 100})` }}
+                    />
+                    <Zap className="h-3.5 w-3.5 text-purple-400 relative z-10 shrink-0" />
+                    <span className="text-xs font-bold text-purple-300 relative z-10 tabular-nums">
+                      {levelData.level}
+                    </span>
+                  </div>
+                </Link>
+              )}
 
               {/* Cart */}
               <Link href="/cart" className="relative">
@@ -357,12 +391,28 @@ export function Navigation() {
                     <User className="h-5 w-5 text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {session.user.name || 'User'}
-                    </p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-medium text-white truncate">
+                        {session.user.name || 'User'}
+                      </p>
+                      {levelData && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-500/20 border border-purple-500/30 text-[10px] font-bold text-purple-300 shrink-0">
+                          <Zap className="h-2.5 w-2.5" />
+                          {levelData.level}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 truncate">
                       {session.user.email}
                     </p>
+                    {levelData && (
+                      <div className="mt-1.5 h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                          style={{ width: `${levelData.percent}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </Link>
                 <button

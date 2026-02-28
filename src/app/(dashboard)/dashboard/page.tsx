@@ -3,6 +3,7 @@ import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Sparkles } from 'lucide-react';
 import { DashboardClient } from './DashboardClient';
+import { titleForLevel, xpProgressInCurrentLevel } from '@/lib/level';
 
 export default async function UserDashboard() {
   const session = await getCurrentSession();
@@ -27,6 +28,10 @@ export default async function UserDashboard() {
       shippingCountry: true,
       shippingPhone: true,
       createdAt: true,
+      xp: true,
+      level: true,
+      levelCoinsPending: true,
+      levelCoinsEarnedThisMonth: true,
     },
   });
 
@@ -63,6 +68,19 @@ export default async function UserDashboard() {
     pulls: pulls.length,
     battles: await prisma.battleParticipant.count({ where: { userId: user.id } }),
     wins: await prisma.battle.count({ where: { winnerId: user.id } }),
+  };
+
+  // Build level info
+  const xpProgress = xpProgressInCurrentLevel(user.xp, user.level);
+  const levelInfo = {
+    level: user.level,
+    xp: user.xp,
+    xpInCurrentLevel: xpProgress.current,
+    xpForNextLevel: xpProgress.required,
+    percent: xpProgress.percent,
+    title: titleForLevel(user.level),
+    pendingCoins: user.levelCoinsPending,
+    coinsEarnedThisMonth: user.levelCoinsEarnedThisMonth,
   };
 
   // Format user for client
@@ -102,10 +120,11 @@ export default async function UserDashboard() {
           <p className="text-gray-400">Manage your collection, track orders, and view your stats</p>
         </div>
 
-        <DashboardClient 
+        <DashboardClient
           initialUser={userForClient}
           initialPulls={pullsForClient}
           initialStats={stats}
+          initialLevelInfo={levelInfo}
         />
       </div>
     </div>

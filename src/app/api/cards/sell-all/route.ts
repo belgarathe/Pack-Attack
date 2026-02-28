@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { awardXp } from '@/lib/level';
 
 // Schema for batch selling specific cards
 const batchSellSchema = z.object({
@@ -110,11 +111,14 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    const levelResult = await awardXp(user.id, 5, prisma);
+
     return NextResponse.json({
       success: true,
       cardsSold: pulls.length,
       coinsReceived: totalCoins,
       newBalance: Number(updatedUser.coins),
+      levelResult,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

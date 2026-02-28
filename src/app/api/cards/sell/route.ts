@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { awardXp } from '@/lib/level';
 
 const sellCardSchema = z.object({
   pullId: z.string(),
@@ -82,10 +83,13 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    const levelResult = await awardXp(pull.userId, 5, prisma);
+
     return NextResponse.json({
       success: true,
       coinsReceived: coinValue,
       newBalance: Number(updatedUser.coins),
+      levelResult,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

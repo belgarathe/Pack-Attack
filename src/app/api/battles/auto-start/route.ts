@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, withRetry } from '@/lib/prisma';
+import { awardXp } from '@/lib/level';
 
 // This endpoint checks for battles that have been full for 30 minutes
 // and automatically starts them if all players haven't pressed start
@@ -303,6 +304,14 @@ async function startBattle(battle: any) {
         coins: { increment: totalPrize },
       },
     });
+  }
+
+  // Award XP: 150 XP for all participants, +250 bonus for winner (non-share modes)
+  for (const participant of battle.participants) {
+    await awardXp(participant.userId, 150, prisma);
+  }
+  if (!battle.shareMode && winnerId) {
+    await awardXp(winnerId, 250, prisma);
   }
 
   console.log(`[AUTO-START] Battle ${battle.id} completed. Winner: ${winnerId}`);
