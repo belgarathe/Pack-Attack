@@ -88,13 +88,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Deduct coins
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { coins: { decrement: totalCost } },
-    });
-
-    // Prepare all pulls data upfront (no DB calls in loop)
     const cardsForDrawing = box.cards.map(card => ({
       id: card.id,
       pullRate: Number(card.pullRate),
@@ -123,19 +116,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // PERFORMANCE: Batch create all pulls in single transaction
-    const createdPulls = await prisma.$transaction(async (tx) => {
-      // Create all pulls at once
+    // Atomic transaction: deduct coins + create pulls together to prevent race conditions
+    const pulls = await prisma.$transaction(async (tx) => {
+      // Re-check balance inside the transaction to prevent double-spend
+      const freshUser = await tx.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { coins: true },
+      });
+
+      if (Number(freshUser.coins) < totalCost) {
+        throw new Error('INSUFFICIENT_COINS');
+      }
+
+      // Deduct coins atomically
+      await tx.user.update({
+        where: { id: user.id },
+        data: { coins: { decrement: totalCost } },
+      });
+
+      // Create all pulls
       await tx.pull.createMany({
         data: pullsData,
       });
 
       // Fetch them back with card data
-      const pulls = await tx.pull.findMany({
+      const createdPulls = await tx.pull.findMany({
         where: {
           userId: user.id,
           boxId: box.id,
-          timestamp: { gte: new Date(Date.now() - 5000) }, // Last 5 seconds
+          timestamp: { gte: new Date(Date.now() - 5000) },
         },
         include: { card: true },
         orderBy: { timestamp: 'desc' },
@@ -148,10 +157,8 @@ export async function POST(request: NextRequest) {
         data: { popularity: { increment: quantity } },
       });
 
-      return pulls;
+      return createdPulls;
     });
-
-    const pulls = createdPulls;
 
     // Convert Decimal values to numbers for client
     const pullsForClient = pulls.map(pull => ({
@@ -177,6 +184,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') {
+      return NextResponse.json({ error: 'Insufficient coins' }, { status: 400 });
     }
     console.error('Error opening pack:', error);
     return NextResponse.json({ error: 'Failed to open pack' }, { status: 500 });

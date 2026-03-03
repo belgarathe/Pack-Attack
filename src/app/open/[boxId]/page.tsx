@@ -274,7 +274,7 @@ export default function OpenBoxPage() {
   }, [box?.cards, isAnimating]);
 
   const handleOpen = async () => {
-    if (!box) return;
+    if (!box || opening) return;
 
     const totalCost = box.price * quantity;
     if (userCoins !== null && userCoins < totalCost) {
@@ -315,6 +315,7 @@ export default function OpenBoxPage() {
         });
         setIsAnimating(false);
         setSpinningCardIds(new Set());
+        setOpening(false);
         return;
       }
 
@@ -333,12 +334,13 @@ export default function OpenBoxPage() {
 
       if (pullsData.length === 0) {
         stopSpin();
+        setOpening(false);
         addToast({ title: 'Success', description: `Opened ${quantity} box${quantity > 1 ? 'es' : ''}!` });
         return;
       }
 
       const numCards = pullsData.length;
-      const REVEAL_DURATION = 3000; // Duration each card popup stays on screen (doubled from 1500ms)
+      const REVEAL_DURATION = 3000;
       const SPINNER_BURST_DURATION = 900;
 
       scheduleTimeout(() => {
@@ -366,6 +368,7 @@ export default function OpenBoxPage() {
             setCurrentReveal(null);
             if (isLast) {
               stopSpin();
+              setOpening(false);
               addToast({
                 title: 'Success',
                 description: `Opened ${quantity} box${quantity > 1 ? 'es' : ''}! Got ${numCards} card${numCards !== 1 ? 's' : ''}!`,
@@ -381,9 +384,8 @@ export default function OpenBoxPage() {
       clearRevealTimeouts();
       setIsAnimating(false);
       setSpinningCardIds(new Set());
-      addToast({ title: 'Error', description: 'Failed to open box', variant: 'destructive' });
-    } finally {
       setOpening(false);
+      addToast({ title: 'Error', description: 'Failed to open box', variant: 'destructive' });
     }
   };
 
