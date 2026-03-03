@@ -228,7 +228,6 @@ async function startBattle(battle: any) {
     const randomIndex = Math.floor(Math.random() * battle.participants.length);
     winnerId = battle.participants[randomIndex].userId;
   } else {
-    // NORMAL or UPSIDE_DOWN: check for draws
     const values = Array.from(participantTotals.entries());
     const isUpsideDown = battle.battleMode === 'UPSIDE_DOWN';
     
@@ -239,8 +238,41 @@ async function startBattle(battle: any) {
     const tiedParticipants = values.filter(([, v]) => v === targetValue);
     
     if (tiedParticipants.length > 1) {
-      isDraw = true;
-      winnerId = null;
+      // Tiebreaker: count individual round wins for each tied participant
+      const tiedIds = new Set(tiedParticipants.map(([id]) => id));
+      const roundWins = new Map<string, number>();
+      for (const id of tiedIds) roundWins.set(id, 0);
+
+      for (let r = 1; r <= battle.rounds; r++) {
+        const roundPulls = allPullsData.filter(p => p.round === r);
+        const roundTotals = new Map<string, number>();
+        for (const pull of roundPulls) {
+          roundTotals.set(pull.participantId, (roundTotals.get(pull.participantId) || 0) + pull.cardValue);
+        }
+        let bestRoundVal = isUpsideDown ? Infinity : -Infinity;
+        for (const [pid, val] of roundTotals) {
+          if (!tiedIds.has(pid)) continue;
+          if (isUpsideDown ? val < bestRoundVal : val > bestRoundVal) bestRoundVal = val;
+        }
+        for (const [pid, val] of roundTotals) {
+          if (tiedIds.has(pid) && val === bestRoundVal) {
+            roundWins.set(pid, (roundWins.get(pid) || 0) + 1);
+          }
+        }
+      }
+
+      const maxRoundWins = Math.max(...roundWins.values());
+      const roundWinners = Array.from(roundWins.entries()).filter(([, w]) => w === maxRoundWins);
+
+      if (roundWinners.length === 1) {
+        const participant = battle.participants.find((p: any) => p.id === roundWinners[0][0]);
+        winnerId = participant?.userId || null;
+        console.log(`[AUTO-START] Tiebreaker resolved by round wins (${maxRoundWins} rounds won)`);
+      } else {
+        isDraw = true;
+        winnerId = null;
+        console.log(`[AUTO-START] True draw: ${roundWinners.length} participants tied on value AND round wins`);
+      }
     } else {
       const [winnerParticipantId] = tiedParticipants[0];
       const participant = battle.participants.find((p: any) => p.id === winnerParticipantId);
