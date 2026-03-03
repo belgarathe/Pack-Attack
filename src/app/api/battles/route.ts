@@ -75,10 +75,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (user.level < 10) {
-      return NextResponse.json({ error: 'You must be level 10 to create a battle.' }, { status: 403 });
-    }
-
     const body = await request.json();
     const data = battleSchema.parse(body);
 
