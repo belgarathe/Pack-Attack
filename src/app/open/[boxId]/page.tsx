@@ -1084,7 +1084,8 @@ export default function OpenBoxPage() {
 
       {/* Summary Overlay */}
       {deckPhase === 'summary' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/95 backdrop-blur-sm">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="relative flex flex-col items-center w-full max-w-2xl py-8">
 
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Opening Results</p>
@@ -1256,6 +1257,47 @@ export default function OpenBoxPage() {
             >
               Close
             </button>
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell-by-rarity confirmation dialog */}
+      {sellConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSellConfirm(null)} />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-1">
+              <BadgeDollarSign className="w-5 h-5 text-amber-400" />
+              <h3 className="text-lg font-bold text-white">Sell {TIER_META[sellConfirm.tier]?.label}?</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-5">
+              Sell{' '}
+              <span className="text-white font-semibold">{sellConfirm.pullIds.length} {TIER_META[sellConfirm.tier]?.label}</span>
+              {' '}for{' '}
+              <span className="text-amber-400 font-semibold">{sellConfirm.coins.toFixed(2)} coins</span>?
+              {' '}This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSellConfirm(null)}
+                disabled={sellingSummary}
+                className="flex-1 py-2.5 rounded-xl border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSellByTier}
+                disabled={sellingSummary}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold transition-all hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {sellingSummary ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Selling...</>
+                ) : (
+                  <><BadgeDollarSign className="w-4 h-4" /> Sell</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
