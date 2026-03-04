@@ -364,7 +364,6 @@ export async function POST(
       where: { id: battleId },
       data: {
         status: 'FINISHED',
-        isDraw,
         winnerId,
         totalPrize: isDraw ? 0 : totalPrize,
         finishedAt: new Date(),

@@ -321,7 +321,6 @@ async function startBattle(battle: any) {
     where: { id: battle.id },
     data: {
       status: 'FINISHED',
-      isDraw,
       winnerId,
       totalPrize: isDraw ? 0 : totalPrize,
       finishedAt: new Date(),
