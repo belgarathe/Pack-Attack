@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Trash2, Save } from 'lucide-react';
+import { Trash2, Save, Upload, X } from 'lucide-react';
+import Image from 'next/image';
 
 type Box = {
   id: string;
@@ -17,6 +18,29 @@ type Box = {
   cardsPerPack: number;
   isActive: boolean;
 };
+
+const TARGET_RATIO = 63 / 88;
+const RATIO_TOLERANCE = 0.025;
+const MIN_W = 400;
+const MIN_H = 559;
+const MAX_W = 630;
+const MAX_H = 880;
+
+function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not load image'));
+    };
+    img.src = url;
+  });
+}
 
 export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) {
   const router = useRouter();
@@ -32,6 +56,82 @@ export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) 
     cardsPerPack: box.cardsPerPack.toString(),
     isActive: box.isActive,
   });
+
+  // Card back image management
+  const [availableImages, setAvailableImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/card-backs')
+      .then(r => r.json())
+      .then(data => {
+        if (data.files) setAvailableImages(data.files);
+      })
+      .catch(() => {/* silently ignore */});
+  }, []);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+
+    // Client-side type check
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      setUploadError('Only PNG and JPG files are allowed.');
+      return;
+    }
+
+    // Client-side dimension check
+    let dims: { width: number; height: number };
+    try {
+      dims = await getImageDimensions(file);
+    } catch {
+      setUploadError('Could not read image dimensions.');
+      return;
+    }
+
+    const { width, height } = dims;
+
+    if (width < MIN_W || height < MIN_H) {
+      setUploadError(`Image too small: ${width}×${height}px. Minimum is ${MIN_W}×${MIN_H}px.`);
+      return;
+    }
+    if (width > MAX_W || height > MAX_H) {
+      setUploadError(`Image too large: ${width}×${height}px. Maximum is ${MAX_W}×${MAX_H}px.`);
+      return;
+    }
+
+    const ratio = width / height;
+    if (Math.abs(ratio - TARGET_RATIO) > RATIO_TOLERANCE) {
+      setUploadError(`Wrong aspect ratio (${width}×${height}). Expected 63:88. Got ${ratio.toFixed(3)}, need ~${TARGET_RATIO.toFixed(3)}.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/card-backs', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      // Refresh image list and auto-select uploaded file
+      const listRes = await fetch('/api/admin/card-backs');
+      const listData = await listRes.json();
+      if (listData.files) setAvailableImages(listData.files);
+
+      setFormData(prev => ({ ...prev, cardBackUrl: data.filename }));
+      addToast({ title: 'Uploaded', description: `${data.filename} uploaded successfully.` });
+    } catch (error) {
+      setUploadError((error as Error).message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +163,6 @@ export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) 
         description: 'Box updated successfully!',
       });
 
-      // Call onSave callback if provided
       if (onSave) {
         onSave();
       } else {
@@ -115,6 +214,10 @@ export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) 
     }
   };
 
+  const selectedPreviewSrc = formData.cardBackUrl
+    ? `/assets/card-backs/${formData.cardBackUrl}`
+    : '/assets/card-backs/pa_card_back.png';
+
   return (
     <Card className="border-gray-800 bg-gray-900/50">
       <CardHeader>
@@ -155,20 +258,72 @@ export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) 
             />
           </div>
 
+          {/* Card Back Image */}
           <div>
             <label className="block text-sm font-medium mb-2 text-white">
               Card Back Image
               <span className="ml-2 text-xs text-gray-400 font-normal">
-                (place file in <code className="text-blue-400">public/assets/card-backs/</code> — 630 × 880 px)
+                PNG/JPG · 63:88 ratio · 400×559 – 630×880 px
               </span>
             </label>
-            <input
-              type="text"
-              value={formData.cardBackUrl}
-              onChange={(e) => setFormData({ ...formData, cardBackUrl: e.target.value })}
-              placeholder="e.g. my-card-back.png — leave empty for default"
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none placeholder-gray-600"
-            />
+
+            <div className="flex gap-3 items-start">
+              {/* Preview thumbnail */}
+              <div className="relative w-14 h-20 rounded-lg overflow-hidden border border-gray-700 flex-shrink-0 bg-gray-800">
+                <Image
+                  src={selectedPreviewSrc}
+                  alt="Card back preview"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+
+              <div className="flex-1 space-y-2">
+                {/* Dropdown */}
+                <select
+                  value={formData.cardBackUrl}
+                  onChange={(e) => setFormData({ ...formData, cardBackUrl: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none"
+                >
+                  <option value="">Default (pa_card_back.png)</option>
+                  {availableImages.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+
+                {/* Upload button */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-600 text-gray-300 hover:text-white"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    {uploading ? 'Uploading...' : 'Upload new'}
+                  </Button>
+                  <span className="text-xs text-gray-500">PNG/JPG, 63:88, 400×559 – 630×880 px</span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={handleUpload}
+                />
+
+                {uploadError && (
+                  <div className="flex items-start gap-1.5 text-xs text-red-400">
+                    <X className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -230,4 +385,3 @@ export function EditBoxForm({ box, onSave }: { box: Box; onSave?: () => void }) 
     </Card>
   );
 }
-

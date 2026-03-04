@@ -186,11 +186,20 @@ type Box = {
 };
 
 function CardBack({ url }: { url?: string | null }) {
-  if (url) {
-    const src = `/assets/card-backs/${url}`;
+  const [useFallback, setUseFallback] = useState(false);
+  const src = url ? `/assets/card-backs/${url}` : '/assets/card-backs/pa_card_back.png';
+
+  if (!useFallback) {
     return (
       <div className="absolute inset-0 rounded-xl overflow-hidden border border-blue-400/20">
-        <Image src={src} alt="Card back" fill className="object-cover" unoptimized />
+        <Image
+          src={src}
+          alt="Card back"
+          fill
+          className="object-cover"
+          unoptimized
+          onError={() => setUseFallback(true)}
+        />
       </div>
     );
   }
