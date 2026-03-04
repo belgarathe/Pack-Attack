@@ -156,10 +156,10 @@ const rateLimiters = {
     uniqueTokenPerInterval: 5,
   }),
   
-  // Box opening: 10 per minute
+  // Box opening: 120 per minute (supports auto-open feature)
   boxOpening: new RateLimiter({
     interval: 60 * 1000, // 1 minute
-    uniqueTokenPerInterval: 10,
+    uniqueTokenPerInterval: 120,
   }),
   
   // Battle creation: 5 per minute

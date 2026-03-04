@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { Coins, Package, Sparkles, ArrowLeft, Layers } from 'lucide-react';
+import { Coins, Package, Sparkles, ArrowLeft, Layers, Zap, Square } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { emitCoinBalanceUpdate } from '@/lib/coin-events';
@@ -266,6 +266,13 @@ export default function OpenBoxPage() {
   const [currentRevealIndex, setCurrentRevealIndex] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
+  // Auto-open
+  const [autoMaxCoins, setAutoMaxCoins] = useState('');
+  const [isAutoOpening, setIsAutoOpening] = useState(false);
+  const [autoBoxesOpened, setAutoBoxesOpened] = useState(0);
+  const [autoCoinsSpent, setAutoCoinsSpent] = useState(0);
+  const [showAutoConfirm, setShowAutoConfirm] = useState(false);
+  const autoStopRef = useRef(false);
   // Deck animation
   const [deckPhase, setDeckPhase] = useState<'idle'|'stacking'|'shuffling'|'drawing'|'revealed'|'summary'>('idle');
   const [deckKey, setDeckKey] = useState(0);
@@ -449,6 +456,74 @@ export default function OpenBoxPage() {
     }
   };
 
+  const handleAutoOpen = async () => {
+    if (!box) return;
+    autoStopRef.current = false;
+    setIsAutoOpening(true);
+    setAutoBoxesOpened(0);
+    setAutoCoinsSpent(0);
+
+    const limit = autoMaxCoins !== '' ? parseFloat(autoMaxCoins) : Infinity;
+    let coinsLeft = userCoins ?? 0;
+    let totalSpent = 0;
+    let boxesOpened = 0;
+    const sessionPulls: any[] = [];
+
+    try {
+      while (!autoStopRef.current) {
+        const boxCost = box.price;
+        if (coinsLeft < boxCost) break;
+        if (totalSpent + boxCost > limit) break;
+
+        // Use the largest batch that fits within budget and limit
+        const remainingBudget = Math.min(coinsLeft, limit - totalSpent);
+        const batchSize = Math.min(4, Math.floor(remainingBudget / boxCost));
+        if (batchSize === 0) break;
+
+        const res = await fetch('/api/packs/open', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boxId: box.id, quantity: batchSize }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 429) {
+            // Respect Retry-After header, default to 5 seconds
+            const retryAfter = parseInt(res.headers.get('Retry-After') || '5', 10);
+            await new Promise<void>(r => setTimeout(r, retryAfter * 1000));
+            continue; // retry this iteration
+          }
+          addToast({ title: 'Error', description: data.error || 'Failed to open box', variant: 'destructive' });
+          break;
+        }
+
+        const batchCost = boxCost * batchSize;
+        coinsLeft = data.remainingCoins;
+        totalSpent += batchCost;
+        boxesOpened += batchSize;
+        sessionPulls.push(...(data.pulls || []));
+
+        setAutoCoinsSpent(totalSpent);
+        setAutoBoxesOpened(boxesOpened);
+        setUserCoins(coinsLeft);
+        emitCoinBalanceUpdate({ balance: coinsLeft });
+
+        // 600ms between requests — stays well under 120/min rate limit
+        await new Promise<void>(r => setTimeout(r, 600));
+      }
+    } finally {
+      setIsAutoOpening(false);
+      if (sessionPulls.length > 0) {
+        setPulls(sessionPulls);
+        setDeckPhase('summary');
+      }
+    }
+  };
+
+  const handleAutoStop = () => { autoStopRef.current = true; };
+
   if (!box) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 flex items-center justify-center font-display">
@@ -575,7 +650,7 @@ export default function OpenBoxPage() {
               {/* Open Button */}
               <button
                 onClick={() => setShowConfirm(true)}
-                disabled={opening || (userCoins !== null && userCoins < totalCost)}
+                disabled={opening || isAutoOpening || (userCoins !== null && userCoins < totalCost)}
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 shimmer"
               >
                 {opening ? (
@@ -590,6 +665,66 @@ export default function OpenBoxPage() {
                   </>
                 )}
               </button>
+
+              {/* Auto Open Section */}
+              <div className="border-t border-gray-700/50 pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-gray-300">Auto Open</span>
+                  <span className="text-xs text-gray-500 ml-1">— opens boxes automatically until coins run out</span>
+                </div>
+
+                {isAutoOpening ? (
+                  /* Running state */
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Boxes</p>
+                        <p className="text-lg font-bold text-white">{autoBoxesOpened}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Spent</p>
+                        <p className="text-lg font-bold text-amber-400">{autoCoinsSpent.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Remaining</p>
+                        <p className="text-lg font-bold text-green-400">{(userCoins ?? 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleAutoStop}
+                      className="w-full py-3 rounded-xl border-2 border-red-500/70 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold transition-all flex items-center justify-center gap-2"
+                    >
+                      <Square className="w-4 h-4 fill-current" />
+                      Stop
+                    </button>
+                  </div>
+                ) : (
+                  /* Setup state */
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={autoMaxCoins}
+                        onChange={(e) => setAutoMaxCoins(e.target.value)}
+                        placeholder="Max coins (leave empty = unlimited)"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-600 text-sm focus:border-amber-500/60 focus:outline-none"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowAutoConfirm(true)}
+                      disabled={opening || (userCoins !== null && userCoins < box.price)}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold text-sm transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 flex-shrink-0"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Start
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -971,7 +1106,7 @@ export default function OpenBoxPage() {
 
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Opening Results</p>
             <h2 className="text-2xl font-bold text-white mb-6">
-              {quantity} Box{quantity > 1 ? 'es' : ''} · {pulls.length} Card{pulls.length !== 1 ? 's' : ''}
+              {(() => { const n = Math.round(pulls.length / (box.cardsPerPack || 1)); return `${n} Box${n !== 1 ? 'es' : ''}`; })()} · {pulls.length} Card{pulls.length !== 1 ? 's' : ''}
             </h2>
 
             {/* Card grid */}
@@ -1069,6 +1204,43 @@ export default function OpenBoxPage() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-open confirmation dialog */}
+      {showAutoConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowAutoConfirm(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-700 p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="w-5 h-5 text-amber-400" />
+              <h3 className="text-lg font-bold text-white">Start Auto Open?</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-5">
+              {autoMaxCoins !== '' && !isNaN(parseFloat(autoMaxCoins))
+                ? <>Will open boxes until you spend up to <span className="text-amber-400 font-semibold">{parseFloat(autoMaxCoins).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins</span> or run out of coins.</>
+                : <>Will open boxes until your coins run out. Current balance: <span className="text-amber-400 font-semibold">{(userCoins ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins</span>.</>
+              }
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAutoConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowAutoConfirm(false); handleAutoOpen(); }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Start
+              </button>
+            </div>
           </div>
         </div>
       )}
