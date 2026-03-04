@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { DealerDetailsClient } from './DealerDetailsClient';
 
-export default async function ShopDashboard() {
+export default async function ShopDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ shopId?: string }>;
+}) {
+  const { shopId: queryShopId } = await searchParams;
   const session = await getCurrentSession();
   if (!session?.user?.email) {
     redirect('/login');
@@ -34,9 +39,18 @@ export default async function ShopDashboard() {
     redirect('/dashboard');
   }
 
-  // Get the shop (for admins, we'll show aggregate data)
-  const shop = user.shop;
   const isAdmin = user.role === 'ADMIN';
+
+  // Admin can impersonate a specific shop via ?shopId=
+  let targetShop: { id: string; name: string; taxId?: string | null } | null = null;
+  if (isAdmin && queryShopId) {
+    targetShop = await prisma.shop.findUnique({ where: { id: queryShopId }, select: { id: true, name: true, taxId: true } });
+  }
+
+  // When admin targets a specific shop, show that shop's data (like a shop owner would see)
+  const shop = targetShop || user.shop;
+  const viewingSpecificShop = isAdmin && targetShop;
+  const shopIdFilter = shop?.id;
 
   // Get statistics based on role
   let stats: {
@@ -53,8 +67,7 @@ export default async function ShopDashboard() {
     assignedOrders: number;
     assignedPending: number;
   };
-  if (isAdmin) {
-    // Admin sees all shop-created boxes and orders
+  if (isAdmin && !viewingSpecificShop) {
     const [
       totalShopBoxes,
       activeShopBoxes,
@@ -182,16 +195,18 @@ export default async function ShopDashboard() {
         <div className="mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 rounded-full glass text-sm">
             <Store className="w-4 h-4 text-emerald-400" />
-            <span className="text-gray-300">{isAdmin ? 'Admin View' : shop?.name || 'Shop Dashboard'}</span>
+            <span className="text-gray-300">{viewingSpecificShop ? `Admin → ${shop?.name}` : isAdmin ? 'Admin View' : shop?.name || 'Shop Dashboard'}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-3 font-heading">
-            <span className="text-white">Shop </span>
+            <span className="text-white">{viewingSpecificShop ? `${shop?.name} ` : 'Shop '}</span>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400">Dashboard</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl">
-            {isAdmin 
-              ? 'Manage all shop boxes and monitor orders across the platform.' 
-              : 'Manage your boxes, track orders, and grow your card business.'}
+            {viewingSpecificShop
+              ? `Viewing ${shop?.name}'s dashboard as admin. You see exactly what the shop owner sees.`
+              : isAdmin 
+                ? 'Manage all shop boxes and monitor orders across the platform.' 
+                : 'Manage your boxes, track orders, and grow your card business.'}
           </p>
         </div>
 
@@ -290,7 +305,7 @@ export default async function ShopDashboard() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-10">
           {/* Orders Management */}
           <Link 
-            href="/shop-dashboard/orders" 
+            href={viewingSpecificShop ? `/shop-dashboard/orders?shopId=${shop?.id}` : '/shop-dashboard/orders'} 
             className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-emerald-500/50 transition-all group relative overflow-hidden"
           >
             {stats.pendingOrders > 0 && (
@@ -318,7 +333,7 @@ export default async function ShopDashboard() {
 
           {/* Assigned Orders */}
           <Link 
-            href="/shop-dashboard/assigned-orders" 
+            href={viewingSpecificShop ? `/shop-dashboard/assigned-orders?shopId=${shop?.id}` : '/shop-dashboard/assigned-orders'} 
             className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-purple-500/50 transition-all group relative overflow-hidden"
           >
             {stats.assignedPending > 0 && (
@@ -346,7 +361,7 @@ export default async function ShopDashboard() {
 
           {/* My Stock - Future API Integration */}
           <Link 
-            href="/shop-dashboard/stock" 
+            href={viewingSpecificShop ? `/shop-dashboard/stock?shopId=${shop?.id}` : '/shop-dashboard/stock'} 
             className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-teal-500/50 transition-all group relative overflow-hidden col-span-2"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -369,9 +384,9 @@ export default async function ShopDashboard() {
         </div>
 
         {/* Dealer Details Section */}
-        {shop && (
+        {shop && 'taxId' in shop && (
           <div className="mb-10">
-            <DealerDetailsClient shopId={shop.id} initialTaxId={shop.taxId} />
+            <DealerDetailsClient shopId={shop.id} initialTaxId={(shop as any).taxId} />
           </div>
         )}
 
@@ -385,7 +400,7 @@ export default async function ShopDashboard() {
               <h2 className="text-xl font-bold text-white">Recent Orders</h2>
             </div>
             <Link 
-              href="/shop-dashboard/orders" 
+              href={viewingSpecificShop ? `/shop-dashboard/orders?shopId=${shop?.id}` : '/shop-dashboard/orders'} 
               className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
             >
               View All →

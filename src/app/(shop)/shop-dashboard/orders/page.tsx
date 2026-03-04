@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { ShoppingCart, Store, ArrowLeft, Package, Clock, Truck, CheckCircle } from 'lucide-react';
 import { ShopOrdersClient } from './ShopOrdersClient';
 
-export default async function ShopOrdersPage() {
+export default async function ShopOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ shopId?: string }>;
+}) {
+  const { shopId: queryShopId } = await searchParams;
   const session = await getCurrentSession();
   if (!session?.user?.email) {
     redirect('/login');
@@ -21,15 +26,23 @@ export default async function ShopOrdersPage() {
   }
 
   const isAdmin = user.role === 'ADMIN';
-  const shop = user.shop;
 
-  // Fetch orders based on role
+  // Admin can impersonate a specific shop via ?shopId=
+  let targetShop: { id: string; name: string } | null = null;
+  if (isAdmin && queryShopId) {
+    targetShop = await prisma.shop.findUnique({ where: { id: queryShopId }, select: { id: true, name: true } });
+  }
+
+  const shop = targetShop || user.shop;
+  const viewingSpecificShop = isAdmin && targetShop;
+  const shopIdFilter = shop?.id;
+
   let orders: any[];
   let stats: { total: number; pending: number; confirmed: number; processing: number; shipped: number; delivered: number };
   
-  if (isAdmin) {
-    // Admin sees all shop box orders
+  if (shopIdFilter) {
     orders = await prisma.shopBoxOrder.findMany({
+      where: { shopId: shopIdFilter },
       include: {
         user: { select: { id: true, email: true, name: true } },
         box: { select: { id: true, name: true, imageUrl: true } },
@@ -46,9 +59,8 @@ export default async function ShopOrdersPage() {
       shipped: orders.filter((o: any) => o.status === 'SHIPPED').length,
       delivered: orders.filter((o: any) => o.status === 'DELIVERED').length,
     };
-  } else if (shop) {
+  } else if (isAdmin) {
     orders = await prisma.shopBoxOrder.findMany({
-      where: { shopId: shop.id },
       include: {
         user: { select: { id: true, email: true, name: true } },
         box: { select: { id: true, name: true, imageUrl: true } },
@@ -88,7 +100,7 @@ export default async function ShopOrdersPage() {
         {/* Header */}
         <div className="mb-8">
           <Link 
-            href="/shop-dashboard" 
+            href={viewingSpecificShop ? `/shop-dashboard?shopId=${shop?.id}` : '/shop-dashboard'} 
             className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -97,7 +109,7 @@ export default async function ShopOrdersPage() {
           
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-sm mb-3">
             <Store className="w-4 h-4 text-emerald-400" />
-            <span className="text-gray-300">{isAdmin ? 'Admin View' : shop?.name || 'Shop Dashboard'}</span>
+            <span className="text-gray-300">{viewingSpecificShop ? `Admin → ${shop?.name}` : isAdmin ? 'Admin View' : shop?.name || 'Shop Dashboard'}</span>
           </div>
           
           <h1 className="text-3xl md:text-4xl font-bold mb-2 font-heading">

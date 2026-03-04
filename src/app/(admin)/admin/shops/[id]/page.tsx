@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import {
   Store, ArrowLeft, ShieldCheck, ShoppingCart,
-  Package, Database, Coins, Clock
+  Package, Database, Coins, Clock, Eye, ClipboardList
 } from 'lucide-react';
 import { ShopDetailClient } from './ShopDetailClient';
 
@@ -66,7 +66,7 @@ export default async function AdminShopDetailPage({
     orderBy: { createdAt: 'desc' },
   });
 
-  const [pendingOrders, totalStock, revenue] = await Promise.all([
+  const [pendingOrders, totalStock, revenue, assignedOrderCount, assignedPendingCount] = await Promise.all([
     prisma.shopBoxOrder.count({
       where: { shopId: id, status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING'] } },
     }),
@@ -78,6 +78,8 @@ export default async function AdminShopDetailPage({
       where: { shopId: id },
       _sum: { cardValue: true },
     }),
+    prisma.order.count({ where: { assignedShopId: id } }),
+    prisma.order.count({ where: { assignedShopId: id, status: 'PENDING' } }),
   ]);
 
   const serializedOrders = orders.map((order) => ({
@@ -122,26 +124,35 @@ export default async function AdminShopDetailPage({
             <span className="text-gray-300">Admin View</span>
           </div>
 
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center">
-              <Store className="w-6 h-6 text-orange-400" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center">
+                <Store className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white font-heading">{shop.name}</h1>
+                <p className="text-gray-400 text-sm">
+                  Owner: {shop.owner.name || 'Unnamed'} ({shop.owner.email})
+                  <span className={`ml-3 px-2 py-0.5 rounded-lg text-xs font-medium ${
+                    shop.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {shop.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white font-heading">{shop.name}</h1>
-              <p className="text-gray-400 text-sm">
-                Owner: {shop.owner.name || 'Unnamed'} ({shop.owner.email})
-                <span className={`ml-3 px-2 py-0.5 rounded-lg text-xs font-medium ${
-                  shop.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                }`}>
-                  {shop.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </p>
-            </div>
+            <Link
+              href={`/shop-dashboard?shopId=${shop.id}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/25"
+            >
+              <Eye className="w-4 h-4" />
+              View as Shop Owner
+            </Link>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
           <div className="glass rounded-xl p-4 text-center">
             <ShoppingCart className="w-5 h-5 text-blue-400 mx-auto mb-2" />
             <div className="text-2xl font-bold text-white">{stats.totalOrders.toLocaleString()}</div>
@@ -171,6 +182,11 @@ export default async function AdminShopDetailPage({
             <Package className="w-5 h-5 text-orange-400 mx-auto mb-2" />
             <div className="text-2xl font-bold text-white">{stats.boxCount}</div>
             <div className="text-xs text-gray-400">Boxes</div>
+          </div>
+          <div className="glass rounded-xl p-4 text-center">
+            <ClipboardList className="w-5 h-5 text-pink-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">{assignedOrderCount}</div>
+            <div className="text-xs text-gray-400">Assigned Orders ({assignedPendingCount} pending)</div>
           </div>
         </div>
 

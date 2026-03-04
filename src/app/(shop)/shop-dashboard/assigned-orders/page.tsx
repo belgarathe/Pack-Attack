@@ -44,7 +44,12 @@ async function getAssignedOrders(shopId: string | null) {
   }));
 }
 
-export default async function AssignedOrdersPage() {
+export default async function AssignedOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ shopId?: string }>;
+}) {
+  const { shopId: queryShopId } = await searchParams;
   const session = await getCurrentSession();
   
   if (!session?.user?.email) {
@@ -62,7 +67,23 @@ export default async function AssignedOrdersPage() {
 
   const isAdmin = user.role === 'ADMIN';
 
-  if (!isAdmin && !user.shop) {
+  // Admin can view a specific shop via ?shopId=
+  let targetShopId: string | null = null;
+  let shopName = 'all shops';
+
+  if (isAdmin && queryShopId) {
+    const targetShop = await prisma.shop.findUnique({ where: { id: queryShopId }, select: { id: true, name: true } });
+    if (targetShop) {
+      targetShopId = targetShop.id;
+      shopName = targetShop.name;
+    }
+  } else if (isAdmin) {
+    targetShopId = null;
+    shopName = 'all shops';
+  } else if (user.shop) {
+    targetShopId = user.shop.id;
+    shopName = user.shop.name;
+  } else {
     return (
       <div className="space-y-6">
         <div>
@@ -76,7 +97,7 @@ export default async function AssignedOrdersPage() {
     );
   }
 
-  const orders = await getAssignedOrders(isAdmin ? null : user.shop!.id);
+  const orders = await getAssignedOrders(targetShopId);
 
   const stats = {
     total: orders.length,
@@ -85,8 +106,6 @@ export default async function AssignedOrdersPage() {
     shipped: orders.filter(o => o.status === 'SHIPPED').length,
     delivered: orders.filter(o => o.status === 'DELIVERED').length,
   };
-
-  const shopName = isAdmin ? 'all shops' : user.shop!.name;
 
   return (
     <div className="space-y-6">
