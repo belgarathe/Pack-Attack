@@ -1144,7 +1144,8 @@ export default function OpenBoxPage() {
 
       {/* Summary Overlay */}
       {deckPhase === 'summary' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/95 backdrop-blur-sm">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="relative flex flex-col items-center w-full max-w-2xl py-8">
 
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Opening Results</p>
@@ -1316,6 +1317,7 @@ export default function OpenBoxPage() {
             >
               Close
             </button>
+          </div>
           </div>
         </div>
       )}
