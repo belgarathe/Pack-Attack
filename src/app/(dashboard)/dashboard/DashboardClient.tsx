@@ -94,6 +94,14 @@ type Pull = {
     cartItem: { id: string } | null;
 };
 
+type GroupedCard = {
+    card: NonNullable<Pull['card']>;
+    box: Pull['box'];
+    count: number;
+    availablePullIds: string[]; // pull IDs not currently in cart
+    cartCount: number;
+};
+
 type Order = {
     id: string;
     status: string;
@@ -216,7 +224,14 @@ export const DashboardClient = memo(function DashboardClient({
     const [orderStatusFilter, setOrderStatusFilter] = useState('');
 
     // Card zoom
-    const [zoomedCard, setZoomedCard] = useState<Pull | null>(null);
+    const [zoomedCardId, setZoomedCardId] = useState<string | null>(null);
+    const [sellAmount, setSellAmount] = useState('1');
+    const [confirmSell, setConfirmSell] = useState<{
+        pullIds: string[];
+        cardName: string;
+        quantity: number;
+        totalCoins: number;
+    } | null>(null);
 
     // Profile form
     const [profileForm, setProfileForm] = useState({
@@ -447,13 +462,14 @@ export const DashboardClient = memo(function DashboardClient({
     };
 
     // PERFORMANCE: Memoize handlers to prevent child re-renders
-    const handleSellCard = useCallback(async (pullId: string, coinValue: number) => {
+    const handleSellMultiple = useCallback(async (pullIds: string[], cardName: string) => {
+        if (pullIds.length === 0) return;
         setLoading(true);
         try {
-            const res = await fetch('/api/cards/sell', {
+            const res = await fetch('/api/cards/sell-all', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({pullId}),
+                body: JSON.stringify({pullIds}),
             });
 
             const data = await res.json();
@@ -461,15 +477,15 @@ export const DashboardClient = memo(function DashboardClient({
             if (!res.ok) {
                 addToast({
                     title: 'Error',
-                    description: data.error || 'Failed to sell card',
+                    description: data.error || 'Failed to sell cards',
                     variant: 'destructive',
                 });
                 return;
             }
 
             addToast({
-                title: 'Success',
-                description: `Card sold for ${coinValue} coins!`,
+                title: 'Sold!',
+                description: `Sold ${data.cardsSold} ${cardName} for ${data.coinsReceived} coins!`,
             });
 
             if (data.newBalance !== undefined) {
@@ -477,12 +493,13 @@ export const DashboardClient = memo(function DashboardClient({
                 setUser(prev => ({...prev, coins: data.newBalance}));
             }
 
-            setPulls(prev => prev.filter(p => p.id !== pullId));
-            setZoomedCard(null);
-        } catch (error) {
+            const soldSet = new Set(pullIds);
+            setPulls(prev => prev.filter(p => !soldSet.has(p.id)));
+            setSellAmount('1');
+        } catch {
             addToast({
                 title: 'Error',
-                description: 'Failed to sell card',
+                description: 'Failed to sell cards',
                 variant: 'destructive',
             });
         } finally {
@@ -518,7 +535,6 @@ export const DashboardClient = memo(function DashboardClient({
             setPulls(prev => prev.map(p =>
                 p.id === pullId ? {...p, cartItem: {id: 'temp'}} : p
             ));
-            setZoomedCard(null);
         } catch (error) {
             addToast({
                 title: 'Error',
@@ -663,6 +679,38 @@ export const DashboardClient = memo(function DashboardClient({
             return matchesSearch && matchesRarity && matchesGame;
         });
     }, [pulls, searchQuery, rarityFilter, gameFilter]);
+
+    // Group filtered pulls by card ID into stacks
+    const groupedCards = useMemo(() => {
+        const map = new Map<string, GroupedCard>();
+        for (const pull of filteredPulls) {
+            if (!pull.card) continue;
+            const key = pull.card.id;
+            if (map.has(key)) {
+                const existing = map.get(key)!;
+                existing.count++;
+                if (pull.cartItem) {
+                    existing.cartCount++;
+                } else {
+                    existing.availablePullIds.push(pull.id);
+                }
+            } else {
+                map.set(key, {
+                    card: pull.card,
+                    box: pull.box,
+                    count: 1,
+                    availablePullIds: pull.cartItem ? [] : [pull.id],
+                    cartCount: pull.cartItem ? 1 : 0,
+                });
+            }
+        }
+        return Array.from(map.values());
+    }, [filteredPulls]);
+
+    // Derive the currently zoomed card group from state (auto-updates when pulls change)
+    const zoomedCard = zoomedCardId
+        ? groupedCards.find(g => g.card.id === zoomedCardId) ?? null
+        : null;
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -1118,7 +1166,7 @@ export const DashboardClient = memo(function DashboardClient({
                                                 <div
                                                     key={pull.id}
                                                     className={`group relative aspect-[63/88] rounded-xl overflow-hidden cursor-pointer ring-2 ring-transparent hover:ring-2 ${rarityConfig.border.replace('border-', 'hover:ring-')} transition-all hover:scale-105`}
-                                                    onClick={() => setZoomedCard(pull)}
+                                                    onClick={() => { setZoomedCardId(pull.card!.id); setSellAmount('1'); }}
                                                     style={{animationDelay: `${index * 50}ms`}}
                                                 >
                                                     <Image
@@ -1558,7 +1606,7 @@ export const DashboardClient = memo(function DashboardClient({
                         }}
                     >
                         {[
-                            {label: 'Cards Shown', value: filteredPulls.length, color: 'text-white'},
+                            {label: 'Unique Cards', value: groupedCards.length, color: 'text-white'},
                             {
                                 label: 'Total Value',
                                 value: filteredPulls.reduce((sum, p) => sum + (p.card?.coinValue || 0), 0).toLocaleString(),
@@ -1595,21 +1643,29 @@ export const DashboardClient = memo(function DashboardClient({
                     {filteredPulls.length > 0 ? (
                         <div
                             className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                            {filteredPulls.map((pull, index) => {
-                                if (!pull.card) return null;
-                                const rarityConfig = getRarityConfig(pull.card.rarity);
-                                const gameConfig = getGameConfig(pull.card.sourceGame);
+                            {groupedCards.map((group, index) => {
+                                const rarityConfig = getRarityConfig(group.card.rarity);
+                                const gameConfig = getGameConfig(group.card.sourceGame);
                                 const RarityIcon = rarityConfig.icon;
+                                const stackShadow = group.count >= 3
+                                    ? '4px 4px 0 1px rgba(148,163,184,0.12), 8px 8px 0 1px rgba(148,163,184,0.07)'
+                                    : group.count === 2
+                                        ? '4px 4px 0 1px rgba(148,163,184,0.12)'
+                                        : undefined;
 
                                 return (
                                     <div
-                                        key={pull.id}
-                                        className={`group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1`}
-                                        onClick={() => setZoomedCard(pull)}
+                                        key={group.card.id}
+                                        className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1"
+                                        onClick={() => {
+                                            setZoomedCardId(group.card.id);
+                                            setSellAmount('1');
+                                        }}
                                         style={{
+                                            boxShadow: stackShadow,
                                             opacity: mounted ? 1 : 0,
                                             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-                                            transition: `opacity 0.3s ease ${Math.min(index * 30, 300)}ms, transform 0.3s ease ${Math.min(index * 30, 300)}ms`
+                                            transition: `opacity 0.3s ease ${Math.min(index * 30, 300)}ms, transform 0.3s ease ${Math.min(index * 30, 300)}ms`,
                                         }}
                                     >
                                         <div
@@ -1618,29 +1674,42 @@ export const DashboardClient = memo(function DashboardClient({
                                             className={`relative glass border ${rarityConfig.border} rounded-2xl overflow-hidden`}>
                                             <div className="relative aspect-[63/88] w-full">
                                                 <Image
-                                                    src={pull.card.imageUrlGatherer}
-                                                    alt={pull.card.name}
+                                                    src={group.card.imageUrlGatherer}
+                                                    alt={group.card.name}
                                                     fill
                                                     className="object-cover transition-transform group-hover:scale-110"
                                                     sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1280px) 16vw, 12vw"
                                                     unoptimized
                                                 />
-                                                {/* Overlays */}
+                                                {/* Gradient overlay */}
                                                 <div
                                                     className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"/>
 
-                                                {/* Badges */}
-                                                {pull.cartItem && (
-                                                    <div
-                                                        className="absolute top-2 right-2 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-lg">
-                                                        In Cart
-                                                    </div>
-                                                )}
+                                                {/* Top-right badges: count + cart */}
+                                                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                                                    {group.count > 1 && (
+                                                        <div
+                                                            className="rounded-full bg-blue-600/90 px-2 py-0.5 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
+                                                            ×{group.count}
+                                                        </div>
+                                                    )}
+                                                    {group.cartCount > 0 && (
+                                                        <div
+                                                            className="rounded-full bg-emerald-500/80 px-1.5 py-0.5 text-xs font-bold text-white flex items-center gap-0.5 backdrop-blur-sm">
+                                                            <ShoppingCart className="w-2.5 h-2.5"/>
+                                                            {group.count === 1 ? 'Cart' : group.cartCount}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Rarity badge */}
                                                 <div
                                                     className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${rarityConfig.bg} ${rarityConfig.color} border ${rarityConfig.border}`}>
                                                     <RarityIcon className="w-3 h-3"/>
-                                                    {pull.card.rarity}
+                                                    {group.card.rarity}
                                                 </div>
+
+                                                {/* Game badge */}
                                                 <div
                                                     className={`absolute bottom-12 left-2 rounded-full px-2 py-0.5 text-xs font-bold ${gameConfig.bg} ${gameConfig.text}`}>
                                                     {gameConfig.label}
@@ -1648,11 +1717,11 @@ export const DashboardClient = memo(function DashboardClient({
 
                                                 {/* Card Info */}
                                                 <div className="absolute bottom-0 left-0 right-0 p-3">
-                                                    <h3 className="font-bold text-white text-sm truncate mb-0.5">{pull.card.name}</h3>
+                                                    <h3 className="font-bold text-white text-sm truncate mb-0.5">{group.card.name}</h3>
                                                     <div className="flex items-center gap-1">
                                                         <Coins className="h-3.5 w-3.5 text-amber-400"/>
                                                         <span
-                                                            className="text-sm font-bold text-amber-400">{pull.card.coinValue}</span>
+                                                            className="text-sm font-bold text-amber-400">{group.card.coinValue}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2354,11 +2423,11 @@ export const DashboardClient = memo(function DashboardClient({
             )}
 
             {/* Card Zoom Modal */}
-            {zoomedCard && zoomedCard.card && (
+            {zoomedCard && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     onClick={(e) => {
-                        if (e.target === e.currentTarget) setZoomedCard(null);
+                        if (e.target === e.currentTarget) setZoomedCardId(null);
                     }}
                 >
                     {/* Backdrop */}
@@ -2368,7 +2437,7 @@ export const DashboardClient = memo(function DashboardClient({
                     <div
                         className="relative max-w-lg w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
                         <button
-                            onClick={() => setZoomedCard(null)}
+                            onClick={() => setZoomedCardId(null)}
                             className="absolute -top-14 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110"
                             aria-label="Close"
                         >
@@ -2386,6 +2455,12 @@ export const DashboardClient = memo(function DashboardClient({
                                 sizes="(max-width: 768px) 90vw, 420px"
                                 unoptimized
                             />
+                            {zoomedCard.count > 1 && (
+                                <div
+                                    className="absolute top-3 right-3 rounded-full bg-blue-600/90 px-3 py-1 text-sm font-bold text-white shadow-lg backdrop-blur-sm">
+                                    ×{zoomedCard.count} owned
+                                </div>
+                            )}
                         </div>
 
                         {/* Card Details */}
@@ -2404,41 +2479,171 @@ export const DashboardClient = memo(function DashboardClient({
                             })()}
 
                             <h2 className="text-2xl font-bold text-white mb-2">{zoomedCard.card.name}</h2>
-                            <p className="text-gray-400 mb-6">{zoomedCard.box.name}</p>
+                            <p className="text-gray-400 mb-4">{zoomedCard.box.name}</p>
 
+                            {/* Value display */}
                             <div
                                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 mb-6">
                                 <Coins className="h-5 w-5 text-amber-400"/>
                                 <span className="text-xl font-bold text-amber-400">{zoomedCard.card.coinValue}</span>
-                                <span className="text-amber-400/70">coins</span>
+                                <span className="text-amber-400/70">coins each</span>
+                                {zoomedCard.count > 1 && (
+                                    <span className="text-amber-400/50 text-sm">
+                                        · {zoomedCard.card.coinValue * zoomedCard.availablePullIds.length} sellable
+                                    </span>
+                                )}
                             </div>
 
-                            {zoomedCard.cartItem ? (
+                            {zoomedCard.availablePullIds.length === 0 ? (
+                                /* All copies are in cart */
                                 <div
                                     className="flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500/10 text-emerald-400 rounded-xl font-bold border border-emerald-500/30">
                                     <ShoppingCart className="h-5 w-5"/>
-                                    Already in Cart
+                                    {zoomedCard.count > 1 ? `All ${zoomedCard.count} in Cart` : 'Already in Cart'}
                                 </div>
                             ) : (
-                                <div className="flex gap-3">
+                                <div className="space-y-3">
+                                    {/* Add to Cart */}
                                     <button
-                                        onClick={() => handleAddToCart(zoomedCard.id)}
+                                        onClick={() => handleAddToCart(zoomedCard.availablePullIds[0])}
                                         disabled={loading}
-                                        className="flex-1 px-6 py-4 rounded-xl font-bold text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all flex items-center justify-center gap-2"
+                                        className="w-full px-6 py-3 rounded-xl font-bold text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         <ShoppingCart className="h-5 w-5"/>
                                         Add to Cart
+                                        {zoomedCard.cartCount > 0 && (
+                                            <span className="text-xs font-normal text-gray-400">
+                                                ({zoomedCard.cartCount} already in cart)
+                                            </span>
+                                        )}
                                     </button>
-                                    <button
-                                        onClick={() => handleSellCard(zoomedCard.id, zoomedCard.card!.coinValue)}
-                                        disabled={loading}
-                                        className="flex-1 px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25"
-                                    >
-                                        <Coins className="h-5 w-5"/>
-                                        Sell Card
-                                    </button>
+
+                                    {/* Sell section */}
+                                    <div className="border-t border-white/10 pt-3">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Sell for
+                                            coins</p>
+
+                                        {/* Quick-sell preset buttons (shown when 5+ available) */}
+                                        {zoomedCard.availablePullIds.length >= 5 && (
+                                            <div className="flex gap-2 mb-3">
+                                                <button
+                                                    onClick={() => setConfirmSell({
+                                                        pullIds: zoomedCard.availablePullIds.slice(0, 5),
+                                                        cardName: zoomedCard.card.name,
+                                                        quantity: 5,
+                                                        totalCoins: zoomedCard.card.coinValue * 5,
+                                                    })}
+                                                    disabled={loading}
+                                                    className="flex-1 px-3 py-2.5 rounded-xl font-bold text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 transition-all text-sm flex flex-col items-center gap-0.5 disabled:opacity-50"
+                                                >
+                                                    <span>Sell 5 Cards</span>
+                                                    <span
+                                                        className="text-amber-400 text-xs font-normal">{zoomedCard.card.coinValue * 5} coins</span>
+                                                </button>
+                                                {zoomedCard.availablePullIds.length >= 10 && (
+                                                    <button
+                                                        onClick={() => setConfirmSell({
+                                                            pullIds: zoomedCard.availablePullIds.slice(0, 10),
+                                                            cardName: zoomedCard.card.name,
+                                                            quantity: 10,
+                                                            totalCoins: zoomedCard.card.coinValue * 10,
+                                                        })}
+                                                        disabled={loading}
+                                                        className="flex-1 px-3 py-2.5 rounded-xl font-bold text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 transition-all text-sm flex flex-col items-center gap-0.5 disabled:opacity-50"
+                                                    >
+                                                        <span>Sell 10 Cards</span>
+                                                        <span
+                                                            className="text-amber-400 text-xs font-normal">{zoomedCard.card.coinValue * 10} coins</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Custom amount + sell */}
+                                        {(() => {
+                                            const parsed = Math.min(
+                                                Math.max(1, parseInt(sellAmount) || 1),
+                                                zoomedCard.availablePullIds.length
+                                            );
+                                            return (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max={zoomedCard.availablePullIds.length}
+                                                        value={sellAmount}
+                                                        onChange={(e) => setSellAmount(e.target.value)}
+                                                        className="w-20 px-3 py-3 bg-black/30 border border-white/10 rounded-xl text-white text-center focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                    />
+                                                    <button
+                                                        onClick={() => setConfirmSell({
+                                                            pullIds: zoomedCard.availablePullIds.slice(0, parsed),
+                                                            cardName: zoomedCard.card.name,
+                                                            quantity: parsed,
+                                                            totalCoins: parsed * zoomedCard.card.coinValue,
+                                                        })}
+                                                        disabled={loading}
+                                                        className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 disabled:opacity-50"
+                                                    >
+                                                        <Coins className="h-4 w-4"/>
+                                                        Sell {parsed} · {parsed * zoomedCard.card.coinValue} coins
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sell Confirmation Dialog */}
+            {confirmSell && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setConfirmSell(null);
+                    }}
+                >
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-xl"/>
+                    <div className="relative glass-strong rounded-2xl p-8 w-full max-w-sm border border-white/10 animate-in fade-in zoom-in-95 duration-200 text-center">
+                        {/* Icon */}
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-5">
+                            <Coins className="w-7 h-7 text-amber-400"/>
+                        </div>
+
+                        <h3 className="text-xl font-bold text-white mb-2">Confirm Sale</h3>
+                        <p className="text-gray-400 mb-1">
+                            {confirmSell.quantity === 1
+                                ? <>Do you really want to sell <span className="text-white font-semibold">{confirmSell.cardName}</span>?</>
+                                : <>Do you really want to sell <span className="text-white font-semibold">{confirmSell.quantity}× {confirmSell.cardName}</span>?</>
+                            }
+                        </p>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 mt-3 mb-7">
+                            <Coins className="h-4 w-4 text-amber-400"/>
+                            <span className="text-lg font-bold text-amber-400">{confirmSell.totalCoins.toLocaleString()} coins</span>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmSell(null)}
+                                className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const pending = confirmSell;
+                                    setConfirmSell(null);
+                                    handleSellMultiple(pending.pullIds, pending.cardName);
+                                }}
+                                disabled={loading}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-xl transition-all hover:scale-[1.02] shadow-lg shadow-amber-500/25 disabled:opacity-50"
+                            >
+                                Sell Now
+                            </button>
                         </div>
                     </div>
                 </div>
