@@ -89,6 +89,7 @@ export default async function ShopPayoutsPage({
           initialPayouts={serializedPayouts}
           coinBalance={Number(shopData?.coinBalance || 0)}
           rate={COIN_TO_EURO_RATE}
+          isAdmin={isAdmin}
         />
       </div>
     </div>
