@@ -15,7 +15,8 @@ import {
   BarChart3,
   Sparkles,
   ClipboardList,
-  Database
+  Database,
+  Wallet
 } from 'lucide-react';
 import { DealerDetailsClient } from './DealerDetailsClient';
 
@@ -66,6 +67,7 @@ export default async function ShopDashboard({
     recentOrders: any[];
     assignedOrders: number;
     assignedPending: number;
+    coinBalance: number;
   };
   if (isAdmin && !viewingSpecificShop) {
     const [
@@ -113,6 +115,7 @@ export default async function ShopDashboard({
       recentOrders,
       assignedOrders,
       assignedPending,
+      coinBalance: 0,
     };
   } else if (shop) {
     // Shop owner sees only their data
@@ -129,6 +132,7 @@ export default async function ShopDashboard({
       recentOrders,
       assignedOrders,
       assignedPending,
+      shopBalance,
     ] = await Promise.all([
       prisma.box.count({ where: { createdByShopId: shop.id } }),
       prisma.box.count({ where: { createdByShopId: shop.id, isActive: true } }),
@@ -147,6 +151,7 @@ export default async function ShopDashboard({
       }),
       prisma.order.count({ where: { assignedShopId: shop.id } }),
       prisma.order.count({ where: { assignedShopId: shop.id, status: 'PENDING' } }),
+      prisma.shop.findUnique({ where: { id: shop.id }, select: { coinBalance: true } }),
     ]);
 
     stats = {
@@ -162,6 +167,7 @@ export default async function ShopDashboard({
       recentOrders,
       assignedOrders,
       assignedPending,
+      coinBalance: Number(shopBalance?.coinBalance || 0),
     };
   } else {
     stats = {
@@ -177,6 +183,7 @@ export default async function ShopDashboard({
       recentOrders: [],
       assignedOrders: 0,
       assignedPending: 0,
+      coinBalance: 0,
     };
   }
 
@@ -211,7 +218,7 @@ export default async function ShopDashboard({
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="glass rounded-2xl p-5 relative overflow-hidden group hover:ring-2 hover:ring-emerald-500/30 transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent" />
             <div className="relative">
@@ -247,8 +254,17 @@ export default async function ShopDashboard({
               <div className="text-sm text-gray-400">Total Value (Coins)</div>
             </div>
           </div>
+
+          <div className="glass rounded-2xl p-5 relative overflow-hidden group hover:ring-2 hover:ring-orange-500/30 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent" />
+            <div className="relative">
+              <Wallet className="w-6 h-6 text-orange-400 mb-3" />
+              <div className="text-3xl font-bold text-white mb-1">{stats.coinBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+              <div className="text-sm text-gray-400">Wallet Balance</div>
+            </div>
+          </div>
           
-          <div className="glass rounded-2xl p-5 relative overflow-hidden group hover:ring-2 hover:ring-purple-500/30 transition-all col-span-2 md:col-span-1">
+          <div className="glass rounded-2xl p-5 relative overflow-hidden group hover:ring-2 hover:ring-purple-500/30 transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent" />
             <div className="relative">
               <Users className="w-6 h-6 text-purple-400 mb-3" />
@@ -359,10 +375,10 @@ export default async function ShopDashboard({
             </div>
           </Link>
 
-          {/* My Stock - Future API Integration */}
+          {/* My Stock */}
           <Link 
             href={viewingSpecificShop ? `/shop-dashboard/stock?shopId=${shop?.id}` : '/shop-dashboard/stock'} 
-            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-teal-500/50 transition-all group relative overflow-hidden col-span-2"
+            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-teal-500/50 transition-all group relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
@@ -375,6 +391,29 @@ export default async function ShopDashboard({
               </p>
               <div className="mt-4 flex items-center text-teal-400 text-sm font-medium">
                 <span>Manage Stock</span>
+                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Link>
+
+          {/* Payouts */}
+          <Link 
+            href="/shop-dashboard/payouts" 
+            className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-amber-500/50 transition-all group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative">
+              <div className="inline-flex items-center justify-center w-14 h-14 mb-5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 ring-1 ring-amber-500/30">
+                <Wallet className="w-7 h-7 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">Payouts</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Request payouts for your earned coins. 5 coins = 1 EUR.
+              </p>
+              <div className="mt-4 flex items-center text-amber-400 text-sm font-medium">
+                <span>Manage Payouts</span>
                 <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

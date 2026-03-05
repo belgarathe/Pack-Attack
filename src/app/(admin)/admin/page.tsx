@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Package, Swords, Users, Mail, ShieldCheck, Coins, TrendingUp, ShoppingCart, Tag, Store } from 'lucide-react';
+import { Package, Swords, Users, Mail, ShieldCheck, Coins, TrendingUp, ShoppingCart, Tag, Store, Wallet } from 'lucide-react';
 
 export default async function AdminDashboard() {
   const session = await getCurrentSession();
@@ -150,6 +150,14 @@ export default async function AdminDashboard() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">Upsale Items</h3>
             <p className="text-gray-400 text-sm">Manage add-on products shown in cart.</p>
+          </Link>
+
+          <Link href="/admin/payouts" className="glass-strong rounded-2xl p-6 hover:ring-2 hover:ring-emerald-500/50 transition-all group">
+            <div className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+              <Wallet className="w-6 h-6 text-emerald-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">Shop Payouts</h3>
+            <p className="text-gray-400 text-sm">Process payout requests from shop owners. 5 coins = 1 EUR.</p>
           </Link>
         </div>
       </div>

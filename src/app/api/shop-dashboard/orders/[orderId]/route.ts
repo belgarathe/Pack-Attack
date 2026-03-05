@@ -92,7 +92,6 @@ export async function PATCH(
     const data = await req.json();
     const updateData: any = {};
 
-    // Allowed fields to update
     if (data.status !== undefined) {
       const validStatuses = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
       if (!validStatuses.includes(data.status)) {
@@ -104,9 +103,23 @@ export async function PATCH(
     if (data.trackingUrl !== undefined) updateData.trackingUrl = data.trackingUrl;
     if (data.shopNotes !== undefined) updateData.shopNotes = data.shopNotes;
 
-    const order = await prisma.shopBoxOrder.update({
+    // Credit shop wallet when order is delivered (only if transitioning TO delivered)
+    const isDelivering = data.status === 'DELIVERED' && existingOrder.status !== 'DELIVERED';
+
+    if (isDelivering) {
+      await prisma.$transaction([
+        prisma.shopBoxOrder.update({ where: { id: orderId }, data: updateData }),
+        prisma.shop.update({
+          where: { id: existingOrder.shopId },
+          data: { coinBalance: { increment: existingOrder.cardValue } },
+        }),
+      ]);
+    } else {
+      await prisma.shopBoxOrder.update({ where: { id: orderId }, data: updateData });
+    }
+
+    const order = await prisma.shopBoxOrder.findUnique({
       where: { id: orderId },
-      data: updateData,
       include: {
         user: { select: { id: true, email: true, name: true } },
         box: { select: { id: true, name: true, imageUrl: true } },
@@ -118,8 +131,8 @@ export async function PATCH(
       success: true,
       order: {
         ...order,
-        cardValue: Number(order.cardValue),
-        shippingCost: Number(order.shippingCost),
+        cardValue: Number(order!.cardValue),
+        shippingCost: Number(order!.shippingCost),
       },
     });
   } catch (error) {

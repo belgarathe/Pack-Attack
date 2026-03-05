@@ -504,16 +504,43 @@ model Shop {
   banner         String?
   taxId          String?
   isActive       Boolean        @default(true)
+  coinBalance    Decimal        @default(0) @db.Decimal(10, 2)
   products       ShopProduct[]
   orders         ShopOrder[]
   boxes          Box[]
   cards          Card[]
   boxOrders      ShopBoxOrder[]
-  assignedOrders Order[] // Regular orders assigned to this shop by admin
+  assignedOrders Order[]
+  payouts        ShopPayout[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@index([isActive])
+}
+
+model ShopPayout {
+  id            String       @id @default(cuid())
+  shopId        String
+  shop          Shop         @relation(fields: [shopId], references: [id])
+  status        PayoutStatus @default(REQUESTED)
+  coinAmount    Decimal      @db.Decimal(10, 2)
+  euroAmount    Decimal      @db.Decimal(10, 2)
+  adminNotes    String?      @db.Text
+  processedById String?
+  processedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([shopId])
+  @@index([status])
+  @@index([shopId, status])
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  REJECTED
 }
 
 model ShopProduct {
