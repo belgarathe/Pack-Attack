@@ -5,7 +5,7 @@ import { Package, Upload } from 'lucide-react';
 import { StockManagerClient } from './StockManagerClient';
 import { StockImportClient } from './StockImportClient';
 
-export function StockPageTabs() {
+export function StockPageTabs({ shopId }: { shopId: string }) {
   const [tab, setTab] = useState<'manage' | 'import'>('manage');
 
   return (
@@ -35,7 +35,7 @@ export function StockPageTabs() {
         </button>
       </div>
 
-      {tab === 'manage' ? <StockManagerClient /> : <StockImportClient />}
+      {tab === 'manage' ? <StockManagerClient shopId={shopId} /> : <StockImportClient />}
     </div>
   );
 }

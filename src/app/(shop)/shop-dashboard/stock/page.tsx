@@ -134,7 +134,7 @@ export default async function ShopStockPage({
           </div>
         </div>
 
-        <StockPageTabs />
+        <StockPageTabs shopId={shop.id} />
       </div>
     </div>
   );

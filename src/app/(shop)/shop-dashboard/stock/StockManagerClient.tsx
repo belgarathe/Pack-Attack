@@ -56,7 +56,7 @@ const CONDITION_LABELS: Record<string, string> = {
   POOR: 'Poor',
 };
 
-export function StockManagerClient() {
+export function StockManagerClient({ shopId }: { shopId: string }) {
   const { addToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +84,7 @@ export function StockManagerClient() {
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('limit', '50');
+      params.set('shopId', shopId);
       if (searchDebounced) params.set('search', searchDebounced);
       if (filterGame) params.set('game', filterGame);
       if (filterStatus) params.set('status', filterStatus);
@@ -100,7 +101,7 @@ export function StockManagerClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, filterGame, filterStatus, addToast]);
+  }, [page, searchDebounced, filterGame, filterStatus, shopId, addToast]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
