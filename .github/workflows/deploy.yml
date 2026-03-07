@@ -18,13 +18,8 @@ jobs:
           script: |
             cd /var/www/packattack/app
 
-            # === SUDO DIAGNOSTICS (remove after confirming) ===
-            echo "--- SUDO DIAGNOSTICS ---"
-            echo "Current user: $(whoami)"
-            echo "User ID: $(id)"
-            sudo -n true 2>/dev/null && echo "SUDO: passwordless sudo WORKS" || echo "SUDO: passwordless sudo NOT available"
-            sudo -n -l 2>/dev/null || echo "SUDO: cannot list sudo privileges"
-            echo "--- END DIAGNOSTICS ---"
+            # Clean stale build artifacts before git operations
+            sudo rm -rf .next.old.* 2>/dev/null || true
 
             # Pull latest code
             git fetch origin main

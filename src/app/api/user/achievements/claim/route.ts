@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { rateLimit } from '@/lib/rate-limit';
+import { achievementsCache, cacheKeys } from '@/lib/cache';
 
 // POST: Claim reward for an unlocked achievement
 export async function POST(request: NextRequest) {
@@ -80,6 +81,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to process claim' }, { status: 500 });
     }
 
+    achievementsCache.delete(cacheKeys.userAchievements(user.id));
+
     return NextResponse.json({
       success: true,
       coinsAwarded: coinReward,
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// POST: Claim all unclaimed rewards at once
+// PUT: Claim all unclaimed rewards at once
 export async function PUT(request: NextRequest) {
   try {
     // Rate limit: 30 claims per minute (general rate)
@@ -166,6 +169,8 @@ export async function PUT(request: NextRequest) {
       console.error('Transaction failed to update user');
       return NextResponse.json({ error: 'Failed to process claims' }, { status: 500 });
     }
+
+    achievementsCache.delete(cacheKeys.userAchievements(user.id));
 
     return NextResponse.json({
       success: true,
