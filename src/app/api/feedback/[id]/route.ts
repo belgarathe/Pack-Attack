@@ -53,7 +53,7 @@ export async function GET(
   }
 }
 
-// PATCH - Update feedback (admin: status, notes, claim/unclaim, category, priority, assign)
+// PATCH - Update feedback (admin: status, notes, claim/unclaim, category, priority, assign; user: edit message)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,13 +61,64 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await request.json();
     const { action } = body;
+
+    // ---- USER EDIT MESSAGE ----
+    if (action === 'edit_message') {
+      const { newMessage } = body;
+      if (!newMessage || !newMessage.trim()) {
+        return NextResponse.json({ success: false, error: 'Message cannot be empty.' }, { status: 400 });
+      }
+      if (newMessage.trim().length > 5000) {
+        return NextResponse.json({ success: false, error: 'Message too long (max 5000 characters).' }, { status: 400 });
+      }
+
+      const feedback = await prisma.feedback.findUnique({ where: { id } });
+      if (!feedback) {
+        return NextResponse.json({ success: false, error: 'Feedback not found.' }, { status: 404 });
+      }
+      if (feedback.userId !== session.user.id) {
+        return NextResponse.json({ success: false, error: 'You can only edit your own feedback.' }, { status: 403 });
+      }
+      if (feedback.status === 'CLOSED') {
+        return NextResponse.json({ success: false, error: 'Cannot edit closed feedback.' }, { status: 400 });
+      }
+
+      // Preserve the original message on first edit
+      const originalMessage = feedback.originalMessage || feedback.message;
+
+      const [updated] = await prisma.$transaction([
+        prisma.feedback.update({
+          where: { id },
+          data: {
+            message: newMessage.trim(),
+            originalMessage,
+          },
+          include: feedbackInclude,
+        }),
+        prisma.feedbackActivityLog.create({
+          data: {
+            feedbackId: id,
+            userId: session.user.id,
+            action: 'MESSAGE_EDITED',
+            details: { previousMessage: feedback.message },
+          },
+        }),
+      ]);
+
+      return NextResponse.json({ success: true, feedback: updated });
+    }
+
+    // All actions below require admin role
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
 
     // ---- CLAIM ----
     if (action === 'claim') {
@@ -305,6 +356,26 @@ export async function PATCH(
           },
         })
       );
+
+      // Auto-message user when ticket is closed
+      if (status === 'CLOSED' && feedback.userId) {
+        const closeMessage = feedback.category === 'BUG_REPORT'
+          ? 'This bug has been fixed and your ticket is now closed. Thank you for helping us improve Pack Attack! If you enjoy the experience, we\'d love a review on Trustpilot.'
+          : feedback.category === 'FEATURE_REQUEST'
+          ? 'Your feature request has been reviewed and this ticket is now closed. Thanks for sharing your ideas with us! If you enjoy Pack Attack, we\'d appreciate a review on Trustpilot.'
+          : 'Your feedback has been addressed and this ticket is now closed. Thank you for reaching out! If you enjoy your experience, we\'d love a review on Trustpilot.';
+
+        txOps.push(
+          prisma.feedbackMessage.create({
+            data: {
+              feedbackId: id,
+              userId: session.user.id,
+              content: closeMessage,
+              isAdmin: true,
+            },
+          })
+        );
+      }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

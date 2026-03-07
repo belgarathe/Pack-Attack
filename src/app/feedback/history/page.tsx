@@ -23,6 +23,9 @@ import {
   Shield,
   Plus,
   History,
+  Pencil,
+  X,
+  Save,
 } from 'lucide-react';
 
 type FeedbackMsg = {
@@ -44,6 +47,7 @@ type Feedback = {
   experience: number | null;
   subject: string;
   message: string;
+  originalMessage: string | null;
   status: string;
   claimedBy: { id: string; name: string | null } | null;
   _count: { messages: number };
@@ -79,6 +83,10 @@ export default function FeedbackHistoryPage() {
   const [loadingMessages, setLoadingMessages] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editMessage, setEditMessage] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [showOriginal, setShowOriginal] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -157,6 +165,34 @@ export default function FeedbackHistoryPage() {
       console.error('Failed to send message:', error);
     } finally {
       setSendingMessage(false);
+    }
+  };
+
+  const saveEdit = async (feedbackId: string) => {
+    if (!editMessage.trim()) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/feedback/${feedbackId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit_message', newMessage: editMessage.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFeedbacks((prev) =>
+          prev.map((f) =>
+            f.id === feedbackId
+              ? { ...f, message: editMessage.trim(), originalMessage: f.originalMessage || f.message }
+              : f
+          )
+        );
+        setEditingId(null);
+        setEditMessage('');
+      }
+    } catch (error) {
+      console.error('Failed to save edit:', error);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -336,12 +372,78 @@ export default function FeedbackHistoryPage() {
                   {/* Expanded content */}
                   {isExpanded && (
                     <div className="px-4 pb-4 border-t border-white/[0.06] pt-4 space-y-4">
-                      {/* Original message */}
+                      {/* Message with edit */}
                       <div>
-                        <p className="text-xs text-gray-500 font-medium mb-2">Your original message:</p>
-                        <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
-                          {fb.message}
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-gray-500 font-medium">Your message:</p>
+                          <div className="flex items-center gap-2">
+                            {fb.originalMessage && (
+                              <button
+                                type="button"
+                                onClick={() => setShowOriginal(showOriginal === fb.id ? null : fb.id)}
+                                className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+                              >
+                                {showOriginal === fb.id ? 'Hide original' : 'Show original'}
+                              </button>
+                            )}
+                            {fb.status !== 'CLOSED' && editingId !== fb.id && (
+                              <button
+                                type="button"
+                                onClick={() => { setEditingId(fb.id); setEditMessage(fb.message); }}
+                                className="inline-flex items-center gap-1 text-[10px] text-gray-500 hover:text-blue-400 transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                Edit
+                              </button>
+                            )}
+                          </div>
                         </div>
+                        {showOriginal === fb.id && fb.originalMessage && (
+                          <div className="text-sm text-gray-500 whitespace-pre-wrap leading-relaxed bg-amber-500/[0.03] rounded-lg p-3 border border-amber-500/10 mb-2">
+                            <p className="text-[10px] text-amber-400/70 font-medium mb-1">Original message:</p>
+                            {fb.originalMessage}
+                          </div>
+                        )}
+                        {editingId === fb.id ? (
+                          <div>
+                            <textarea
+                              value={editMessage}
+                              onChange={(e) => setEditMessage(e.target.value.slice(0, 5000))}
+                              rows={5}
+                              className="w-full px-3 py-2 rounded-lg bg-white/4 border border-blue-500/30 text-sm text-white placeholder-gray-600 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all resize-y min-h-[100px]"
+                            />
+                            <div className="flex items-center justify-end gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => { setEditingId(null); setEditMessage(''); }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all"
+                              >
+                                <X className="w-3 h-3" />
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveEdit(fb.id)}
+                                disabled={!editMessage.trim() || savingEdit || editMessage.trim() === fb.message}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {savingEdit ? (
+                                  <div className="w-3 h-3 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                                ) : (
+                                  <Save className="w-3 h-3" />
+                                )}
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
+                            {fb.message}
+                            {fb.originalMessage && (
+                              <p className="text-[10px] text-gray-600 mt-2 italic">Edited</p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Messages / Chat section */}

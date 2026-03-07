@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   AlertCircle,
   Sparkles,
-  ExternalLink,
   History,
 } from 'lucide-react';
 
@@ -179,40 +178,12 @@ export default function FeedbackPage() {
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ marginBottom: '0.75rem' }}>Thank You!</h2>
             <p className="text-gray-400 mb-8 max-w-sm" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              Your feedback has been submitted successfully. We appreciate you taking the time to help us improve.
+              {category === 'BUG_REPORT'
+                ? 'Thanks for reporting this bug! Our team will look into it as soon as possible and get it sorted out.'
+                : category === 'FEATURE_REQUEST'
+                ? 'Thanks for your suggestion! We love hearing ideas from our community and will review this carefully.'
+                : 'Thanks for your feedback! We really appreciate it and will get back to you as soon as we can.'}
             </p>
-
-            {/* Trustpilot CTA - only show for positive reviews (4+ stars) */}
-            {experience >= 4 && (
-              <div className="mb-8 p-5 rounded-xl border border-green-500/20 bg-green-500/[0.05] max-w-md w-full" style={{ textAlign: 'center', padding: '1.25rem', marginBottom: '2rem' }}>
-                <div className="flex items-center gap-3 mb-3" style={{ justifyContent: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                  <Star className="w-5 h-5 text-green-400 fill-green-400" />
-                  <h3 className="text-lg font-semibold text-white">Spread the Word!</h3>
-                </div>
-                <p className="text-sm text-gray-400 mb-4" style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                  We&apos;re glad you had a great experience! Would you mind sharing your feedback on Trustpilot? It really helps us out.
-                </p>
-                <div className="flex justify-center">
-                  {process.env.NEXT_PUBLIC_TRUSTPILOT_URL ? (
-                    <a
-                      href={process.env.NEXT_PUBLIC_TRUSTPILOT_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-semibold text-sm rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-green-500/20 active:scale-[0.98]"
-                    >
-                      <Star className="w-4 h-4" />
-                      Review Us on Trustpilot
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  ) : (
-                    <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-700/50 text-gray-400 font-semibold text-sm rounded-xl cursor-not-allowed">
-                      <Star className="w-4 h-4" />
-                      Trustpilot Review Coming Soon
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
 
             <div className="flex flex-col sm:flex-row justify-center gap-3" style={{ justifyContent: 'center', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button

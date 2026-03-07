@@ -874,6 +874,7 @@ model Feedback {
   experience      Int?             // Category-specific experience rating 1-5 (replaces overall rating)
   subject         String
   message         String           @db.Text
+  originalMessage String?          @db.Text // Preserved when user edits their feedback
   status          FeedbackStatus   @default(OPEN)
   priority        FeedbackPriority @default(MEDIUM)
   adminNotes      String?          @db.Text
@@ -969,4 +970,5 @@ enum FeedbackActivityAction {
   ASSIGNED
   NOTE_ADDED
   MESSAGE_SENT
+  MESSAGE_EDITED
 }

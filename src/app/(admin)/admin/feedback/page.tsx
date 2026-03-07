@@ -32,6 +32,7 @@ import {
   StickyNote,
   UserPlus,
   Check,
+  History,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────
@@ -63,6 +64,7 @@ type Feedback = {
   experience: number | null;
   subject: string;
   message: string;
+  originalMessage: string | null;
   status: string;
   priority: string;
   adminNotes: string | null;
@@ -176,6 +178,7 @@ export default function AdminFeedbackPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showActivity, setShowActivity] = useState<string | null>(null);
+  const [showOriginalId, setShowOriginalId] = useState<string | null>(null);
   const [loadingActivity, setLoadingActivity] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [notesSaving, setNotesSaving] = useState<string | null>(null);
@@ -405,11 +408,11 @@ export default function AdminFeedbackPage() {
           </div>
 
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search feedback..." className="w-full h-9 pl-9 pr-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 placeholder-gray-600 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search feedback..." className="w-full h-9 pl-10 pr-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 placeholder-gray-600 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all" />
           </div>
 
-          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all">
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
             <option value="">All Statuses</option>
             <option value="OPEN">Open</option>
             <option value="CLAIMED">Claimed</option>
@@ -418,7 +421,7 @@ export default function AdminFeedbackPage() {
             <option value="CLOSED">Closed</option>
           </select>
 
-          <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all">
+          <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
             <option value="">All Categories</option>
             <option value="BUG_REPORT">Bug Reports</option>
             <option value="FEATURE_REQUEST">Feature Requests</option>
@@ -428,7 +431,7 @@ export default function AdminFeedbackPage() {
             <option value="SHOP_ISSUE">Shop Issues</option>
           </select>
 
-          <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all">
+          <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPage(1); }} className="h-9 px-3 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
             <option value="">All Priorities</option>
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
@@ -532,9 +535,27 @@ export default function AdminFeedbackPage() {
                   {/* ── Expanded detail ── */}
                   {isExpanded && (
                     <div className="border-t border-white/[0.06]">
-                      {/* Original message */}
+                      {/* User message */}
                       <div className="px-5 pt-4 pb-3">
                         <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{fb.message}</div>
+                        {fb.originalMessage && fb.originalMessage !== fb.message && (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => setShowOriginalId(showOriginalId === fb.id ? null : fb.id)}
+                              className="text-[11px] text-amber-400/70 hover:text-amber-400 transition-colors flex items-center gap-1"
+                            >
+                              <History className="w-3 h-3" />
+                              {showOriginalId === fb.id ? 'Hide original' : 'Show original message'}
+                              <span className="text-amber-500/40 ml-1">(edited by user)</span>
+                            </button>
+                            {showOriginalId === fb.id && (
+                              <div className="mt-2 p-3 rounded-lg bg-amber-500/[0.05] border border-amber-500/10 text-sm text-amber-200/70 whitespace-pre-wrap leading-relaxed">
+                                <span className="text-[10px] uppercase tracking-wider text-amber-500/50 font-semibold block mb-1">Original message</span>
+                                {fb.originalMessage}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {fb.userAgent && (
                           <div className="mt-3 text-xs text-gray-600 bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
                             <span className="font-medium text-gray-500">User Agent:</span> {fb.userAgent}
@@ -605,7 +626,7 @@ export default function AdminFeedbackPage() {
                                 {/* Assign row */}
                                 <div className="flex items-center gap-3">
                                   <span className="text-xs text-gray-500 w-16 shrink-0">Assigned:</span>
-                                  <select value={fb.assignedToId || ''} onChange={(e) => assignAdmin(fb.id, e.target.value || null)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all">
+                                  <select value={fb.assignedToId || ''} onChange={(e) => assignAdmin(fb.id, e.target.value || null)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
                                     <option value="">Unassigned</option>
                                     {adminUsers.map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email}</option>)}
                                   </select>
@@ -622,13 +643,13 @@ export default function AdminFeedbackPage() {
                               <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-gray-500">Category:</span>
-                                  <select value={fb.category} onChange={(e) => reassignCategory(fb.id, e.target.value)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all">
+                                  <select value={fb.category} onChange={(e) => reassignCategory(fb.id, e.target.value)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
                                     {Object.entries(categoryConfig).map(([key, conf]) => <option key={key} value={key}>{conf.label}</option>)}
                                   </select>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-gray-500">Priority:</span>
-                                  <select value={fb.priority} onChange={(e) => updatePriority(fb.id, e.target.value)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all">
+                                  <select value={fb.priority} onChange={(e) => updatePriority(fb.id, e.target.value)} className="h-8 px-2 rounded-lg bg-white/4 border border-white/8 text-xs text-gray-300 focus:border-teal-500/40 outline-none transition-all [&>option]:bg-gray-900 [&>option]:text-gray-100">
                                     {Object.entries(priorityConfig).map(([key, conf]) => <option key={key} value={key}>{conf.label}</option>)}
                                   </select>
                                 </div>
@@ -769,7 +790,7 @@ export default function AdminFeedbackPage() {
             <span className="text-sm font-medium text-white">{selectedIds.size} selected</span>
             <div className="w-px h-6 bg-white/10" />
 
-            <select value={bulkAction} onChange={(e) => { setBulkAction(e.target.value); setBulkValue(''); }} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none">
+            <select value={bulkAction} onChange={(e) => { setBulkAction(e.target.value); setBulkValue(''); }} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none [&>option]:bg-gray-900 [&>option]:text-gray-100">
               <option value="">Choose action...</option>
               <option value="update_status">Change Status</option>
               <option value="reassign_category">Change Category</option>
@@ -778,25 +799,25 @@ export default function AdminFeedbackPage() {
             </select>
 
             {bulkAction === 'update_status' && (
-              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none">
+              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none [&>option]:bg-gray-900 [&>option]:text-gray-100">
                 <option value="">Select status...</option>
                 {Object.entries(statusConfig).map(([key, conf]) => <option key={key} value={key}>{conf.label}</option>)}
               </select>
             )}
             {bulkAction === 'reassign_category' && (
-              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none">
+              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none [&>option]:bg-gray-900 [&>option]:text-gray-100">
                 <option value="">Select category...</option>
                 {Object.entries(categoryConfig).map(([key, conf]) => <option key={key} value={key}>{conf.label}</option>)}
               </select>
             )}
             {bulkAction === 'update_priority' && (
-              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none">
+              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none [&>option]:bg-gray-900 [&>option]:text-gray-100">
                 <option value="">Select priority...</option>
                 {Object.entries(priorityConfig).map(([key, conf]) => <option key={key} value={key}>{conf.label}</option>)}
               </select>
             )}
             {bulkAction === 'assign' && (
-              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none">
+              <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} className="h-8 px-2 rounded-lg bg-white/[0.06] border border-white/10 text-xs text-gray-300 outline-none [&>option]:bg-gray-900 [&>option]:text-gray-100">
                 <option value="">Select admin...</option>
                 {adminUsers.map((admin) => <option key={admin.id} value={admin.id}>{admin.name || admin.email}</option>)}
               </select>

@@ -14,6 +14,7 @@ export function Navigation() {
   const [cartCount, setCartCount] = useState(0);
   const [levelData, setLevelData] = useState<{ level: number; xpInCurrentLevel: number; xpForNextLevel: number; percent: number; title: string } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [feedbackCount, setFeedbackCount] = useState(0);
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const touchStartX = useRef<number>(0);
@@ -118,6 +119,17 @@ export function Navigation() {
     fetchCoins();
     fetchLevel();
 
+    // Fetch pending feedback count for admins
+    if (session?.user?.role === 'ADMIN') {
+      fetch('/api/feedback/pending-count')
+        .then(async (res) => {
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.success) setFeedbackCount(data.count);
+        })
+        .catch(() => {});
+    }
+
     // Fetch cart count
     fetch('/api/cart')
       .then(async (res) => {
@@ -170,6 +182,7 @@ export function Navigation() {
     adminOnly?: boolean;
     shopOrAdmin?: boolean;
     hideForAdmin?: boolean;
+    badge?: number;
   }> = [
     { href: '/boxes', icon: Package, label: 'Boxes', requiresAuth: false },
     { href: '/battles', icon: Swords, label: 'Battles', requiresAuth: false },
@@ -178,7 +191,7 @@ export function Navigation() {
     { href: '/sales-history', icon: History, label: 'Sales History', requiresAuth: true },
     { href: '/feedback', icon: MessageSquare, label: 'Feedback', requiresAuth: false, hideForAdmin: true },
     { href: '/shop-dashboard', icon: Store, label: 'Shop Dashboard', requiresAuth: true, shopOrAdmin: true },
-    { href: '/admin', icon: Settings, label: 'Admin', requiresAuth: true, adminOnly: true },
+    { href: '/admin', icon: Settings, label: 'Admin', requiresAuth: true, adminOnly: true, badge: feedbackCount },
   ];
 
   // PERFORMANCE: Memoize filtered links
@@ -190,7 +203,8 @@ export function Navigation() {
       if (link.requiresAuth && !session) return false;
       return true;
     });
-  }, [session]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, feedbackCount]);
 
   return (
     <nav ref={navRef} className="relative z-50 border-b border-white/[0.08] bg-gray-950" id="main-navigation">
@@ -219,7 +233,7 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 touch-target ${
+                className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 touch-target ${
                   isActive
                     ? 'bg-white/10 text-white shadow-sm'
                     : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'
@@ -227,6 +241,11 @@ export function Navigation() {
               >
                 <link.icon className={`h-4 w-4 ${isActive ? 'text-blue-400' : ''}`} />
                 <span>{link.label}</span>
+                {link.badge && link.badge > 0 ? (
+                  <span className="flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white min-w-[18px] h-[18px] px-1">
+                    {link.badge > 99 ? '99+' : link.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -385,6 +404,11 @@ export function Navigation() {
                 >
                   <link.icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-blue-400' : 'text-gray-500'}`} />
                   <span>{link.label}</span>
+                  {link.badge && link.badge > 0 ? (
+                    <span className="ml-auto flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white min-w-[18px] h-[18px] px-1">
+                      {link.badge > 99 ? '99+' : link.badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
