@@ -287,24 +287,11 @@ export const DashboardClient = memo(function DashboardClient({
     const fetchAchievements = async () => {
         setLoading(true);
         try {
-            // PERFORMANCE: Fast load without progress recompute
-            const res = await fetch('/api/user/achievements?update=false');
+            const res = await fetch('/api/user/achievements?update=true');
             const data = await res.json();
             if (res.ok) {
                 setAchievements(data);
             }
-
-            // Update progress in background, then refresh data
-            void fetch('/api/user/achievements/check', {method: 'POST'})
-                .then(async (checkRes) => {
-                    if (!checkRes.ok) return;
-                    const refreshed = await fetch('/api/user/achievements?update=false');
-                    if (!refreshed.ok) return;
-                    const refreshedData = await refreshed.json();
-                    setAchievements(refreshedData);
-                })
-                .catch(() => {
-                });
         } catch (error) {
             console.error('Failed to fetch achievements:', error);
         } finally {

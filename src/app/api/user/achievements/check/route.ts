@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { emitCoinBalanceUpdate } from '@/lib/coin-events';
+import { achievementsCache, cacheKeys } from '@/lib/cache';
 
 const CHECK_COOLDOWN = 30 * 1000; // 30 seconds
 const lastCheckByUser = new Map<string, number>();
@@ -235,6 +235,7 @@ export async function POST() {
     });
 
     lastCheckByUser.set(user.id, Date.now());
+    achievementsCache.delete(cacheKeys.userAchievements(user.id));
 
     return NextResponse.json({
       success: true,

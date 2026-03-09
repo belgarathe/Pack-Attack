@@ -9,8 +9,6 @@ let achievementsSynced = false;
 let lastSyncTime = 0;
 const SYNC_INTERVAL = 60 * 60 * 1000; // Only sync every hour
 const ACHIEVEMENTS_CACHE_TTL = 30 * 1000; // 30 seconds
-const PROGRESS_COOLDOWN = 30 * 1000; // 30 seconds
-const lastProgressUpdate = new Map<string, number>();
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,11 +43,6 @@ export async function GET(request: NextRequest) {
     const cached = achievementsCache.get(cacheKey);
 
     if (!updateProgress && cached) {
-      return NextResponse.json(cached);
-    }
-
-    const lastUpdatedAt = lastProgressUpdate.get(user.id) ?? 0;
-    if (updateProgress && cached && Date.now() - lastUpdatedAt < PROGRESS_COOLDOWN) {
       return NextResponse.json(cached);
     }
 
@@ -255,9 +248,6 @@ export async function GET(request: NextRequest) {
     };
 
     achievementsCache.set(cacheKey, payload, ACHIEVEMENTS_CACHE_TTL);
-    if (updateProgress) {
-      lastProgressUpdate.set(user.id, Date.now());
-    }
 
     return NextResponse.json(payload);
   } catch (error) {
