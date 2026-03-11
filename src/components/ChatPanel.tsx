@@ -544,17 +544,17 @@ export function ChatPanel() {
             <div className="flex items-center gap-1">
               <button
                 onClick={cycleSoundMode}
-                className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                className="flex items-center gap-1 h-7 px-2 rounded-md text-gray-500 hover:text-gray-300 hover:bg-white/[0.06] transition-colors"
                 aria-label={`Sound: ${soundMode}`}
-                title={soundMode === 'all' ? 'Sound: On' : soundMode === 'focused' ? 'Sound: Focused only' : 'Sound: Off'}
               >
                 {soundMode === 'all' ? (
-                  <Volume2 className="w-4 h-4 text-purple-400" />
+                  <Volume2 className="w-3.5 h-3.5 text-purple-400" />
                 ) : soundMode === 'focused' ? (
-                  <Bell className="w-4 h-4 text-yellow-400" />
+                  <Bell className="w-3.5 h-3.5 text-yellow-400" />
                 ) : (
-                  <VolumeX className="w-4 h-4" />
+                  <VolumeX className="w-3.5 h-3.5" />
                 )}
+                <span className="text-[10px]">Sound settings</span>
               </button>
               <button
                 onClick={() => setIsOpen(false)}
