@@ -12,6 +12,9 @@ import {
   Clock,
   Ban,
   MoreVertical,
+  Volume2,
+  VolumeX,
+  Bell,
 } from 'lucide-react';
 
 interface ChatUser {
@@ -36,6 +39,52 @@ interface BanStatus {
   type: 'TIMEOUT' | 'BAN' | null;
   expiresAt: string | null;
   reason: string | null;
+}
+
+type SoundMode = 'all' | 'focused' | 'off';
+
+const SOUND_MODE_KEY = 'chat-sound-mode';
+
+function getSavedSoundMode(): SoundMode {
+  if (typeof window === 'undefined') return 'all';
+  const saved = localStorage.getItem(SOUND_MODE_KEY);
+  if (saved === 'all' || saved === 'focused' || saved === 'off') return saved;
+  return 'all';
+}
+
+// Subtle two-note ascending chime via Web Audio API
+function playNotificationSound() {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+
+    // First note (C5 = 523Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.value = 523;
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.connect(gain1).connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.15);
+
+    // Second note (E5 = 659Hz), slightly delayed
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = 659;
+    gain2.gain.setValueAtTime(0.06, now + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc2.connect(gain2).connect(ctx.destination);
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.22);
+
+    // Clean up context after sounds finish
+    setTimeout(() => ctx.close(), 500);
+  } catch {
+    // Audio not available
+  }
 }
 
 // Twitch icon SVG (inline so no external dependency)
@@ -165,7 +214,48 @@ export function ChatPanel() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const isAtBottomRef = useRef(true);
 
+  const [soundMode, setSoundMode] = useState<SoundMode>('all');
+  const [soundToast, setSoundToast] = useState<string | null>(null);
+  const tabFocusedRef = useRef(true);
+
   const isAdmin = session?.user && 'role' in session.user && session.user.role === 'ADMIN';
+
+  // Load sound mode from localStorage on mount
+  useEffect(() => {
+    setSoundMode(getSavedSoundMode());
+  }, []);
+
+  // Track tab focus
+  useEffect(() => {
+    const onFocus = () => { tabFocusedRef.current = true; };
+    const onBlur = () => { tabFocusedRef.current = false; };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  const cycleSoundMode = () => {
+    const next: Record<SoundMode, SoundMode> = { all: 'focused', focused: 'off', off: 'all' };
+    const labels: Record<SoundMode, string> = {
+      all: 'Sound: Always on',
+      focused: 'Sound: Only when tab is active',
+      off: 'Sound: Off',
+    };
+    const newMode = next[soundMode];
+    setSoundMode(newMode);
+    localStorage.setItem(SOUND_MODE_KEY, newMode);
+    setSoundToast(labels[newMode]);
+  };
+
+  // Auto-clear sound toast after 2 seconds
+  useEffect(() => {
+    if (!soundToast) return;
+    const t = setTimeout(() => setSoundToast(null), 2000);
+    return () => clearTimeout(t);
+  }, [soundToast]);
 
   // Auto-clear filter error after 4 seconds
   useEffect(() => {
@@ -254,6 +344,14 @@ export function ChatPanel() {
         if (!isAtBottomRef.current) {
           setUnreadCount((c) => c + 1);
         }
+
+        // Play notification sound (not for own messages)
+        const isOwnMessage = session?.user?.id && msg.user.id === session.user.id;
+        if (!isOwnMessage && soundMode !== 'off') {
+          if (soundMode === 'all' || (soundMode === 'focused' && tabFocusedRef.current)) {
+            playNotificationSound();
+          }
+        }
       } catch {
         // Ignore parse errors
       }
@@ -283,7 +381,7 @@ export function ChatPanel() {
       eventSourceRef.current = null;
       setConnected(false);
     };
-  }, [isOpen, scrollToBottom]);
+  }, [isOpen, scrollToBottom, soundMode, session]);
 
   // Reset unread count when panel opens or user scrolls to bottom
   useEffect(() => {
@@ -443,14 +541,37 @@ export function ChatPanel() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-              aria-label="Close chat"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={cycleSoundMode}
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                aria-label={`Sound: ${soundMode}`}
+                title={soundMode === 'all' ? 'Sound: On' : soundMode === 'focused' ? 'Sound: Focused only' : 'Sound: Off'}
+              >
+                {soundMode === 'all' ? (
+                  <Volume2 className="w-4 h-4 text-purple-400" />
+                ) : soundMode === 'focused' ? (
+                  <Bell className="w-4 h-4 text-yellow-400" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                aria-label="Close chat"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {/* Sound mode toast */}
+          {soundToast && (
+            <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-white/[0.08] text-xs text-gray-300 text-center">
+              {soundToast}
+            </div>
+          )}
 
           {/* Action feedback toast */}
           {actionFeedback && (
