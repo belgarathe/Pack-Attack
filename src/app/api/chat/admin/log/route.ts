@@ -26,9 +26,18 @@ export async function GET(request: Request) {
     const userId = searchParams.get('userId');
     const deletedOnly = searchParams.get('deletedOnly') === 'true';
 
-    const where: Record<string, unknown> = {};
+    const search = searchParams.get('search');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = {};
     if (userId) where.userId = userId;
     if (deletedOnly) where.deletedAt = { not: null };
+    if (search) {
+      where.OR = [
+        { userName: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const [logs, total] = await Promise.all([
       prisma.chatLog.findMany({
